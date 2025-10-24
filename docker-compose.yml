@@ -1,0 +1,85 @@
+version: '3.8'
+
+services:
+  # MySQL Database for Cost Payment Service
+  payment-mysql:
+    image: mysql:8.0
+    container_name: payment-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: Cost_Payment_DB
+    ports:
+      - "3308:3306"
+    volumes:
+      - payment_mysql_data:/var/lib/mysql
+      - ./database_setup.sql:/docker-entrypoint-initdb.d/01-setup.sql
+    networks:
+      - ev-network
+
+  # MySQL Database for Group Management Service
+  group-mysql:
+    image: mysql:8.0
+    container_name: group-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: Group_Management_DB
+    ports:
+      - "3310:3306"
+    volumes:
+      - group_mysql_data:/var/lib/mysql
+      - ./database_setup.sql:/docker-entrypoint-initdb.d/01-setup.sql
+    networks:
+      - ev-network
+
+  # Group Management Service
+  group-management-service:
+    build: ./group-management-service
+    container_name: group-management-service
+    ports:
+      - "8082:8082"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:mysql://group-mysql:3306/Group_Management_DB?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=password
+    depends_on:
+      - group-mysql
+    networks:
+      - ev-network
+
+  # Cost Payment Service
+  cost-payment-service:
+    build: ./cost-payment-service
+    container_name: cost-payment-service
+    ports:
+      - "8083:8083"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:mysql://payment-mysql:3306/Cost_Payment_DB?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=password
+    depends_on:
+      - payment-mysql
+    networks:
+      - ev-network
+
+  # UI Service
+  ui-service:
+    build: ./ui-service
+    container_name: ui-service
+    ports:
+      - "8080:8080"
+    environment:
+      - MICROSERVICES_GROUP_MANAGEMENT_URL=http://group-management-service:8082
+      - MICROSERVICES_COST_PAYMENT_URL=http://cost-payment-service:8083
+    depends_on:
+      - group-management-service
+      - cost-payment-service
+    networks:
+      - ev-network
+
+volumes:
+  payment_mysql_data:
+  group_mysql_data:
+
+networks:
+  ev-network:
+    driver: bridge

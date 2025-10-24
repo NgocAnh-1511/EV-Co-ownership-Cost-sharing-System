@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - EV Co-ownership System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container">
+            <a class="navbar-brand" href="/">EV Co-ownership System</a>
+            <div class="navbar-nav">
+                <a class="nav-link" href="/">Home</a>
+                <a class="nav-link active" href="/dashboard">Dashboard</a>
+                <a class="nav-link" href="/groups">Groups</a>
+                <a class="nav-link" href="/costs">Costs</a>
+                <a class="nav-link" href="/health">Health</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <h1>Dashboard</h1>
+        
+        <!-- Statistics Cards -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card text-white bg-primary">
+                    <div class="card-body">
+                        <h5 class="card-title">Total Groups</h5>
+                        <h2 th:text="${totalGroups}">0</h2>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-white bg-success">
+                    <div class="card-body">
+                        <h5 class="card-title">Total Costs</h5>
+                        <h2 th:text="${totalCosts}">0</h2>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-white bg-info">
+                    <div class="card-body">
+                        <h5 class="card-title">Total Payments</h5>
+                        <h2 th:text="${totalPayments}">0</h2>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-white bg-warning">
+                    <div class="card-body">
+                        <h5 class="card-title">Total Amount</h5>
+                        <h2 th:text="${#numbers.formatDecimal(totalAmount, 0, 'COMMA', 0, 'POINT')} + ' VND'">0 VND</h2>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Groups -->
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>Recent Groups</h5>
+                    </div>
+                    <div class="card-body">
+                        <div th:if="${groups.isEmpty()}" class="text-muted">No groups found</div>
+                        <div th:each="group : ${groups}" class="mb-2">
+                            <div class="d-flex justify-content-between">
+                                <span th:text="${group.groupName}">Group Name</span>
+                                <span class="badge bg-secondary" th:text="${group.status}">Status</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>Recent Costs</h5>
+                    </div>
+                    <div class="card-body">
+                        <div th:if="${costs.isEmpty()}" class="text-muted">No costs found</div>
+                        <div th:each="cost : ${costs}" class="mb-2">
+                            <div class="d-flex justify-content-between">
+                                <span th:text="${cost.description}">Cost Description</span>
+                                <span class="badge bg-success" th:text="${#numbers.formatDecimal(cost.amount, 0, 'COMMA', 0, 'POINT')} + ' VND'">Amount</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
