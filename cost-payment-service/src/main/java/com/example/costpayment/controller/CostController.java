@@ -1,275 +1,196 @@
 package com.example.costpayment.controller;
 
-import com.example.costpayment.entity.Cost;
+import com.example.costpayment.dto.CostDto;
+import com.example.costpayment.dto.CostShareDto;
+import com.example.costpayment.dto.CostSplitRequestDto;
 import com.example.costpayment.entity.CostShare;
-import com.example.costpayment.entity.Payment;
-import com.example.costpayment.service.CostPaymentService;
+import com.example.costpayment.service.CostShareService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import javax.sql.DataSource;
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.Statement;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/costs")
-@CrossOrigin(origins = "*")
 public class CostController {
 
+    private static final Logger logger = LoggerFactory.getLogger(CostController.class);
+
     @Autowired
-    private CostPaymentService costPaymentService;
+    private DataSource dataSource;
 
-    // ================================
-    // COST ENDPOINTS
-    // ================================
+    @Autowired
+    private CostShareService costShareService;
 
-    /**
-     * Get all costs
-     */
     @GetMapping
-    public ResponseEntity<List<Cost>> getAllCosts() {
-        List<Cost> costs = costPaymentService.getAllCosts();
-        return ResponseEntity.ok(costs);
-    }
-
-    /**
-     * Get cost by ID
-     */
-    @GetMapping("/{id}")
-    public ResponseEntity<Cost> getCostById(@PathVariable Integer id) {
-        Optional<Cost> cost = costPaymentService.getCostById(id);
-        return cost.map(ResponseEntity::ok)
-                  .orElse(ResponseEntity.notFound().build());
-    }
-
-    /**
-     * Create new cost
-     */
-    @PostMapping
-    public ResponseEntity<Cost> createCost(@RequestBody Cost cost) {
-        Cost createdCost = costPaymentService.createCost(cost);
-        return ResponseEntity.ok(createdCost);
-    }
-
-    /**
-     * Update cost
-     */
-    @PutMapping("/{id}")
-    public ResponseEntity<Cost> updateCost(@PathVariable Integer id, @RequestBody Cost cost) {
-        Cost updatedCost = costPaymentService.updateCost(id, cost);
-        if (updatedCost != null) {
-            return ResponseEntity.ok(updatedCost);
-        }
-        return ResponseEntity.notFound().build();
-    }
-
-    /**
-     * Delete cost
-     */
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteCost(@PathVariable Integer id) {
-        boolean deleted = costPaymentService.deleteCost(id);
-        if (deleted) {
-            return ResponseEntity.ok().build();
-        }
-        return ResponseEntity.notFound().build();
-    }
-
-    /**
-     * Get costs by vehicle ID
-     */
-    @GetMapping("/vehicle/{vehicleId}")
-    public ResponseEntity<List<Cost>> getCostsByVehicleId(@PathVariable Integer vehicleId) {
-        List<Cost> costs = costPaymentService.getCostsByVehicleId(vehicleId);
-        return ResponseEntity.ok(costs);
-    }
-
-    /**
-     * Get costs by cost type
-     */
-    @GetMapping("/type/{costType}")
-    public ResponseEntity<List<Cost>> getCostsByCostType(@PathVariable String costType) {
+    public List<CostDto> getAllCosts() {
+        logger.info("=== getAllCosts() method called ===");
+        List<CostDto> costs = new ArrayList<>();
         try {
-            Cost.CostType type = Cost.CostType.valueOf(costType);
-            List<Cost> costs = costPaymentService.getCostsByCostType(type);
-            return ResponseEntity.ok(costs);
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().build();
+            Connection connection = dataSource.getConnection();
+            Statement statement = connection.createStatement();
+            ResultSet resultSet = statement.executeQuery("SELECT * FROM Cost ORDER BY createdAt DESC");
+            
+            int count = 0;
+            while (resultSet.next()) {
+                count++;
+                try {
+                    CostDto cost = new CostDto();
+                    cost.setCostId(resultSet.getInt("costId"));
+                    cost.setVehicleId(resultSet.getInt("vehicleId"));
+                    cost.setCostType(resultSet.getString("costType"));
+                    cost.setAmount(resultSet.getDouble("amount"));
+                    cost.setDescription(resultSet.getString("description"));
+                    
+                    // Convert Timestamp to LocalDateTime
+                    java.sql.Timestamp timestamp = resultSet.getTimestamp("createdAt");
+                    if (timestamp != null) {
+                        cost.setCreatedAt(timestamp.toLocalDateTime());
+                    }
+                    
+                    costs.add(cost);
+                    logger.info("Processed cost {}: ID={}, Amount={}", count, cost.getCostId(), cost.getAmount());
+                } catch (Exception rowException) {
+                    logger.error("Error processing row {}: {}", count, rowException.getMessage(), rowException);
+                }
+            }
+            
+            logger.info("Total rows processed: {}, costs added: {}", count, costs.size());
+            
+            resultSet.close();
+            statement.close();
+            connection.close();
+        } catch (Exception e) {
+            logger.error("Database error: {}", e.getMessage(), e);
+        }
+        return costs;
+    }
+
+    @GetMapping("/simple")
+    public String getSimpleCosts() {
+        try {
+            Connection connection = dataSource.getConnection();
+            Statement statement = connection.createStatement();
+            ResultSet resultSet = statement.executeQuery("SELECT COUNT(*) as count FROM Cost");
+            
+            int count = 0;
+            if (resultSet.next()) {
+                count = resultSet.getInt("count");
+            }
+            
+            resultSet.close();
+            statement.close();
+            connection.close();
+            
+            return "Database connected! Found " + count + " costs.";
+        } catch (Exception e) {
+            return "Database error: " + e.getMessage();
+        }
+    }
+
+    // ========== COST SHARING ENDPOINTS ==========
+
+    /**
+     * Lấy thông tin chia chi phí cho một cost cụ thể
+     */
+    @GetMapping("/{costId}/splits")
+    public ResponseEntity<List<CostShareDto>> getCostSplits(@PathVariable Integer costId) {
+        logger.info("=== getCostSplits() method called for costId: {} ===", costId);
+        try {
+            List<CostShare> costShares = costShareService.getCostSharesByCostId(costId);
+            List<CostShareDto> costShareDtos = costShares.stream()
+                    .map(this::convertToDto)
+                    .collect(Collectors.toList());
+            
+            logger.info("Found {} cost shares for costId: {}", costShareDtos.size(), costId);
+            return ResponseEntity.ok(costShareDtos);
+        } catch (Exception e) {
+            logger.error("Error getting cost splits for costId {}: {}", costId, e.getMessage(), e);
+            return ResponseEntity.internalServerError().build();
         }
     }
 
     /**
-     * Search costs with filters
+     * Tạo chia chi phí mới cho một cost
      */
-    @GetMapping("/search")
-    public ResponseEntity<List<Cost>> searchCosts(
-            @RequestParam(required = false) String query,
-            @RequestParam(required = false) String costType,
-            @RequestParam(required = false) Integer vehicleId) {
+    @PostMapping("/{costId}/splits")
+    public ResponseEntity<List<CostShareDto>> createCostSplits(
+            @PathVariable Integer costId,
+            @RequestBody CostSplitRequestDto request) {
+        logger.info("=== createCostSplits() method called for costId: {} ===", costId);
+        logger.info("Request: {}", request);
         
-        Cost.CostType type = null;
-        if (costType != null && !costType.isEmpty()) {
-            try {
-                type = Cost.CostType.valueOf(costType);
-            } catch (IllegalArgumentException e) {
+        try {
+            // Validate request
+            if (request.getUserIds() == null || request.getPercentages() == null ||
+                request.getUserIds().size() != request.getPercentages().size()) {
+                logger.error("Invalid request: userIds and percentages must have same size");
                 return ResponseEntity.badRequest().build();
             }
-        }
-        
-        List<Cost> costs = costPaymentService.searchCosts(query, type, vehicleId);
-        return ResponseEntity.ok(costs);
-    }
 
-    /**
-     * Get cost statistics
-     */
-    @GetMapping("/statistics")
-    public ResponseEntity<CostPaymentService.CostStatistics> getCostStatistics() {
-        CostPaymentService.CostStatistics stats = costPaymentService.getCostStatistics();
-        return ResponseEntity.ok(stats);
-    }
-
-    /**
-     * Get cost statistics by vehicle
-     */
-    @GetMapping("/statistics/vehicle/{vehicleId}")
-    public ResponseEntity<CostPaymentService.CostStatistics> getCostStatisticsByVehicle(@PathVariable Integer vehicleId) {
-        CostPaymentService.CostStatistics stats = costPaymentService.getCostStatisticsByVehicle(vehicleId);
-        return ResponseEntity.ok(stats);
-    }
-
-    // ================================
-    // COST SHARE ENDPOINTS
-    // ================================
-
-    /**
-     * Create cost share
-     */
-    @PostMapping("/{costId}/shares")
-    public ResponseEntity<CostShare> createCostShare(@PathVariable Integer costId, @RequestBody CostShare costShare) {
-        costShare.setCostId(costId);
-        CostShare createdShare = costPaymentService.createCostShare(costShare);
-        return ResponseEntity.ok(createdShare);
-    }
-
-    /**
-     * Get cost shares by cost ID
-     */
-    @GetMapping("/{costId}/shares")
-    public ResponseEntity<List<CostShare>> getCostSharesByCostId(@PathVariable Integer costId) {
-        List<CostShare> shares = costPaymentService.getCostSharesByCostId(costId);
-        return ResponseEntity.ok(shares);
-    }
-
-    /**
-     * Calculate cost shares for a cost
-     */
-    @PostMapping("/{costId}/calculate-shares")
-    public ResponseEntity<List<CostShare>> calculateCostShares(
-            @PathVariable Integer costId,
-            @RequestBody CostShareRequest request) {
-        
-        List<CostShare> shares = costPaymentService.calculateCostShares(
-            costId, request.getUserIds(), request.getPercentages());
-        
-        if (shares != null) {
-            return ResponseEntity.ok(shares);
-        }
-        return ResponseEntity.notFound().build();
-    }
-
-    // ================================
-    // PAYMENT ENDPOINTS
-    // ================================
-
-    /**
-     * Get all payments
-     */
-    @GetMapping("/payments")
-    public ResponseEntity<List<Payment>> getAllPayments() {
-        List<Payment> payments = costPaymentService.getAllPayments();
-        return ResponseEntity.ok(payments);
-    }
-
-    /**
-     * Get payment by ID
-     */
-    @GetMapping("/payments/{paymentId}")
-    public ResponseEntity<Payment> getPaymentById(@PathVariable Integer paymentId) {
-        Optional<Payment> payment = costPaymentService.getPaymentById(paymentId);
-        return payment.map(ResponseEntity::ok)
-                     .orElse(ResponseEntity.notFound().build());
-    }
-
-    /**
-     * Create new payment
-     */
-    @PostMapping("/payments")
-    public ResponseEntity<Payment> createPayment(@RequestBody Payment payment) {
-        Payment createdPayment = costPaymentService.createPayment(payment);
-        return ResponseEntity.ok(createdPayment);
-    }
-
-    /**
-     * Update payment status
-     */
-    @PutMapping("/payments/{paymentId}/status")
-    public ResponseEntity<Payment> updatePaymentStatus(
-            @PathVariable Integer paymentId,
-            @RequestParam String status) {
-        
-        try {
-            Payment.PaymentStatus paymentStatus = Payment.PaymentStatus.valueOf(status);
-            Payment updatedPayment = costPaymentService.updatePaymentStatus(paymentId, paymentStatus);
-            if (updatedPayment != null) {
-                return ResponseEntity.ok(updatedPayment);
+            // Validate percentages sum to 100
+            double totalPercent = request.getPercentages().stream().mapToDouble(Double::doubleValue).sum();
+            if (Math.abs(totalPercent - 100.0) > 0.01) {
+                logger.error("Invalid percentages: total must be 100%, got: {}%", totalPercent);
+                return ResponseEntity.badRequest().build();
             }
-            return ResponseEntity.notFound().build();
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.badRequest().build();
+
+            List<CostShare> costShares = costShareService.calculateCostShares(
+                    costId, request.getUserIds(), request.getPercentages());
+            
+            List<CostShareDto> costShareDtos = costShares.stream()
+                    .map(this::convertToDto)
+                    .collect(Collectors.toList());
+            
+            logger.info("Created {} cost shares for costId: {}", costShareDtos.size(), costId);
+            return ResponseEntity.ok(costShareDtos);
+        } catch (Exception e) {
+            logger.error("Error creating cost splits for costId {}: {}", costId, e.getMessage(), e);
+            return ResponseEntity.internalServerError().build();
         }
     }
 
     /**
-     * Get payments by user ID
+     * Lấy tất cả cost shares
      */
-    @GetMapping("/payments/user/{userId}")
-    public ResponseEntity<List<Payment>> getPaymentsByUserId(@PathVariable Integer userId) {
-        List<Payment> payments = costPaymentService.getPaymentsByUserId(userId);
-        return ResponseEntity.ok(payments);
+    @GetMapping("/splits")
+    public ResponseEntity<List<CostShareDto>> getAllCostSplits() {
+        logger.info("=== getAllCostSplits() method called ===");
+        try {
+            List<CostShare> costShares = costShareService.getAllCostShares();
+            List<CostShareDto> costShareDtos = costShares.stream()
+                    .map(this::convertToDto)
+                    .collect(Collectors.toList());
+            
+            logger.info("Found {} total cost shares", costShareDtos.size());
+            return ResponseEntity.ok(costShareDtos);
+        } catch (Exception e) {
+            logger.error("Error getting all cost splits: {}", e.getMessage(), e);
+            return ResponseEntity.internalServerError().build();
+        }
     }
 
     /**
-     * Get payments by cost ID
+     * Convert CostShare entity to CostShareDto
      */
-    @GetMapping("/{costId}/payments")
-    public ResponseEntity<List<Payment>> getPaymentsByCostId(@PathVariable Integer costId) {
-        List<Payment> payments = costPaymentService.getPaymentsByCostId(costId);
-        return ResponseEntity.ok(payments);
-    }
-
-    /**
-     * Get payment statistics
-     */
-    @GetMapping("/payments/statistics")
-    public ResponseEntity<CostPaymentService.PaymentStatistics> getPaymentStatistics() {
-        CostPaymentService.PaymentStatistics stats = costPaymentService.getPaymentStatistics();
-        return ResponseEntity.ok(stats);
-    }
-
-    // ================================
-    // REQUEST DTOs
-    // ================================
-
-    public static class CostShareRequest {
-        private List<Integer> userIds;
-        private List<Double> percentages;
-
-        // Getters and Setters
-        public List<Integer> getUserIds() { return userIds; }
-        public void setUserIds(List<Integer> userIds) { this.userIds = userIds; }
-
-        public List<Double> getPercentages() { return percentages; }
-        public void setPercentages(List<Double> percentages) { this.percentages = percentages; }
+    private CostShareDto convertToDto(CostShare costShare) {
+        return new CostShareDto(
+                costShare.getShareId(),
+                costShare.getCostId(),
+                costShare.getUserId(),
+                costShare.getPercent(),
+                costShare.getAmountShare(),
+                costShare.getCalculatedAt()
+        );
     }
 }

@@ -5,82 +5,52 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
-
 import java.time.LocalDateTime;
 import java.util.List;
 
 @Repository
 public interface CostRepository extends JpaRepository<Cost, Integer> {
     
-    // Find costs by vehicle ID
-    List<Cost> findByVehicleIdOrderByCreatedAtDesc(Integer vehicleId);
+    // Tìm chi phí theo Vehicle ID
+    List<Cost> findByVehicleId(Integer vehicleId);
     
-    // Find costs by cost type
-    List<Cost> findByCostTypeOrderByCreatedAtDesc(Cost.CostType costType);
+    // Tìm chi phí theo loại
+    List<Cost> findByCostType(Cost.CostType costType);
     
-    // Find costs by vehicle ID and cost type
-    List<Cost> findByVehicleIdAndCostTypeOrderByCreatedAtDesc(Integer vehicleId, Cost.CostType costType);
+    // Tìm chi phí theo Vehicle ID và loại
+    List<Cost> findByVehicleIdAndCostType(Integer vehicleId, Cost.CostType costType);
     
-    // Search costs by description
-    @Query("SELECT c FROM Cost c WHERE c.description LIKE %:keyword% ORDER BY c.createdAt DESC")
-    List<Cost> findByDescriptionContaining(@Param("keyword") String keyword);
+    // Tìm chi phí trong khoảng thời gian
+    List<Cost> findByCreatedAtBetween(LocalDateTime startDate, LocalDateTime endDate);
     
-    // Search costs by description and vehicle ID
-    @Query("SELECT c FROM Cost c WHERE c.description LIKE %:keyword% AND c.vehicleId = :vehicleId ORDER BY c.createdAt DESC")
-    List<Cost> findByDescriptionContainingAndVehicleId(@Param("keyword") String keyword, @Param("vehicleId") Integer vehicleId);
+    // Tìm chi phí theo Vehicle ID trong khoảng thời gian
+    List<Cost> findByVehicleIdAndCreatedAtBetween(Integer vehicleId, LocalDateTime startDate, LocalDateTime endDate);
     
-    // Search costs by description and cost type
-    @Query("SELECT c FROM Cost c WHERE c.description LIKE %:keyword% AND c.costType = :costType ORDER BY c.createdAt DESC")
-    List<Cost> findByDescriptionContainingAndCostType(@Param("keyword") String keyword, @Param("costType") Cost.CostType costType);
+    // Tìm chi phí có số tiền lớn hơn hoặc bằng
+    List<Cost> findByAmountGreaterThanEqual(Double amount);
     
-    // Advanced search with multiple criteria
-    @Query("SELECT c FROM Cost c WHERE " +
-           "(:keyword IS NULL OR c.description LIKE %:keyword%) AND " +
-           "(:costType IS NULL OR c.costType = :costType) AND " +
-           "(:vehicleId IS NULL OR c.vehicleId = :vehicleId) " +
-           "ORDER BY c.createdAt DESC")
-    List<Cost> findCostsWithFilters(@Param("keyword") String keyword, 
-                                   @Param("costType") Cost.CostType costType, 
-                                   @Param("vehicleId") Integer vehicleId);
+    // Tìm chi phí có số tiền nhỏ hơn hoặc bằng
+    List<Cost> findByAmountLessThanEqual(Double amount);
     
-    // Find costs by date range
-    @Query("SELECT c FROM Cost c WHERE c.createdAt BETWEEN :startDate AND :endDate ORDER BY c.createdAt DESC")
-    List<Cost> findByCreatedAtBetween(@Param("startDate") LocalDateTime startDate, 
-                                     @Param("endDate") LocalDateTime endDate);
+    // Tìm chi phí trong khoảng số tiền
+    List<Cost> findByAmountBetween(Double minAmount, Double maxAmount);
     
-    // Find costs by vehicle ID and date range
-    @Query("SELECT c FROM Cost c WHERE c.vehicleId = :vehicleId AND c.createdAt BETWEEN :startDate AND :endDate ORDER BY c.createdAt DESC")
-    List<Cost> findByVehicleIdAndCreatedAtBetween(@Param("vehicleId") Integer vehicleId,
-                                                  @Param("startDate") LocalDateTime startDate, 
-                                                  @Param("endDate") LocalDateTime endDate);
+    // Tìm chi phí theo Vehicle ID và khoảng số tiền
+    List<Cost> findByVehicleIdAndAmountBetween(Integer vehicleId, Double minAmount, Double maxAmount);
     
-    // Calculate total amount by vehicle ID
-    @Query("SELECT COALESCE(SUM(c.amount), 0) FROM Cost c WHERE c.vehicleId = :vehicleId")
+    // Query tùy chỉnh để tính tổng chi phí theo Vehicle ID
+    @Query("SELECT SUM(c.amount) FROM Cost c WHERE c.vehicleId = :vehicleId")
     Double getTotalAmountByVehicleId(@Param("vehicleId") Integer vehicleId);
     
-    // Calculate total amount by cost type
-    @Query("SELECT COALESCE(SUM(c.amount), 0) FROM Cost c WHERE c.costType = :costType")
+    // Query tùy chỉnh để tính tổng chi phí theo loại
+    @Query("SELECT SUM(c.amount) FROM Cost c WHERE c.costType = :costType")
     Double getTotalAmountByCostType(@Param("costType") Cost.CostType costType);
     
-    // Calculate total amount by vehicle ID and cost type
-    @Query("SELECT COALESCE(SUM(c.amount), 0) FROM Cost c WHERE c.vehicleId = :vehicleId AND c.costType = :costType")
-    Double getTotalAmountByVehicleIdAndCostType(@Param("vehicleId") Integer vehicleId, 
-                                               @Param("costType") Cost.CostType costType);
+    // Query tùy chỉnh để đếm số lượng chi phí theo Vehicle ID
+    @Query("SELECT COUNT(c) FROM Cost c WHERE c.vehicleId = :vehicleId")
+    Long countByVehicleId(@Param("vehicleId") Integer vehicleId);
     
-    // Get all cost types with their total amounts
-    @Query("SELECT c.costType, COALESCE(SUM(c.amount), 0) FROM Cost c GROUP BY c.costType")
-    List<Object[]> getCostTypeSummary();
-    
-    // Get cost summary by vehicle
-    @Query("SELECT c.vehicleId, c.costType, COALESCE(SUM(c.amount), 0) FROM Cost c GROUP BY c.vehicleId, c.costType ORDER BY c.vehicleId, c.costType")
-    List<Object[]> getCostSummaryByVehicle();
-    
-    // Count costs by vehicle ID
-    Long countByVehicleId(Integer vehicleId);
-    
-    // Count costs by cost type
-    Long countByCostType(Cost.CostType costType);
-    
-    // Count costs by vehicle ID and cost type
-    Long countByVehicleIdAndCostType(Integer vehicleId, Cost.CostType costType);
+    // Query tùy chỉnh để đếm số lượng chi phí theo loại
+    @Query("SELECT COUNT(c) FROM Cost c WHERE c.costType = :costType")
+    Long countByCostType(@Param("costType") Cost.CostType costType);
 }

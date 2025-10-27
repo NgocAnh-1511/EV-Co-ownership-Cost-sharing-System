@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # MySQL Database for Cost Payment Service
   payment-mysql:
@@ -12,7 +10,7 @@ services:
       - "3306:3306"
     volumes:
       - payment_mysql_data:/var/lib/mysql
-      - ./database_setup.sql:/docker-entrypoint-initdb.d/01-setup.sql
+      - ./cost_database_setup.sql:/docker-entrypoint-initdb.d/01-setup.sql
     networks:
       - ev-network
 
@@ -27,7 +25,22 @@ services:
       - "3307:3306"
     volumes:
       - group_mysql_data:/var/lib/mysql
-      - ./database_setup.sql:/docker-entrypoint-initdb.d/01-setup.sql
+      - ./group_database_setup.sql:/docker-entrypoint-initdb.d/01-setup.sql
+    networks:
+      - ev-network
+
+  # Cost Payment Service
+  cost-payment-service:
+    build: ./cost-payment-service
+    container_name: cost-payment-service
+    ports:
+      - "8081:8081"
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:mysql://payment-mysql:3306/Cost_Payment_DB?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=password
+    depends_on:
+      - payment-mysql
     networks:
       - ev-network
 
@@ -46,21 +59,6 @@ services:
     networks:
       - ev-network
 
-  # Cost Payment Service
-  cost-payment-service:
-    build: ./cost-payment-service
-    container_name: cost-payment-service
-    ports:
-      - "8083:8083"
-    environment:
-      - SPRING_DATASOURCE_URL=jdbc:mysql://payment-mysql:3306/Cost_Payment_DB?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
-      - SPRING_DATASOURCE_USERNAME=root
-      - SPRING_DATASOURCE_PASSWORD=password
-    depends_on:
-      - payment-mysql
-    networks:
-      - ev-network
-
   # UI Service
   ui-service:
     build: ./ui-service
@@ -68,11 +66,11 @@ services:
     ports:
       - "8080:8080"
     environment:
+      - MICROSERVICES_COST_PAYMENT_URL=http://cost-payment-service:8081
       - MICROSERVICES_GROUP_MANAGEMENT_URL=http://group-management-service:8082
-      - MICROSERVICES_COST_PAYMENT_URL=http://cost-payment-service:8083
     depends_on:
-      - group-management-service
       - cost-payment-service
+      - group-management-service
     networks:
       - ev-network
 

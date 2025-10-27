@@ -22,6 +22,18 @@ public class CostController {
     public String listCosts(Model model) {
         List<CostDto> costs = costPaymentClient.getAllCosts();
         model.addAttribute("costs", costs);
+        
+        // Calculate statistics
+        int totalCosts = costs != null ? costs.size() : 0;
+        int paidCosts = costs != null ? (int) costs.stream().filter(c -> "PAID".equals(c.getStatus())).count() : 0;
+        int pendingCosts = costs != null ? (int) costs.stream().filter(c -> "PENDING".equals(c.getStatus())).count() : 0;
+        int overdueCosts = costs != null ? (int) costs.stream().filter(c -> "OVERDUE".equals(c.getStatus())).count() : 0;
+        
+        model.addAttribute("totalCosts", totalCosts);
+        model.addAttribute("paidCosts", paidCosts);
+        model.addAttribute("pendingCosts", pendingCosts);
+        model.addAttribute("overdueCosts", overdueCosts);
+        
         return "costs/list";
     }
 
@@ -159,48 +171,40 @@ public class CostController {
             return "error: " + e.getMessage();
         }
     }
+
+    @GetMapping("/api/costs/{id}")
+    @ResponseBody
+    public CostDto getCostApi(@PathVariable Integer id) {
+        return costPaymentClient.getCostById(id);
+    }
+
+    @PutMapping("/api/costs/{id}")
+    @ResponseBody
+    public String updateCostApi(@PathVariable Integer id, @RequestBody CostDto costDto) {
+        try {
+            costPaymentClient.updateCost(id, costDto);
+            return "success";
+        } catch (Exception e) {
+            return "error: " + e.getMessage();
+        }
+    }
+
+    @DeleteMapping("/api/costs/{id}")
+    @ResponseBody
+    public String deleteCostApi(@PathVariable Integer id) {
+        try {
+            boolean deleted = costPaymentClient.deleteCost(id);
+            return deleted ? "success" : "error: Could not delete cost";
+        } catch (Exception e) {
+            return "error: " + e.getMessage();
+        }
+    }
     
     @GetMapping("/reports")
     public String costReports(Model model) {
         return "costs/reports";
     }
 
-    // Edit Cost functionality
-    @GetMapping("/{id}/edit")
-    public String editCostForm(@PathVariable Integer id, Model model) {
-        try {
-            CostDto cost = costPaymentClient.getCostById(id);
-            if (cost != null) {
-                model.addAttribute("cost", cost);
-                return "costs/edit";
-            } else {
-                return "redirect:/costs?error=notfound";
-            }
-        } catch (Exception e) {
-            return "redirect:/costs?error=load";
-        }
-    }
-
-    @PostMapping("/{id}/edit")
-    public String updateCost(@PathVariable Integer id, @ModelAttribute CostDto costDto) {
-        try {
-            costPaymentClient.updateCost(id, costDto);
-            return "redirect:/costs?success=updated";
-        } catch (Exception e) {
-            return "redirect:/costs/" + id + "/edit?error=update";
-        }
-    }
-
-    @PostMapping("/{id}/delete")
-    @ResponseBody
-    public String deleteCost(@PathVariable Integer id) {
-        try {
-            costPaymentClient.deleteCost(id);
-            return "success";
-        } catch (Exception e) {
-            return "error: " + e.getMessage();
-        }
-    }
 
     @GetMapping("/{id}")
     public String viewCost(@PathVariable Integer id, Model model) {

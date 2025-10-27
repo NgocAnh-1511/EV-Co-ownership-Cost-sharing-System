@@ -10,86 +10,46 @@
 </head>
 <body>
     <div class="app-container">
-        <!-- Header -->
-        <header class="header">
-            <div class="header-left">
-                <div class="logo">
-                    <i class="fas fa-car"></i>
-                    <div class="logo-text">
-                        <h1>CarShare</h1>
-                        <p>Quản lý xe</p>
-                    </div>
-                </div>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <div class="logo">
+                <i class="fas fa-car"></i>
+                <span>CarShare Manager</span>
             </div>
-            <div class="header-right">
-                <button class="btn-create-group">
+            <nav class="nav-menu">
+                <a href="/dashboard" class="nav-link">Dashboard</a>
+                <a href="/costs" class="nav-link">Chi Phí</a>
+                <a href="/costs/sharing" class="nav-link">Chia Sẻ</a>
+                <a href="/groups" class="nav-link active">Nhóm</a>
+                <a href="/groups/voting" class="nav-link">Bỏ Phiếu</a>
+                <a href="/groups/fund" class="nav-link">Quỹ Chung</a>
+                <a href="/reports" class="nav-link">Báo Cáo</a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="page-header">
+            <div class="page-title-section">
+                <h1 class="page-title">
+                    <i class="fas fa-users"></i>
+                    Quản Lý Nhóm Đồng Sở Hữu
+                </h1>
+                <p class="page-subtitle">Tạo và quản lý các nhóm sở hữu chung xe điện</p>
+            </div>
+            <div class="page-actions">
+                <button class="btn btn-outline" onclick="exportGroups()">
+                    <i class="fas fa-download"></i>
+                    Xuất danh sách
+                </button>
+                <button class="btn btn-primary" onclick="openCreateGroupModal()">
                     <i class="fas fa-plus"></i>
                     Tạo nhóm mới
                 </button>
-                <div class="user-profile">
-                    <div class="avatar">
-                        <img src="https://via.placeholder.com/40" alt="User Avatar">
-                    </div>
-                    <span class="user-name">Nguyễn Văn A</span>
-                </div>
             </div>
-        </header>
-
-        <div class="main-content">
-            <!-- Sidebar -->
-            <nav class="sidebar">
-                <ul class="nav-menu">
-                    <li class="nav-item">
-                        <a href="#" class="nav-link">
-                            <i class="fas fa-tachometer-alt"></i>
-                            <span>Dashboard</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="#" class="nav-link">
-                            <i class="fas fa-car"></i>
-                            <span>Xe của tôi</span>
-                        </a>
-                    </li>
-                    <li class="nav-item active">
-                        <a href="#" class="nav-link">
-                            <i class="fas fa-users"></i>
-                            <span>Nhóm sở hữu</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="/costs/sharing" class="nav-link">
-                            <i class="fas fa-share-alt"></i>
-                            <span>Chia sẻ chi phí</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="#" class="nav-link">
-                            <i class="fas fa-calendar-alt"></i>
-                            <span>Lịch đặt xe</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="#" class="nav-link">
-                            <i class="fas fa-chart-bar"></i>
-                            <span>Báo cáo</span>
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a href="#" class="nav-link">
-                            <i class="fas fa-cog"></i>
-                            <span>Cài đặt</span>
-                        </a>
-                    </li>
-                </ul>
-            </nav>
-
-            <!-- Main Content Area -->
-            <main class="content">
-                <div class="page-header">
-                    <h1 class="page-title">Quản Lý Nhóm Đồng Sở Hữu</h1>
-                    <p class="page-subtitle">Quản lý các nhóm sở hữu xe và thành viên</p>
-                </div>
+        </div>
 
                 <!-- Summary Cards -->
                 <div class="summary-cards">

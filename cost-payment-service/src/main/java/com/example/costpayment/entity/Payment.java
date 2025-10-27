@@ -4,8 +4,9 @@ import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "Payment")
+@Table(name = "Payment", catalog = "Cost_Payment_DB")
 public class Payment {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "paymentId")
@@ -13,152 +14,60 @@ public class Payment {
 
     @Column(name = "userId", nullable = false)
     private Integer userId;
-
+    
     @Column(name = "costId")
     private Integer costId;
-
-    @Enumerated(EnumType.STRING)
-    @Column(name = "method", nullable = false)
-    private PaymentMethod method;
-
+    
     @Column(name = "amount", nullable = false)
     private Double amount;
-
-    @Column(name = "transactionCode", length = 100)
+    
+    @Column(name = "transactionCode")
     private String transactionCode;
 
-    @Column(name = "paymentDate")
-    private LocalDateTime paymentDate;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "method")
+    private Method method = Method.EWallet;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false)
-    private PaymentStatus status;
+    @Column(name = "status")
+    private PaymentStatus status = PaymentStatus.PENDING;
+
+    @Column(name = "paymentDate")
+    private LocalDateTime paymentDate = LocalDateTime.now();
+
+    public enum Method { EWallet, Banking, Cash }
 
     // Constructors
-    public Payment() {
-        this.paymentDate = LocalDateTime.now();
-        this.status = PaymentStatus.Pending;
-    }
-
-    public Payment(Integer userId, Integer costId, PaymentMethod method, Double amount, String transactionCode) {
-        this();
+    public Payment() {}
+    public Payment(Integer userId, Integer costId, Double amount, Method method) {
         this.userId = userId;
         this.costId = costId;
-        this.method = method;
         this.amount = amount;
-        this.transactionCode = transactionCode;
-    }
-
-    // Getters and Setters
-    public Integer getPaymentId() {
-        return paymentId;
-    }
-
-    public void setPaymentId(Integer paymentId) {
-        this.paymentId = paymentId;
-    }
-
-    public Integer getUserId() {
-        return userId;
-    }
-
-    public void setUserId(Integer userId) {
-        this.userId = userId;
-    }
-
-    public Integer getCostId() {
-        return costId;
-    }
-
-    public void setCostId(Integer costId) {
-        this.costId = costId;
-    }
-
-    public PaymentMethod getMethod() {
-        return method;
-    }
-
-    public void setMethod(PaymentMethod method) {
         this.method = method;
     }
 
-    public Double getAmount() {
-        return amount;
-    }
+    // Getters & Setters
+    public Integer getPaymentId() { return paymentId; }
+    public void setPaymentId(Integer paymentId) { this.paymentId = paymentId; }
 
-    public void setAmount(Double amount) {
-        this.amount = amount;
-    }
+    public Integer getUserId() { return userId; }
+    public void setUserId(Integer userId) { this.userId = userId; }
 
-    public String getTransactionCode() {
-        return transactionCode;
-    }
+    public Integer getCostId() { return costId; }
+    public void setCostId(Integer costId) { this.costId = costId; }
 
-    public void setTransactionCode(String transactionCode) {
-        this.transactionCode = transactionCode;
-    }
+    public Double getAmount() { return amount; }
+    public void setAmount(Double amount) { this.amount = amount; }
 
-    public LocalDateTime getPaymentDate() {
-        return paymentDate;
-    }
+    public String getTransactionCode() { return transactionCode; }
+    public void setTransactionCode(String transactionCode) { this.transactionCode = transactionCode; }
 
-    public void setPaymentDate(LocalDateTime paymentDate) {
-        this.paymentDate = paymentDate;
-    }
+    public Method getMethod() { return method; }
+    public void setMethod(Method method) { this.method = method; }
 
-    public PaymentStatus getStatus() {
-        return status;
-    }
+    public PaymentStatus getStatus() { return status; }
+    public void setStatus(PaymentStatus status) { this.status = status; }
 
-    public void setStatus(PaymentStatus status) {
-        this.status = status;
-    }
-
-    // PaymentMethod enum
-    public enum PaymentMethod {
-        EWallet("Ví điện tử"),
-        Banking("Chuyển khoản"),
-        Cash("Tiền mặt");
-
-        private final String displayName;
-
-        PaymentMethod(String displayName) {
-            this.displayName = displayName;
-        }
-
-        public String getDisplayName() {
-            return displayName;
-        }
-    }
-
-    // PaymentStatus enum
-    public enum PaymentStatus {
-        Pending("Chờ xử lý"),
-        Completed("Hoàn thành"),
-        Failed("Thất bại");
-
-        private final String displayName;
-
-        PaymentStatus(String displayName) {
-            this.displayName = displayName;
-        }
-
-        public String getDisplayName() {
-            return displayName;
-        }
-    }
-
-    @Override
-    public String toString() {
-        return "Payment{" +
-                "paymentId=" + paymentId +
-                ", userId=" + userId +
-                ", costId=" + costId +
-                ", method=" + method +
-                ", amount=" + amount +
-                ", transactionCode='" + transactionCode + '\'' +
-                ", paymentDate=" + paymentDate +
-                ", status=" + status +
-                '}';
-    }
+    public LocalDateTime getPaymentDate() { return paymentDate; }
+    public void setPaymentDate(LocalDateTime paymentDate) { this.paymentDate = paymentDate; }
 }

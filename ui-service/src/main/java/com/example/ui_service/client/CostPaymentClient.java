@@ -17,7 +17,7 @@ import java.util.List;
 @Component
 public class CostPaymentClient {
 
-    @Value("${microservices.cost-payment.url:http://localhost:8083}")
+    @Value("${microservices.cost-payment.url:http://localhost:8081}")
     private String costPaymentUrl;
 
     @Autowired
