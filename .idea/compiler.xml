@@ -3,7 +3,7 @@
   <component name="CompilerConfiguration">
     <annotationProcessing>
       <profile default="true" name="Default" enabled="true" />
-      <profile name="Annotation profile for cost-payment-service" enabled="true">
+      <profile name="Annotation profile for ui-service" enabled="true">
         <sourceOutputDir name="target/generated-sources/annotations" />
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
@@ -11,8 +11,8 @@
           <entry name="$MAVEN_REPOSITORY$/org/projectlombok/lombok/1.18.30/lombok-1.18.30.jar" />
         </processorPath>
         <module name="group-management-service" />
-        <module name="cost-payment-service" />
         <module name="ui-service" />
+        <module name="cost-payment-service" />
         <module name="CheckInOutService" />
         <module name="VehicleServiceManagementService" />
         <module name="LegalContractService" />

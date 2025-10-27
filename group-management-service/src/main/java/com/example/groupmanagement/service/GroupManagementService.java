@@ -1,8 +1,8 @@
 package com.example.groupmanagement.service;
 
-import com.example.groupmanagement.entity.CoOwnershipGroup;
+import com.example.groupmanagement.entity.Group;
 import com.example.groupmanagement.entity.GroupMember;
-import com.example.groupmanagement.repository.CoOwnershipGroupRepository;
+import com.example.groupmanagement.repository.GroupRepository;
 import com.example.groupmanagement.repository.GroupMemberRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -16,88 +16,81 @@ import java.util.Optional;
 @Transactional
 public class GroupManagementService {
 
-    private final CoOwnershipGroupRepository groupRepository;
+    private final GroupRepository groupRepository;
     private final GroupMemberRepository memberRepository;
 
-    public CoOwnershipGroup createGroup(CoOwnershipGroup group) {
-        // Validate total ownership percentage
-        if (group.getTotalOwnershipPercentage() != 100.0) {
-            throw new IllegalArgumentException("Total ownership percentage must be 100%");
-        }
+    public Group createGroup(Group group) {
         return groupRepository.save(group);
     }
 
-    public List<CoOwnershipGroup> getAllGroups() {
+    public List<Group> getAllGroups() {
         return groupRepository.findAll();
     }
 
-    public Optional<CoOwnershipGroup> getGroupById(Long id) {
+    public Optional<Group> getGroupById(Integer id) {
         return groupRepository.findById(id);
     }
 
-    public Optional<CoOwnershipGroup> updateGroup(Long id, CoOwnershipGroup group) {
+    public Optional<Group> updateGroup(Integer id, Group group) {
         return groupRepository.findById(id)
                 .map(existingGroup -> {
                     existingGroup.setGroupName(group.getGroupName());
-                    existingGroup.setDescription(group.getDescription());
+                    existingGroup.setAdminId(group.getAdminId());
+                    existingGroup.setVehicleId(group.getVehicleId());
                     existingGroup.setStatus(group.getStatus());
                     return groupRepository.save(existingGroup);
                 });
     }
 
-    public void deleteGroup(Long id) {
+    public void deleteGroup(Integer id) {
         groupRepository.deleteById(id);
     }
 
-    public List<CoOwnershipGroup> getGroupsByAdmin(String adminId) {
-        return groupRepository.findByGroupAdminId(adminId);
+    public List<Group> getGroupsByAdmin(Integer adminId) {
+        return groupRepository.findByAdminId(adminId);
     }
 
-    public List<CoOwnershipGroup> getGroupsByMember(String userId) {
-        return groupRepository.findByMemberUserId(userId);
+    public List<Group> getGroupsByStatus(Group.GroupStatus status) {
+        return groupRepository.findByStatus(status);
     }
 
-    public GroupMember addMember(Long groupId, GroupMember member) {
-        CoOwnershipGroup group = groupRepository.findById(groupId)
+    public GroupMember addMember(Integer groupId, GroupMember member) {
+        Group group = groupRepository.findById(groupId)
                 .orElseThrow(() -> new IllegalArgumentException("Group not found"));
 
         // Check if user is already a member
-        if (memberRepository.findByGroupIdAndUserId(groupId, member.getUserId()).isPresent()) {
+        List<GroupMember> existingMembers = memberRepository.findByGroup_GroupId(groupId);
+        boolean isAlreadyMember = existingMembers.stream()
+                .anyMatch(m -> m.getUserId().equals(member.getUserId()));
+        
+        if (isAlreadyMember) {
             throw new IllegalArgumentException("User is already a member of this group");
-        }
-
-        // Validate ownership percentage
-        Double currentTotal = memberRepository.getTotalOwnershipPercentage(groupId);
-        if (currentTotal + member.getOwnershipPercentage() > 100.0) {
-            throw new IllegalArgumentException("Total ownership percentage cannot exceed 100%");
         }
 
         member.setGroup(group);
         return memberRepository.save(member);
     }
 
-    public List<GroupMember> getGroupMembers(Long groupId) {
-        return memberRepository.findByGroupId(groupId);
+    public List<GroupMember> getGroupMembers(Integer groupId) {
+        return memberRepository.findByGroup_GroupId(groupId);
     }
 
-    public Optional<GroupMember> updateMember(Long groupId, Long memberId, GroupMember member) {
+    public Optional<GroupMember> updateMember(Integer groupId, Integer memberId, GroupMember member) {
         return memberRepository.findById(memberId)
-                .filter(m -> m.getGroup().getId().equals(groupId))
+                .filter(m -> m.getGroup().getGroupId().equals(groupId))
                 .map(existingMember -> {
-                    existingMember.setOwnershipPercentage(member.getOwnershipPercentage());
                     existingMember.setRole(member.getRole());
-                    existingMember.setStatus(member.getStatus());
                     return memberRepository.save(existingMember);
                 });
     }
 
-    public void removeMember(Long groupId, Long memberId) {
+    public void removeMember(Integer groupId, Integer memberId) {
         memberRepository.findById(memberId)
-                .filter(m -> m.getGroup().getId().equals(groupId))
+                .filter(m -> m.getGroup().getGroupId().equals(groupId))
                 .ifPresent(memberRepository::delete);
     }
 
-    public Optional<GroupMember> getMemberByUserId(Long groupId, String userId) {
-        return memberRepository.findByGroupIdAndUserId(groupId, userId);
+    public List<GroupMember> getMembersByUserId(Integer userId) {
+        return memberRepository.findByUserId(userId);
     }
 }

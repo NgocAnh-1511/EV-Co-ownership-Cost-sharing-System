@@ -21,7 +21,7 @@ public class DashboardController {
     @Autowired
     private CostPaymentClient costPaymentClient;
 
-    @GetMapping("/dashboard")
+    @GetMapping({"/", "/dashboard"})
     public String dashboard(Model model) {
         try {
             List<GroupDto> groups = groupManagementClient.getAllGroups();
@@ -53,5 +53,10 @@ public class DashboardController {
         }
 
         return "dashboard";
+    }
+    
+    @GetMapping("/reports")
+    public String reports(Model model) {
+        return "reports/index";
     }
 }

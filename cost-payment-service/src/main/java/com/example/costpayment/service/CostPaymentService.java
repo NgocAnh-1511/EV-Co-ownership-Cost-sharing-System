@@ -1,158 +1,362 @@
 package com.example.costpayment.service;
 
-import com.example.costpayment.entity.CostItem;
-import com.example.costpayment.entity.CostSplit;
+import com.example.costpayment.entity.Cost;
+import com.example.costpayment.entity.CostShare;
 import com.example.costpayment.entity.Payment;
-import com.example.costpayment.repository.CostItemRepository;
-import com.example.costpayment.repository.CostSplitRepository;
+import com.example.costpayment.repository.CostRepository;
+import com.example.costpayment.repository.CostShareRepository;
 import com.example.costpayment.repository.PaymentRepository;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
-import java.util.HashMap;
+import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 
 @Service
-@RequiredArgsConstructor
 @Transactional
 public class CostPaymentService {
 
-    private final CostItemRepository costItemRepository;
-    private final CostSplitRepository costSplitRepository;
-    private final PaymentRepository paymentRepository;
+    @Autowired
+    private CostRepository costRepository;
 
-    public CostItem createCostItem(CostItem costItem) {
-        return costItemRepository.save(costItem);
+    @Autowired
+    private CostShareRepository costShareRepository;
+
+    @Autowired
+    private PaymentRepository paymentRepository;
+
+    // ================================
+    // COST MANAGEMENT
+    // ================================
+
+    /**
+     * Get all costs
+     */
+    public List<Cost> getAllCosts() {
+        return costRepository.findAll();
     }
 
-    public List<CostItem> getAllCostItems() {
-        return costItemRepository.findAll();
+    /**
+     * Get cost by ID
+     */
+    public Optional<Cost> getCostById(Integer costId) {
+        return costRepository.findById(costId);
     }
 
-    public Optional<CostItem> getCostItemById(Long id) {
-        return costItemRepository.findById(id);
+    /**
+     * Create new cost
+     */
+    public Cost createCost(Cost cost) {
+        return costRepository.save(cost);
     }
 
-    public List<CostItem> getCostItemsByGroup(String groupId) {
-        return costItemRepository.findByGroupId(groupId);
+    /**
+     * Update existing cost
+     */
+    public Cost updateCost(Integer costId, Cost costDetails) {
+        Optional<Cost> optionalCost = costRepository.findById(costId);
+        if (optionalCost.isPresent()) {
+            Cost cost = optionalCost.get();
+            cost.setVehicleId(costDetails.getVehicleId());
+            cost.setCostType(costDetails.getCostType());
+            cost.setAmount(costDetails.getAmount());
+            cost.setDescription(costDetails.getDescription());
+            return costRepository.save(cost);
+        }
+        return null;
     }
 
-    public Optional<CostItem> updateCostItem(Long id, CostItem costItem) {
-        return costItemRepository.findById(id)
-                .map(existingCost -> {
-                    existingCost.setTitle(costItem.getTitle());
-                    existingCost.setDescription(costItem.getDescription());
-                    existingCost.setTotalAmount(costItem.getTotalAmount());
-                    existingCost.setStatus(costItem.getStatus());
-                    return costItemRepository.save(existingCost);
-                });
+    /**
+     * Delete cost by ID
+     */
+    public boolean deleteCost(Integer costId) {
+        if (costRepository.existsById(costId)) {
+            // Delete related cost shares first
+            costShareRepository.deleteByCostId(costId);
+            costRepository.deleteById(costId);
+            return true;
+        }
+        return false;
     }
 
-    public void deleteCostItem(Long id) {
-        costItemRepository.deleteById(id);
+    /**
+     * Get costs by vehicle ID
+     */
+    public List<Cost> getCostsByVehicleId(Integer vehicleId) {
+        return costRepository.findByVehicleIdOrderByCreatedAtDesc(vehicleId);
     }
 
-    public List<CostSplit> createCostSplits(Long costItemId) {
-        CostItem costItem = costItemRepository.findById(costItemId)
-                .orElseThrow(() -> new IllegalArgumentException("Cost item not found"));
+    /**
+     * Get costs by cost type
+     */
+    public List<Cost> getCostsByCostType(Cost.CostType costType) {
+        return costRepository.findByCostTypeOrderByCreatedAtDesc(costType);
+    }
 
-        // This would typically fetch group members from Group Management Service
-        // For now, we'll create a simple split based on ownership percentage
-        List<CostSplit> splits = costSplitRepository.findByCostItemId(costItemId);
+    /**
+     * Search costs with filters
+     */
+    public List<Cost> searchCosts(String keyword, Cost.CostType costType, Integer vehicleId) {
+        return costRepository.findCostsWithFilters(keyword, costType, vehicleId);
+    }
+
+    /**
+     * Get cost statistics
+     */
+    public CostStatistics getCostStatistics() {
+        List<Object[]> costTypeSummary = costRepository.getCostTypeSummary();
         
-        if (splits.isEmpty()) {
-            // Create splits based on group members (this would be fetched from Group Management Service)
-            // For demo purposes, we'll create a single split
-            CostSplit split = new CostSplit();
-            split.setCostItem(costItem);
-            split.setUserId("demo-user"); // This would come from Group Management Service
-            split.setOwnershipPercentage(100.0);
-            split.setSplitAmount(costItem.getTotalAmount());
-            splits.add(costSplitRepository.save(split));
+        CostStatistics stats = new CostStatistics();
+        
+        for (Object[] row : costTypeSummary) {
+            Cost.CostType costType = (Cost.CostType) row[0];
+            Double totalAmount = (Double) row[1];
+            
+            switch (costType) {
+                case ElectricCharge:
+                    stats.setElectricCosts(totalAmount);
+                    break;
+                case Maintenance:
+                    stats.setMaintenanceCosts(totalAmount);
+                    break;
+                case Insurance:
+                    stats.setInsuranceCosts(totalAmount);
+                    break;
+            }
         }
         
-        return splits;
-    }
-
-    public List<CostSplit> getCostSplits(Long costItemId) {
-        return costSplitRepository.findByCostItemId(costItemId);
-    }
-
-    public Optional<CostSplit> updateCostSplit(Long splitId, CostSplit split) {
-        return costSplitRepository.findById(splitId)
-                .map(existingSplit -> {
-                    existingSplit.setPaidAmount(split.getPaidAmount());
-                    existingSplit.setStatus(split.getStatus());
-                    return costSplitRepository.save(existingSplit);
-                });
-    }
-
-    public Payment createPayment(Long splitId, Payment payment) {
-        CostSplit split = costSplitRepository.findById(splitId)
-                .orElseThrow(() -> new IllegalArgumentException("Cost split not found"));
-
-        payment.setCostItem(split.getCostItem());
-        Payment savedPayment = paymentRepository.save(payment);
-
-        // Update split status and paid amount
-        BigDecimal newPaidAmount = split.getPaidAmount().add(payment.getAmount());
-        split.setPaidAmount(newPaidAmount);
+        // Calculate total
+        stats.setTotalCosts(stats.getElectricCosts() + stats.getMaintenanceCosts() + stats.getInsuranceCosts());
         
-        if (newPaidAmount.compareTo(split.getSplitAmount()) >= 0) {
-            split.setStatus(CostSplit.SplitStatus.PAID);
+        return stats;
+    }
+
+    /**
+     * Get cost statistics by vehicle
+     */
+    public CostStatistics getCostStatisticsByVehicle(Integer vehicleId) {
+        Double electricCosts = costRepository.getTotalAmountByVehicleIdAndCostType(vehicleId, Cost.CostType.ElectricCharge);
+        Double maintenanceCosts = costRepository.getTotalAmountByVehicleIdAndCostType(vehicleId, Cost.CostType.Maintenance);
+        Double insuranceCosts = costRepository.getTotalAmountByVehicleIdAndCostType(vehicleId, Cost.CostType.Insurance);
+        
+        CostStatistics stats = new CostStatistics();
+        stats.setElectricCosts(electricCosts != null ? electricCosts : 0.0);
+        stats.setMaintenanceCosts(maintenanceCosts != null ? maintenanceCosts : 0.0);
+        stats.setInsuranceCosts(insuranceCosts != null ? insuranceCosts : 0.0);
+        stats.setTotalCosts(stats.getElectricCosts() + stats.getMaintenanceCosts() + stats.getInsuranceCosts());
+        
+        return stats;
+    }
+
+    // ================================
+    // COST SHARE MANAGEMENT
+    // ================================
+
+    /**
+     * Create cost share
+     */
+    public CostShare createCostShare(CostShare costShare) {
+        return costShareRepository.save(costShare);
+    }
+
+    /**
+     * Get cost shares by cost ID
+     */
+    public List<CostShare> getCostSharesByCostId(Integer costId) {
+        return costShareRepository.findByCostIdOrderByCalculatedAtDesc(costId);
+    }
+
+    /**
+     * Get cost shares by user ID
+     */
+    public List<CostShare> getCostSharesByUserId(Integer userId) {
+        return costShareRepository.findByUserIdOrderByCalculatedAtDesc(userId);
+    }
+
+    /**
+     * Calculate and create cost shares for a cost
+     */
+    public List<CostShare> calculateCostShares(Integer costId, List<Integer> userIds, List<Double> percentages) {
+        Optional<Cost> optionalCost = costRepository.findById(costId);
+        if (!optionalCost.isPresent()) {
+            return null;
         }
-        
-        costSplitRepository.save(split);
-        
-        return savedPayment;
+
+        Cost cost = optionalCost.get();
+        List<CostShare> costShares = new java.util.ArrayList<>();
+
+        for (int i = 0; i < userIds.size() && i < percentages.size(); i++) {
+            Double percentage = percentages.get(i);
+            Double shareAmount = cost.getAmount() * (percentage / 100.0);
+
+            CostShare costShare = new CostShare();
+            costShare.setCostId(costId);
+            costShare.setUserId(userIds.get(i));
+            costShare.setPercent(percentage);
+            costShare.setAmountShare(shareAmount);
+
+            costShares.add(costShareRepository.save(costShare));
+        }
+
+        return costShares;
     }
 
-    public List<Payment> getPaymentsBySplit(Long splitId) {
-        return paymentRepository.findByCostItemId(splitId);
+    /**
+     * Delete cost shares by cost ID
+     */
+    public void deleteCostSharesByCostId(Integer costId) {
+        costShareRepository.deleteByCostId(costId);
     }
 
-    public List<Payment> getPaymentsByUser(String userId) {
-        return paymentRepository.findByUserId(userId);
+    // ================================
+    // PAYMENT MANAGEMENT
+    // ================================
+
+    /**
+     * Get all payments
+     */
+    public List<Payment> getAllPayments() {
+        return paymentRepository.findAll();
     }
 
-    public Optional<Payment> updatePayment(Long paymentId, Payment payment) {
-        return paymentRepository.findById(paymentId)
-                .map(existingPayment -> {
-                    existingPayment.setStatus(payment.getStatus());
-                    existingPayment.setTransactionId(payment.getTransactionId());
-                    return paymentRepository.save(existingPayment);
-                });
+    /**
+     * Get payment by ID
+     */
+    public Optional<Payment> getPaymentById(Integer paymentId) {
+        return paymentRepository.findById(paymentId);
     }
 
-    public Map<String, Object> getGroupFinancialSummary(String groupId) {
-        Map<String, Object> summary = new HashMap<>();
-        
-        Double totalPaid = costItemRepository.getTotalPaidAmount(groupId);
-        Double totalOutstanding = costItemRepository.getTotalOutstandingAmount(groupId);
-        
-        summary.put("groupId", groupId);
-        summary.put("totalPaid", totalPaid != null ? totalPaid : 0.0);
-        summary.put("totalOutstanding", totalOutstanding != null ? totalOutstanding : 0.0);
-        summary.put("totalCosts", (totalPaid != null ? totalPaid : 0.0) + (totalOutstanding != null ? totalOutstanding : 0.0));
-        
-        return summary;
+    /**
+     * Create new payment
+     */
+    public Payment createPayment(Payment payment) {
+        return paymentRepository.save(payment);
     }
 
-    public Map<String, Object> getUserFinancialSummary(String userId) {
-        Map<String, Object> summary = new HashMap<>();
-        
-        Double totalPaid = costSplitRepository.getTotalPaidByUser(userId);
-        Double totalOutstanding = costSplitRepository.getTotalOutstandingByUser(userId);
-        
-        summary.put("userId", userId);
-        summary.put("totalPaid", totalPaid != null ? totalPaid : 0.0);
-        summary.put("totalOutstanding", totalOutstanding != null ? totalOutstanding : 0.0);
-        summary.put("totalCosts", (totalPaid != null ? totalPaid : 0.0) + (totalOutstanding != null ? totalOutstanding : 0.0));
-        
-        return summary;
+    /**
+     * Update payment status
+     */
+    public Payment updatePaymentStatus(Integer paymentId, Payment.PaymentStatus status) {
+        Optional<Payment> optionalPayment = paymentRepository.findById(paymentId);
+        if (optionalPayment.isPresent()) {
+            Payment payment = optionalPayment.get();
+            payment.setStatus(status);
+            return paymentRepository.save(payment);
+        }
+        return null;
+    }
+
+    /**
+     * Get payments by user ID
+     */
+    public List<Payment> getPaymentsByUserId(Integer userId) {
+        return paymentRepository.findByUserIdOrderByPaymentDateDesc(userId);
+    }
+
+    /**
+     * Get payments by cost ID
+     */
+    public List<Payment> getPaymentsByCostId(Integer costId) {
+        return paymentRepository.findByCostIdOrderByPaymentDateDesc(costId);
+    }
+
+    /**
+     * Get payments by status
+     */
+    public List<Payment> getPaymentsByStatus(Payment.PaymentStatus status) {
+        return paymentRepository.findByStatusOrderByPaymentDateDesc(status);
+    }
+
+    /**
+     * Get payment statistics
+     */
+    public PaymentStatistics getPaymentStatistics() {
+        List<Object[]> statusSummary = paymentRepository.getPaymentSummaryByStatus();
+        List<Object[]> methodSummary = paymentRepository.getPaymentSummaryByMethod();
+
+        PaymentStatistics stats = new PaymentStatistics();
+
+        for (Object[] row : statusSummary) {
+            Payment.PaymentStatus status = (Payment.PaymentStatus) row[0];
+            Long count = (Long) row[1];
+            Double totalAmount = (Double) row[2];
+
+            switch (status) {
+                case Pending:
+                    stats.setPendingCount(count);
+                    stats.setPendingAmount(totalAmount);
+                    break;
+                case Completed:
+                    stats.setCompletedCount(count);
+                    stats.setCompletedAmount(totalAmount);
+                    break;
+                case Failed:
+                    stats.setFailedCount(count);
+                    stats.setFailedAmount(totalAmount);
+                    break;
+            }
+        }
+
+        stats.setTotalAmount(stats.getPendingAmount() + stats.getCompletedAmount() + stats.getFailedAmount());
+
+        return stats;
+    }
+
+    // ================================
+    // STATISTICS CLASSES
+    // ================================
+
+    public static class CostStatistics {
+        private Double electricCosts = 0.0;
+        private Double maintenanceCosts = 0.0;
+        private Double insuranceCosts = 0.0;
+        private Double totalCosts = 0.0;
+
+        // Getters and Setters
+        public Double getElectricCosts() { return electricCosts; }
+        public void setElectricCosts(Double electricCosts) { this.electricCosts = electricCosts; }
+
+        public Double getMaintenanceCosts() { return maintenanceCosts; }
+        public void setMaintenanceCosts(Double maintenanceCosts) { this.maintenanceCosts = maintenanceCosts; }
+
+        public Double getInsuranceCosts() { return insuranceCosts; }
+        public void setInsuranceCosts(Double insuranceCosts) { this.insuranceCosts = insuranceCosts; }
+
+        public Double getTotalCosts() { return totalCosts; }
+        public void setTotalCosts(Double totalCosts) { this.totalCosts = totalCosts; }
+    }
+
+    public static class PaymentStatistics {
+        private Long pendingCount = 0L;
+        private Long completedCount = 0L;
+        private Long failedCount = 0L;
+        private Double pendingAmount = 0.0;
+        private Double completedAmount = 0.0;
+        private Double failedAmount = 0.0;
+        private Double totalAmount = 0.0;
+
+        // Getters and Setters
+        public Long getPendingCount() { return pendingCount; }
+        public void setPendingCount(Long pendingCount) { this.pendingCount = pendingCount; }
+
+        public Long getCompletedCount() { return completedCount; }
+        public void setCompletedCount(Long completedCount) { this.completedCount = completedCount; }
+
+        public Long getFailedCount() { return failedCount; }
+        public void setFailedCount(Long failedCount) { this.failedCount = failedCount; }
+
+        public Double getPendingAmount() { return pendingAmount; }
+        public void setPendingAmount(Double pendingAmount) { this.pendingAmount = pendingAmount; }
+
+        public Double getCompletedAmount() { return completedAmount; }
+        public void setCompletedAmount(Double completedAmount) { this.completedAmount = completedAmount; }
+
+        public Double getFailedAmount() { return failedAmount; }
+        public void setFailedAmount(Double failedAmount) { this.failedAmount = failedAmount; }
+
+        public Double getTotalAmount() { return totalAmount; }
+        public void setTotalAmount(Double totalAmount) { this.totalAmount = totalAmount; }
     }
 }

@@ -1,63 +1,197 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Costs - EV Co-ownership System</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <title>Quản lý chi phí - CarShare Manager</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link th:href="@{/css/cost-management.css}" rel="stylesheet">
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
-        <div class="container">
-            <a class="navbar-brand" href="/">EV Co-ownership System</a>
-            <div class="navbar-nav">
-                <a class="nav-link" href="/">Home</a>
-                <a class="nav-link" href="/dashboard">Dashboard</a>
-                <a class="nav-link" href="/groups">Groups</a>
-                <a class="nav-link active" href="/costs">Costs</a>
-                <a class="nav-link" href="/health">Health</a>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <div class="logo">
+                <i class="fas fa-car"></i>
+                <span>CarShare Manager</span>
+            </div>
+            <nav class="nav-menu">
+                <a href="/dashboard" class="nav-link">Dashboard</a>
+                <a href="/costs" class="nav-link active">Chi Phí</a>
+                <a href="/costs/sharing" class="nav-link">Chia Sẻ</a>
+                <a href="/groups" class="nav-link">Nhóm</a>
+                <a href="/groups/voting" class="nav-link">Bỏ Phiếu</a>
+                <a href="/groups/fund" class="nav-link">Quỹ Chung</a>
+                <a href="/reports" class="nav-link">Báo Cáo</a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="page-header">
+            <div class="page-title-section">
+                <h1 class="page-title">Quản lý chi phí xe điện</h1>
+                <p class="page-subtitle">Theo dõi và quản lý tất cả chi phí liên quan đến xe điện</p>
+            </div>
+            <div class="page-actions">
+                <a href="/costs/create" class="btn btn-primary">
+                    <i class="fas fa-plus"></i>
+                    <span>Thêm chi phí mới</span>
+                </a>
             </div>
         </div>
-    </nav>
 
-    <div class="container mt-4">
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <h1>Costs</h1>
-            <a href="/costs/create" class="btn btn-primary">Create New Cost</a>
+        <!-- Search and Filter -->
+        <div class="search-section">
+            <div class="search-bar">
+                <i class="fas fa-search"></i>
+                <input type="text" id="searchInput" placeholder="Tìm kiếm chi phí theo mô tả hoặc ID...">
+            </div>
+            <div class="filter-controls">
+                <select id="costTypeFilter">
+                    <option value="">Tất cả loại chi phí</option>
+                    <option value="ElectricCharge">⚡ Sạc điện</option>
+                    <option value="Maintenance">🔧 Bảo dưỡng</option>
+                    <option value="Insurance">🛡️ Bảo hiểm</option>
+                    <option value="Inspection">🔍 Kiểm định</option>
+                    <option value="Cleaning">🧽 Vệ sinh</option>
+                    <option value="Other">📝 Khác</option>
+                </select>
+                <select id="vehicleFilter">
+                    <option value="">Tất cả xe</option>
+                    <option value="1">Tesla Model 3</option>
+                    <option value="2">BMW i3</option>
+                </select>
+            </div>
         </div>
 
-        <div class="row">
-            <div class="col-md-12">
-                <div class="card">
-                    <div class="card-body">
-                        <div th:if="${costs.isEmpty()}" class="text-muted text-center py-4">
-                            No costs found. <a href="/costs/create">Create your first cost</a>
+        <!-- Cost Statistics -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon electric">
+                    <i class="fas fa-bolt"></i>
+                </div>
+                <div class="stat-content">
+                    <div class="stat-value" id="electricCosts">0 VNĐ</div>
+                    <div class="stat-label">Chi phí sạc điện</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon maintenance">
+                    <i class="fas fa-tools"></i>
+                </div>
+                <div class="stat-content">
+                    <div class="stat-value" id="maintenanceCosts">0 VNĐ</div>
+                    <div class="stat-label">Bảo dưỡng</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon insurance">
+                    <i class="fas fa-shield-alt"></i>
+                </div>
+                <div class="stat-content">
+                    <div class="stat-value" id="insuranceCosts">0 VNĐ</div>
+                    <div class="stat-label">Bảo hiểm</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon total">
+                    <i class="fas fa-dollar-sign"></i>
+                </div>
+                <div class="stat-content">
+                    <div class="stat-value" id="totalCosts">0 VNĐ</div>
+                    <div class="stat-label">Tổng chi phí</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Cost List -->
+        <div class="costs-section">
+            <div class="section-header">
+                <h2 class="section-title">Danh sách chi phí</h2>
+                <div class="view-controls">
+                    <button class="view-btn active" data-view="grid">
+                        <i class="fas fa-th"></i>
+                    </button>
+                    <button class="view-btn" data-view="list">
+                        <i class="fas fa-list"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="costs-container" id="costsContainer">
+                <div class="costs-grid" id="costsGrid">
+                    <div class="cost-card" th:each="cost : ${costs}" th:data-cost-id="${cost.costId}">
+                        <div class="cost-header">
+                            <div class="cost-type" th:classappend="'type-' + ${cost.costType}">
+                                <i th:class="'fas ' + ${#strings.replace(cost.costType, 'ElectricCharge', 'fa-bolt')} + ${#strings.replace(cost.costType, 'Maintenance', 'fa-tools')} + ${#strings.replace(cost.costType, 'Insurance', 'fa-shield-alt')} + ${#strings.replace(cost.costType, 'Inspection', 'fa-search')} + ${#strings.replace(cost.costType, 'Cleaning', 'fa-broom')} + ${#strings.replace(cost.costType, 'Other', 'fa-file-alt')}"></i>
+                            </div>
+                            <div class="cost-actions">
+                                <button class="action-btn edit" th:onclick="'editCost(' + ${cost.costId} + ')'">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button class="action-btn delete" th:onclick="'deleteCost(' + ${cost.costId} + ')'">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
                         </div>
-                        <div th:each="cost : ${costs}" class="card mb-3">
-                            <div class="card-body">
-                                <div class="row">
-                                    <div class="col-md-8">
-                                        <h5 class="card-title" th:text="${cost.description}">Cost Description</h5>
-                                        <p class="card-text">
-                                            <strong>Vehicle ID:</strong> <span th:text="${cost.vehicleId}">1</span><br>
-                                            <strong>Type:</strong> <span th:text="${cost.costType}">Other</span>
-                                        </p>
-                                    </div>
-                                    <div class="col-md-4 text-end">
-                                        <h4 class="text-success" th:text="${#numbers.formatDecimal(cost.amount, 0, 'COMMA', 0, 'POINT')} + ' VND'">0 VND</h4>
-                                        <div class="mt-2">
-                                            <a th:href="@{/costs/{id}/splits(id=${cost.costId})}" class="btn btn-sm btn-outline-primary">Splits</a>
-                                        </div>
-                                    </div>
+                        <div class="cost-body">
+                            <h3 class="cost-description" th:text="${cost.description}">Mô tả chi phí</h3>
+                            <div class="cost-details">
+                                <div class="cost-amount">
+                                    <span class="amount" th:text="${#numbers.formatDecimal(cost.amount, 0, 'COMMA', 0, 'POINT')} + ' VNĐ'">0 VNĐ</span>
+                                </div>
+                                <div class="cost-meta">
+                                    <span class="vehicle-id">Xe ID: <strong th:text="${cost.vehicleId}">1</strong></span>
+                                    <span class="cost-date" th:text="${#temporals.format(cost.createdAt, 'dd/MM/yyyy')}">01/01/2024</span>
                                 </div>
                             </div>
                         </div>
+                        <div class="cost-footer">
+                            <div class="cost-type-label" th:text="${#strings.replace(cost.costType, 'ElectricCharge', 'Sạc điện')} + ${#strings.replace(cost.costType, 'Maintenance', 'Bảo dưỡng')} + ${#strings.replace(cost.costType, 'Insurance', 'Bảo hiểm')} + ${#strings.replace(cost.costType, 'Inspection', 'Kiểm định')} + ${#strings.replace(cost.costType, 'Cleaning', 'Vệ sinh')} + ${#strings.replace(cost.costType, 'Other', 'Khác')}">Loại chi phí</div>
+                            <a th:href="@{'/costs/' + ${cost.costId} + '/shares'}" class="view-shares">
+                                <i class="fas fa-share-alt"></i>
+                                Xem chia sẻ
+                            </a>
+                        </div>
                     </div>
                 </div>
+
+                <!-- Empty State -->
+                <div class="empty-state" th:if="${costs == null or costs.empty}">
+                    <i class="fas fa-receipt"></i>
+                    <h3>Chưa có chi phí nào</h3>
+                    <p>Bắt đầu bằng cách thêm chi phí đầu tiên cho xe điện của bạn</p>
+                    <a href="/costs/create" class="btn btn-primary">
+                        <i class="fas fa-plus"></i>
+                        <span>Thêm chi phí mới</span>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Delete Confirmation Modal -->
+    <div class="modal" id="deleteModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Xác nhận xóa</h3>
+                <button class="close-btn" onclick="closeDeleteModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p>Bạn có chắc chắn muốn xóa chi phí này không?</p>
+                <p class="warning">Hành động này không thể hoàn tác!</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeDeleteModal()">Hủy</button>
+                <button class="btn btn-danger" id="confirmDelete">Xóa</button>
             </div>
         </div>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script th:src="@{/js/cost-management.js}"></script>
 </body>
 </html>

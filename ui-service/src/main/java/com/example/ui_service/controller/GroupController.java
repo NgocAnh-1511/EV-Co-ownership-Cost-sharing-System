@@ -64,4 +64,26 @@ public class GroupController {
         groupManagementClient.createVote(id, voteDto);
         return "redirect:/groups/" + id + "/votes";
     }
+
+    @GetMapping("/api/members")
+    @ResponseBody
+    public List<GroupMemberDto> getMembersApi() {
+        // Get members from the first group for demo purposes
+        // In a real application, you might want to get members from a specific group
+        List<GroupDto> groups = groupManagementClient.getAllGroups();
+        if (!groups.isEmpty()) {
+            return groupManagementClient.getGroupMembers(groups.get(0).getGroupId());
+        }
+        return List.of();
+    }
+    
+    @GetMapping("/voting")
+    public String voting(Model model) {
+        return "groups/voting";
+    }
+    
+    @GetMapping("/fund")
+    public String fund(Model model) {
+        return "groups/fund";
+    }
 }
