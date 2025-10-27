@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quỹ Chung - CarShare Manager</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link th:href="@{/css/group-management.css}" rel="stylesheet">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <div class="logo">
+                <i class="fas fa-car"></i>
+                <span>CarShare Manager</span>
+            </div>
+            <nav class="nav-menu">
+                <a href="/dashboard" class="nav-link">Dashboard</a>
+                <a href="/groups" class="nav-link">Nhóm</a>
+                <a href="/groups/voting" class="nav-link">Bỏ Phiếu</a>
+                <a href="/groups/fund" class="nav-link active">Quỹ Chung</a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="page-header">
+            <div class="page-title-section">
+                <h1 class="page-title">Quỹ Chung</h1>
+                <p class="page-subtitle">Quản lý quỹ bảo dưỡng, phí dự phòng và lịch sử chi tiêu</p>
+            </div>
+            <div class="page-actions">
+                <button class="btn btn-outline" onclick="exportFundReport()">
+                    <i class="fas fa-download"></i>
+                    Xuất báo cáo
+                </button>
+                <button class="btn btn-primary" onclick="openAddTransactionModal()">
+                    <i class="fas fa-plus"></i>
+                    Thêm giao dịch
+                </button>
+            </div>
+        </div>
+
+        <!-- Fund Stats -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i class="fas fa-wallet"></i>
+                </div>
+                <div class="stat-content">
+                    <div class="stat-value" id="totalFundBalance">0 VNĐ</div>
+                    <div class="stat-label">Tổng quỹ</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i class="fas fa-arrow-up"></i>
+                </div>
+                <div class="stat-content">
+                    <div class="stat-value" id="totalIncome">0 VNĐ</div>
+                    <div class="stat-label">Thu nhập tháng</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i class="fas fa-arrow-down"></i>
+                </div>
+                <div class="stat-content">
+                    <div class="stat-value" id="totalExpenses">0 VNĐ</div>
+                    <div class="stat-label">Chi tiêu tháng</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i class="fas fa-chart-line"></i>
+                </div>
+                <div class="stat-content">
+                    <div class="stat-value" id="transactionCount">0</div>
+                    <div class="stat-label">Giao dịch</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="content-grid">
+            <!-- Fund Overview -->
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Tổng quan quỹ</h3>
+                </div>
+                <div class="card-body">
+                    <div class="fund-overview">
+                        <div class="fund-item">
+                            <div class="fund-label">Quỹ bảo dưỡng</div>
+                            <div class="fund-amount" id="maintenanceFund">0 VNĐ</div>
+                        </div>
+                        <div class="fund-item">
+                            <div class="fund-label">Phí dự phòng</div>
+                            <div class="fund-amount" id="reserveFund">0 VNĐ</div>
+                        </div>
+                        <div class="fund-item">
+                            <div class="fund-label">Quỹ nâng cấp</div>
+                            <div class="fund-amount" id="upgradeFund">0 VNĐ</div>
+                        </div>
+                        <div class="fund-item">
+                            <div class="fund-label">Quỹ khác</div>
+                            <div class="fund-amount" id="otherFund">0 VNĐ</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Transactions -->
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Giao dịch gần đây</h3>
+                    <a href="/groups/fund/transactions" class="view-all">Xem tất cả</a>
+                </div>
+                <div class="card-body">
+                    <div class="transaction-list" id="recentTransactions">
+                        <!-- Recent transactions will be loaded here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Fund Management -->
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">Quản lý quỹ</h3>
+                <div class="card-actions">
+                    <select id="filterGroup" class="filter-select">
+                        <option value="">Tất cả nhóm</option>
+                    </select>
+                    <select id="filterType" class="filter-select">
+                        <option value="">Tất cả loại</option>
+                        <option value="INCOME">Thu nhập</option>
+                        <option value="EXPENSE">Chi tiêu</option>
+                        <option value="TRANSFER">Chuyển khoản</option>
+                    </select>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="fund-management-tabs">
+                    <button class="tab-btn active" onclick="showFundTab('balance')">Số dư</button>
+                    <button class="tab-btn" onclick="showFundTab('transactions')">Giao dịch</button>
+                    <button class="tab-btn" onclick="showFundTab('reports')">Báo cáo</button>
+                </div>
+                
+                <div class="tab-content">
+                    <!-- Balance Tab -->
+                    <div id="balanceTab" class="tab-panel active">
+                        <div class="balance-grid">
+                            <div class="balance-card" id="balanceCard">
+                                <!-- Balance information will be loaded here -->
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Transactions Tab -->
+                    <div id="transactionsTab" class="tab-panel">
+                        <div class="table-container">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Ngày</th>
+                                        <th>Loại</th>
+                                        <th>Mô tả</th>
+                                        <th>Số tiền</th>
+                                        <th>Trạng thái</th>
+                                        <th>Hành động</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="transactionsTableBody">
+                                    <!-- Transactions will be loaded here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <!-- Reports Tab -->
+                    <div id="reportsTab" class="tab-panel">
+                        <div class="reports-content">
+                            <div class="report-filters">
+                                <div class="form-group">
+                                    <label for="reportPeriod">Kỳ báo cáo</label>
+                                    <select id="reportPeriod">
+                                        <option value="month">Tháng này</option>
+                                        <option value="quarter">Quý này</option>
+                                        <option value="year">Năm này</option>
+                                        <option value="custom">Tùy chỉnh</option>
+                                    </select>
+                                </div>
+                                <button class="btn btn-primary" onclick="generateFundReport()">
+                                    <i class="fas fa-chart-bar"></i>
+                                    Tạo báo cáo
+                                </button>
+                            </div>
+                            <div class="report-results" id="fundReportResults">
+                                <!-- Report results will be shown here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Add Transaction Modal -->
+    <div id="addTransactionModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Thêm giao dịch quỹ</h3>
+                <button class="modal-close" onclick="closeAddTransactionModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="addTransactionForm">
+                    <div class="form-group">
+                        <label for="transactionGroup">Nhóm</label>
+                        <select id="transactionGroup" name="groupId" required>
+                            <option value="">Chọn nhóm</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="transactionType">Loại giao dịch</label>
+                        <select id="transactionType" name="type" required>
+                            <option value="">Chọn loại</option>
+                            <option value="INCOME">Thu nhập</option>
+                            <option value="EXPENSE">Chi tiêu</option>
+                            <option value="TRANSFER">Chuyển khoản</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="transactionCategory">Danh mục</label>
+                        <select id="transactionCategory" name="category" required>
+                            <option value="">Chọn danh mục</option>
+                            <option value="MAINTENANCE">Bảo dưỡng</option>
+                            <option value="RESERVE">Dự phòng</option>
+                            <option value="UPGRADE">Nâng cấp</option>
+                            <option value="INSURANCE">Bảo hiểm</option>
+                            <option value="OTHER">Khác</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="transactionAmount">Số tiền (VNĐ)</label>
+                        <input type="number" id="transactionAmount" name="amount" placeholder="Nhập số tiền" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="transactionDescription">Mô tả</label>
+                        <textarea id="transactionDescription" name="description" placeholder="Mô tả giao dịch" rows="3" required></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="transactionDate">Ngày giao dịch</label>
+                        <input type="date" id="transactionDate" name="transactionDate" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="transactionReceipt">Hóa đơn/chứng từ</label>
+                        <input type="file" id="transactionReceipt" name="receipt" accept="image/*,.pdf">
+                    </div>
+                    
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-outline" onclick="closeAddTransactionModal()">Hủy</button>
+                        <button type="submit" class="btn btn-primary">Thêm giao dịch</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script th:src="@{/js/fund-management.js}"></script>
+</body>
+</html>

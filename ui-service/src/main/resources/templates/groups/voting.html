@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bỏ Phiếu - CarShare Manager</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link th:href="@{/css/group-management.css}" rel="stylesheet">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <div class="logo">
+                <i class="fas fa-car"></i>
+                <span>CarShare Manager</span>
+            </div>
+            <nav class="nav-menu">
+                <a href="/dashboard" class="nav-link">Dashboard</a>
+                <a href="/groups" class="nav-link">Nhóm</a>
+                <a href="/groups/voting" class="nav-link active">Bỏ Phiếu</a>
+                <a href="/groups/fund" class="nav-link">Quỹ Chung</a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <div class="page-header">
+            <div class="page-title-section">
+                <h1 class="page-title">Bỏ Phiếu & Quyết Định</h1>
+                <p class="page-subtitle">Tham gia bỏ phiếu cho các quyết định quan trọng trong nhóm</p>
+            </div>
+            <div class="page-actions">
+                <button class="btn btn-outline" onclick="exportVotingResults()">
+                    <i class="fas fa-download"></i>
+                    Xuất kết quả
+                </button>
+                <button class="btn btn-primary" onclick="openCreateVotingModal()">
+                    <i class="fas fa-plus"></i>
+                    Tạo cuộc bỏ phiếu
+                </button>
+            </div>
+        </div>
+
+        <!-- Voting Stats -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i class="fas fa-vote-yea"></i>
+                </div>
+                <div class="stat-content">
+                    <div class="stat-value" id="totalVotings">0</div>
+                    <div class="stat-label">Cuộc bỏ phiếu</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                <div class="stat-content">
+                    <div class="stat-value" id="completedVotings">0</div>
+                    <div class="stat-label">Đã hoàn thành</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i class="fas fa-clock"></i>
+                </div>
+                <div class="stat-content">
+                    <div class="stat-value" id="activeVotings">0</div>
+                    <div class="stat-label">Đang diễn ra</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i class="fas fa-users"></i>
+                </div>
+                <div class="stat-content">
+                    <div class="stat-value" id="totalParticipants">0</div>
+                    <div class="stat-label">Tham gia</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="content-grid">
+            <!-- Active Votings -->
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Cuộc bỏ phiếu đang diễn ra</h3>
+                    <a href="/groups/voting/active" class="view-all">Xem tất cả</a>
+                </div>
+                <div class="card-body">
+                    <div class="voting-list" id="activeVotingsList">
+                        <!-- Active votings will be loaded here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Recent Results -->
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">Kết quả gần đây</h3>
+                    <a href="/groups/voting/results" class="view-all">Xem tất cả</a>
+                </div>
+                <div class="card-body">
+                    <div class="results-list" id="recentResultsList">
+                        <!-- Recent results will be loaded here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- All Votings Table -->
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">Tất cả cuộc bỏ phiếu</h3>
+                <div class="card-actions">
+                    <select id="filterGroup" class="filter-select">
+                        <option value="">Tất cả nhóm</option>
+                    </select>
+                    <select id="filterStatus" class="filter-select">
+                        <option value="">Tất cả trạng thái</option>
+                        <option value="ACTIVE">Đang diễn ra</option>
+                        <option value="COMPLETED">Đã hoàn thành</option>
+                        <option value="CANCELLED">Đã hủy</option>
+                    </select>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="table-container">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Chủ đề</th>
+                                <th>Nhóm</th>
+                                <th>Người tạo</th>
+                                <th>Trạng thái</th>
+                                <th>Kết quả</th>
+                                <th>Ngày tạo</th>
+                                <th>Hành động</th>
+                            </tr>
+                        </thead>
+                        <tbody id="votingsTableBody">
+                            <!-- Votings will be loaded here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Create Voting Modal -->
+    <div id="createVotingModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Tạo cuộc bỏ phiếu mới</h3>
+                <button class="modal-close" onclick="closeCreateVotingModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="createVotingForm">
+                    <div class="form-group">
+                        <label for="votingGroup">Nhóm</label>
+                        <select id="votingGroup" name="groupId" required>
+                            <option value="">Chọn nhóm</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="votingTopic">Chủ đề bỏ phiếu</label>
+                        <input type="text" id="votingTopic" name="topic" placeholder="Ví dụ: Nâng cấp pin xe" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="optionA">Lựa chọn A</label>
+                        <input type="text" id="optionA" name="optionA" placeholder="Ví dụ: Có" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="optionB">Lựa chọn B</label>
+                        <input type="text" id="optionB" name="optionB" placeholder="Ví dụ: Không" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="votingDescription">Mô tả chi tiết</label>
+                        <textarea id="votingDescription" name="description" placeholder="Mô tả chi tiết về cuộc bỏ phiếu" rows="4"></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="votingDeadline">Thời hạn bỏ phiếu</label>
+                        <input type="datetime-local" id="votingDeadline" name="deadline" required>
+                    </div>
+                    
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-outline" onclick="closeCreateVotingModal()">Hủy</button>
+                        <button type="submit" class="btn btn-primary">Tạo cuộc bỏ phiếu</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Voting Modal -->
+    <div id="votingModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="votingModalTitle">Bỏ phiếu</h3>
+                <button class="modal-close" onclick="closeVotingModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="voting-details" id="votingDetails">
+                    <!-- Voting details will be loaded here -->
+                </div>
+                <form id="votingForm">
+                    <div class="voting-options">
+                        <div class="voting-option">
+                            <input type="radio" id="optionA" name="choice" value="A" required>
+                            <label for="optionA" id="optionALabel">Lựa chọn A</label>
+                        </div>
+                        <div class="voting-option">
+                            <input type="radio" id="optionB" name="choice" value="B" required>
+                            <label for="optionB" id="optionBLabel">Lựa chọn B</label>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="votingComment">Bình luận (tùy chọn)</label>
+                        <textarea id="votingComment" name="comment" placeholder="Thêm bình luận về lựa chọn của bạn" rows="3"></textarea>
+                    </div>
+                    
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-outline" onclick="closeVotingModal()">Hủy</button>
+                        <button type="submit" class="btn btn-primary">Gửi phiếu bầu</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script th:src="@{/js/voting.js}"></script>
+</body>
+</html>
