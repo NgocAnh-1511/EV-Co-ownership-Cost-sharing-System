@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <title>Trang quản lý Admin</title>
+    <link rel="stylesheet" href="/css/admin.css">
+</head>
+<body>
+<h2>Chào mừng, <span id="adminName"></span>!</h2>
+<button id="logoutBtn">Đăng xuất</button>
+
+<script>
+    // Kiểm tra token trong localStorage
+    const token = localStorage.getItem("token");
+    const username = localStorage.getItem("username");
+
+    if (!token) {
+        // Nếu chưa login → quay lại login page
+        window.location.href = "/admin-login";
+    } else {
+        document.getElementById("adminName").textContent = username || "Admin";
+    }
+
+    // Xử lý logout
+    document.getElementById("logoutBtn").addEventListener("click", () => {
+        localStorage.removeItem("token");
+        localStorage.removeItem("username");
+        window.location.href = "/admin-login";
+    });
+</script>
+</body>
+</html>
