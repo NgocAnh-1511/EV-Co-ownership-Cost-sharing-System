@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sidebar Fragment</title>
+</head>
+<body>
+    <!-- Sidebar Fragment -->
+    <div th:fragment="sidebar">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <!-- Sidebar Header -->
+            <div class="sidebar-header">
+                <a href="/dashboard" class="sidebar-logo">
+                    <i class="fas fa-car"></i>
+                    <span class="sidebar-logo-text">CarShare Manager</span>
+                </a>
+                <button class="sidebar-toggle" id="sidebarToggle">
+                    <i class="fas fa-bars"></i>
+                </button>
+            </div>
+            
+            <!-- Sidebar Navigation -->
+            <nav class="sidebar-nav">
+                <!-- Main Navigation -->
+                <div class="nav-section">
+                    <div class="nav-section-title">Tổng quan</div>
+                    <div class="nav-item">
+                        <a href="/dashboard" class="nav-link">
+                            <i class="fas fa-tachometer-alt"></i>
+                            <span class="nav-link-text">Dashboard</span>
+                        </a>
+                    </div>
+                </div>
+                
+                <!-- Cost Management -->
+                <div class="nav-section">
+                    <div class="nav-section-title">Quản lý chi phí</div>
+                    <div class="nav-item">
+                        <a href="/costs" class="nav-link">
+                            <i class="fas fa-receipt"></i>
+                            <span class="nav-link-text">Chi phí</span>
+                        </a>
+                    </div>
+                    <div class="nav-item">
+                        <a href="/costs/sharing" class="nav-link">
+                            <i class="fas fa-share-alt"></i>
+                            <span class="nav-link-text">Chia sẻ</span>
+                        </a>
+                    </div>
+                </div>
+                
+                <!-- Group Management -->
+                <div class="nav-section">
+                    <div class="nav-section-title">Quản lý nhóm</div>
+                    <div class="nav-item">
+                        <a href="/groups" class="nav-link">
+                            <i class="fas fa-users"></i>
+                            <span class="nav-link-text">Nhóm</span>
+                        </a>
+                    </div>
+                    <div class="nav-item">
+                        <a href="/groups/voting" class="nav-link">
+                            <i class="fas fa-vote-yea"></i>
+                            <span class="nav-link-text">Bỏ phiếu</span>
+                        </a>
+                    </div>
+                    <div class="nav-item">
+                        <a href="/groups/fund" class="nav-link">
+                            <i class="fas fa-piggy-bank"></i>
+                            <span class="nav-link-text">Quỹ chung</span>
+                        </a>
+                    </div>
+                </div>
+                
+                <!-- Reports -->
+                <div class="nav-section">
+                    <div class="nav-section-title">Báo cáo</div>
+                    <div class="nav-item">
+                        <a href="/reports" class="nav-link">
+                            <i class="fas fa-chart-bar"></i>
+                            <span class="nav-link-text">Báo cáo</span>
+                        </a>
+                    </div>
+                </div>
+                
+                <!-- System -->
+                <div class="nav-section">
+                    <div class="nav-section-title">Hệ thống</div>
+                    <div class="nav-item">
+                        <a href="/health" class="nav-link">
+                            <i class="fas fa-heartbeat"></i>
+                            <span class="nav-link-text">Trạng thái</span>
+                        </a>
+                    </div>
+                </div>
+            </nav>
+        </aside>
+        
+        <!-- Sidebar Overlay for Mobile -->
+        <div class="sidebar-overlay" id="sidebarOverlay"></div>
+    </div>
+</body>
+</html>
