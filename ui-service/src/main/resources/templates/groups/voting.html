@@ -5,69 +5,47 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Bỏ Phiếu & Quyết Định - CarShare Manager</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link th:href="@{/css/layout.css}" rel="stylesheet">
     <link th:href="@{/css/group-management.css}" rel="stylesheet">
     <link th:href="@{/css/voting.css}" rel="stylesheet">
 </head>
 <body>
-    <div class="app-container">
-        <!-- Header -->
-        <header class="header">
-            <div class="header-content">
-                <div class="logo">
-                    <i class="fas fa-car"></i>
-                    <span>CarShare Manager</span>
-                </div>
-                <nav class="nav-menu">
-                    <a href="/dashboard" class="nav-link">Dashboard</a>
-                    <a href="/groups" class="nav-link">Nhóm</a>
-                    <a href="/groups/voting" class="nav-link active">Bỏ Phiếu</a>
-                    <a href="/groups/fund" class="nav-link">Quỹ Chung</a>
-                </nav>
-            </div>
-        </header>
-
+    <!-- Layout Container -->
+    <div class="layout-container">
+        <!-- Include Sidebar Fragment -->
+        <div th:replace="fragments/sidebar :: sidebar"></div>
+        
         <!-- Main Content -->
         <main class="main-content">
-            <!-- Sidebar -->
-            <aside class="sidebar">
-                <nav class="nav-menu">
-                    <ul>
-                        <li class="nav-item active">
-                            <a href="/groups/voting" class="nav-link">
-                                <i class="fas fa-vote-yea"></i>
-                                Bỏ Phiếu
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a href="/groups/fund" class="nav-link">
-                                <i class="fas fa-wallet"></i>
-                                Quỹ Chung
-                            </a>
-                        </li>
-                    </ul>
-                </nav>
-            </aside>
-
-            <!-- Content Area -->
-            <div class="content">
-                <!-- Page Header -->
-                <div class="page-header">
-                    <div class="page-title-section">
-                        <h1 class="page-title">Bỏ Phiếu & Quyết Định</h1>
+            <!-- Top Bar -->
+            <div class="top-bar">
+                <div class="top-bar-left">
+                    <button class="mobile-menu-toggle" id="mobileMenuToggle">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <div class="page-info">
+                        <h1 class="page-title">
+                            <i class="fas fa-vote-yea"></i>
+                            Bỏ Phiếu & Quyết Định
+                        </h1>
                         <p class="page-subtitle">Tham gia bỏ phiếu cho các quyết định quan trọng trong nhóm</p>
                     </div>
-                    <div class="page-actions">
-                        <button class="btn btn-outline" onclick="exportVotingResults()">
-                            <i class="fas fa-download"></i>
-                            Xuất kết quả
-                        </button>
-                        <button class="btn btn-primary" onclick="openCreateVotingModal()">
-                            <i class="fas fa-plus"></i>
-                            Tạo cuộc bỏ phiếu
-                        </button>
-                    </div>
                 </div>
-
+                <div class="top-bar-actions">
+                    <button class="btn btn-outline" onclick="exportVotingResults()">
+                        <i class="fas fa-download"></i>
+                        Xuất kết quả
+                    </button>
+                    <button class="btn btn-primary" onclick="openCreateVotingModal()">
+                        <i class="fas fa-plus"></i>
+                        Tạo cuộc bỏ phiếu
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Content Area -->
+            <div class="content-area">
                 <!-- Voting Stats -->
                 <div class="stats-grid">
                     <div class="stat-card">
@@ -281,6 +259,8 @@
         </div>
     </div>
 
+    <!-- Scripts -->
+    <script th:src="@{/js/layout.js}"></script>
     <script th:src="@{/js/voting.js}"></script>
 </body>
 </html>

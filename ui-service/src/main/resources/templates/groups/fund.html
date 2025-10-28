@@ -5,197 +5,194 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Quỹ Chung - CarShare Manager</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <link th:href="@{/css/fund.css}" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link th:href="@{/css/layout.css}" rel="stylesheet">
+    <link th:href="@{/css/fund.css}" rel="stylesheet">
 </head>
 <body>
-    <!-- Header -->
-    <header class="header">
-        <div class="header-content">
-            <div class="logo">
-                <i class="fas fa-car"></i>
-                <span>CarShare Manager</span>
-            </div>
-            <nav class="nav-menu">
-                <a href="/dashboard" class="nav-link">Dashboard</a>
-                <a href="/costs" class="nav-link">Chi Phí</a>
-                <a href="/costs/sharing" class="nav-link">Chia Sẻ</a>
-                <a href="/groups" class="nav-link">Nhóm</a>
-                <a href="/groups/voting" class="nav-link">Bỏ Phiếu</a>
-                <a href="/groups/fund" class="nav-link active">Quỹ Chung</a>
-                <a href="/reports" class="nav-link">Báo Cáo</a>
-            </nav>
-        </div>
-    </header>
-
-    <!-- Main Content -->
-    <main class="main-content">
-        <div class="page-header">
-            <div class="page-title-section">
-                <h1 class="page-title">
-                    <i class="fas fa-piggy-bank"></i>
-                    Quỹ Chung
-                </h1>
-                <p class="page-subtitle">Quản lý quỹ chung của nhóm sở hữu xe điện</p>
-            </div>
-            <div class="page-actions">
-                <button class="btn btn-outline" onclick="exportFundReport()">
-                    <i class="fas fa-download"></i>
-                    Xuất báo cáo
-                </button>
-                <button class="btn btn-primary" onclick="openAddFundModal()">
-                    <i class="fas fa-plus"></i>
-                    Thêm giao dịch
-                </button>
-            </div>
-        </div>
-
-        <!-- Statistics Cards -->
-        <div class="stats-grid">
-            <div class="stat-card">
-                <div class="stat-icon">
-                    <i class="fas fa-wallet"></i>
+    <!-- Layout Container -->
+    <div class="layout-container">
+        <!-- Include Sidebar Fragment -->
+        <div th:replace="fragments/sidebar :: sidebar"></div>
+        
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Top Bar -->
+            <div class="top-bar">
+                <div class="top-bar-left">
+                    <button class="mobile-menu-toggle" id="mobileMenuToggle">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <div class="page-info">
+                        <h1 class="page-title">
+                            <i class="fas fa-piggy-bank"></i>
+                            Quỹ Chung
+                        </h1>
+                        <p class="page-subtitle">Quản lý quỹ chung của nhóm sở hữu xe điện</p>
+                    </div>
                 </div>
-                <div class="stat-content">
-                    <div class="stat-value" th:text="${fundStats?.totalBalance ?: '0'}">0</div>
-                    <div class="stat-label">Số dư hiện tại</div>
-                </div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-icon">
-                    <i class="fas fa-arrow-up"></i>
-                </div>
-                <div class="stat-content">
-                    <div class="stat-value" th:text="${fundStats?.totalIncome ?: '0'}">0</div>
-                    <div class="stat-label">Tổng thu</div>
-                </div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-icon">
-                    <i class="fas fa-arrow-down"></i>
-                </div>
-                <div class="stat-content">
-                    <div class="stat-value" th:text="${fundStats?.totalExpense ?: '0'}">0</div>
-                    <div class="stat-label">Tổng chi</div>
-                </div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-icon">
-                    <i class="fas fa-exchange-alt"></i>
-                </div>
-                <div class="stat-content">
-                    <div class="stat-value" th:text="${fundStats?.transactionCount ?: '0'}">0</div>
-                    <div class="stat-label">Giao dịch</div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Fund Management -->
-        <div class="content-grid">
-            <!-- Recent Transactions -->
-            <div class="content-card">
-                <div class="card-header">
-                    <h3>
-                        <i class="fas fa-history"></i>
-                        Giao dịch gần đây
-                    </h3>
-                    <button class="btn btn-sm btn-outline" onclick="viewAllTransactions()">
-                        Xem tất cả
+                <div class="top-bar-actions">
+                    <button class="btn btn-outline" onclick="exportFundReport()">
+                        <i class="fas fa-download"></i>
+                        Xuất báo cáo
+                    </button>
+                    <button class="btn btn-primary" onclick="openAddFundModal()">
+                        <i class="fas fa-plus"></i>
+                        Thêm giao dịch
                     </button>
                 </div>
-                <div class="card-content">
-                    <div class="transaction-list" id="recentTransactions">
-                        <!-- Transactions will be loaded here -->
-                        <div class="empty-state">
-                            <i class="fas fa-receipt"></i>
-                            <p>Chưa có giao dịch nào</p>
+            </div>
+            
+            <!-- Content Area -->
+            <div class="content-area">
+                <!-- Statistics Cards -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-wallet"></i>
+                        </div>
+                        <div class="stat-content">
+                            <div class="stat-value" th:text="${fundStats?.totalBalance ?: '0'}">0</div>
+                            <div class="stat-label">Số dư hiện tại</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-arrow-up"></i>
+                        </div>
+                        <div class="stat-content">
+                            <div class="stat-value" th:text="${fundStats?.totalIncome ?: '0'}">0</div>
+                            <div class="stat-label">Tổng thu</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-arrow-down"></i>
+                        </div>
+                        <div class="stat-content">
+                            <div class="stat-value" th:text="${fundStats?.totalExpense ?: '0'}">0</div>
+                            <div class="stat-label">Tổng chi</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-exchange-alt"></i>
+                        </div>
+                        <div class="stat-content">
+                            <div class="stat-value" th:text="${fundStats?.transactionCount ?: '0'}">0</div>
+                            <div class="stat-label">Giao dịch</div>
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- Fund Summary -->
-            <div class="content-card">
-                <div class="card-header">
-                    <h3>
-                        <i class="fas fa-chart-pie"></i>
-                        Tóm tắt quỹ
-                    </h3>
-                </div>
-                <div class="card-content">
-                    <div class="fund-summary">
-                        <div class="summary-item">
-                            <span class="label">Số dư đầu kỳ:</span>
-                            <span class="value" th:text="${fundStats?.openingBalance ?: '0'}">0 VNĐ</span>
+                <!-- Fund Management -->
+                <div class="content-grid">
+                    <!-- Recent Transactions -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>
+                                <i class="fas fa-history"></i>
+                                Giao dịch gần đây
+                            </h3>
+                            <button class="btn btn-sm btn-outline" onclick="viewAllTransactions()">
+                                Xem tất cả
+                            </button>
                         </div>
-                        <div class="summary-item">
-                            <span class="label">Thu nhập:</span>
-                            <span class="value positive" th:text="${fundStats?.totalIncome ?: '0'}">0 VNĐ</span>
-                        </div>
-                        <div class="summary-item">
-                            <span class="label">Chi phí:</span>
-                            <span class="value negative" th:text="${fundStats?.totalExpense ?: '0'}">0 VNĐ</span>
-                        </div>
-                        <div class="summary-item total">
-                            <span class="label">Số dư cuối kỳ:</span>
-                            <span class="value" th:text="${fundStats?.totalBalance ?: '0'}">0 VNĐ</span>
+                        <div class="card-content">
+                            <div class="transaction-list" id="recentTransactions">
+                                <!-- Transactions will be loaded here -->
+                                <div class="empty-state">
+                                    <i class="fas fa-receipt"></i>
+                                    <p>Chưa có giao dịch nào</p>
+                                </div>
+                            </div>
                         </div>
                     </div>
-                </div>
-            </div>
-        </div>
 
-        <!-- Transaction History Table -->
-        <div class="content-card">
-            <div class="card-header">
-                <h3>
-                    <i class="fas fa-list"></i>
-                    Lịch sử giao dịch
-                </h3>
-                <div class="card-actions">
-                    <div class="filter-group">
-                        <select id="filterType" class="form-select">
-                            <option value="">Tất cả loại</option>
-                            <option value="INCOME">Thu nhập</option>
-                            <option value="EXPENSE">Chi phí</option>
-                        </select>
-                        <select id="filterGroup" class="form-select">
-                            <option value="">Tất cả nhóm</option>
-                            <!-- Groups will be loaded here -->
-                        </select>
+                    <!-- Fund Summary -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>
+                                <i class="fas fa-chart-pie"></i>
+                                Tóm tắt quỹ
+                            </h3>
+                        </div>
+                        <div class="card-content">
+                            <div class="fund-summary">
+                                <div class="summary-item">
+                                    <span class="label">Số dư đầu kỳ:</span>
+                                    <span class="value" th:text="${fundStats?.openingBalance ?: '0'}">0 VNĐ</span>
+                                </div>
+                                <div class="summary-item">
+                                    <span class="label">Thu nhập:</span>
+                                    <span class="value positive" th:text="${fundStats?.totalIncome ?: '0'}">0 VNĐ</span>
+                                </div>
+                                <div class="summary-item">
+                                    <span class="label">Chi phí:</span>
+                                    <span class="value negative" th:text="${fundStats?.totalExpense ?: '0'}">0 VNĐ</span>
+                                </div>
+                                <div class="summary-item total">
+                                    <span class="label">Số dư cuối kỳ:</span>
+                                    <span class="value" th:text="${fundStats?.totalBalance ?: '0'}">0 VNĐ</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Transaction History Table -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3>
+                            <i class="fas fa-list"></i>
+                            Lịch sử giao dịch
+                        </h3>
+                        <div class="card-actions">
+                            <div class="filter-group">
+                                <select id="filterType" class="form-select">
+                                    <option value="">Tất cả loại</option>
+                                    <option value="INCOME">Thu nhập</option>
+                                    <option value="EXPENSE">Chi phí</option>
+                                </select>
+                                <select id="filterGroup" class="form-select">
+                                    <option value="">Tất cả nhóm</option>
+                                    <!-- Groups will be loaded here -->
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-content">
+                        <div class="table-container">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Ngày</th>
+                                        <th>Loại</th>
+                                        <th>Mô tả</th>
+                                        <th>Nhóm</th>
+                                        <th>Số tiền</th>
+                                        <th>Người thực hiện</th>
+                                        <th>Thao tác</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="transactionsTableBody">
+                                    <!-- Transactions will be loaded here -->
+                                    <tr>
+                                        <td colspan="7" class="empty-table">
+                                            <div class="empty-state">
+                                                <i class="fas fa-receipt"></i>
+                                                <p>Chưa có giao dịch nào</p>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>
-            <div class="card-content">
-                <div class="table-container">
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>Ngày</th>
-                                <th>Loại</th>
-                                <th>Mô tả</th>
-                                <th>Nhóm</th>
-                                <th>Số tiền</th>
-                                <th>Người thực hiện</th>
-                                <th>Thao tác</th>
-                            </tr>
-                        </thead>
-                        <tbody id="transactionsTableBody">
-                            <!-- Transactions will be loaded here -->
-                            <tr>
-                                <td colspan="7" class="empty-table">
-                                    <div class="empty-state">
-                                        <i class="fas fa-receipt"></i>
-                                        <p>Chưa có giao dịch nào</p>
-                                    </div>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </main>
+        </main>
+    </div>
 
     <!-- Add Fund Transaction Modal -->
     <div id="addFundModal" class="modal">
@@ -245,7 +242,9 @@
             </div>
         </div>
     </div>
-
+    
+    <!-- Scripts -->
+    <script th:src="@{/js/layout.js}"></script>
     <script th:src="@{/js/fund.js}"></script>
 </body>
 </html>

@@ -21,8 +21,34 @@ public class GroupController {
     @GetMapping
     public String listGroups(Model model) {
         List<GroupDto> groups = groupManagementClient.getAllGroups();
+        
+        // If no groups from service, create sample data for testing
+        if (groups.isEmpty()) {
+            groups = createSampleGroups();
+        }
+        
         model.addAttribute("groups", groups);
+        
+        // Calculate total members
+        int totalMembers = groups.stream()
+                .mapToInt(group -> group.getMemberCount() != null ? group.getMemberCount() : 0)
+                .sum();
+        model.addAttribute("totalMembers", totalMembers);
+        
         return "groups/list";
+    }
+    
+    private List<GroupDto> createSampleGroups() {
+        return List.of(
+            new GroupDto(1, "Nhóm Tesla Model 3", 1, 1, "Active", 
+                        new java.util.Date(), 4, 15000000.0, 2),
+            new GroupDto(2, "Nhóm BMW i3", 2, 2, "Active", 
+                        new java.util.Date(), 3, 12000000.0, 1),
+            new GroupDto(3, "Nhóm Nissan Leaf", 3, 3, "Inactive", 
+                        new java.util.Date(), 2, 8000000.0, 0),
+            new GroupDto(4, "Nhóm Hyundai Ioniq", 4, 4, "Active", 
+                        new java.util.Date(), 5, 18000000.0, 3)
+        );
     }
 
     @GetMapping("/create")

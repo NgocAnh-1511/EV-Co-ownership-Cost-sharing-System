@@ -3,54 +3,48 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quản Lý Nhóm Đồng Sở Hữu - CarShare</title>
+    <title>Quản Lý Nhóm Đồng Sở Hữu - CarShare Manager</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link th:href="@{/css/layout.css}" rel="stylesheet">
     <link th:href="@{/css/group-management.css}" rel="stylesheet">
 </head>
 <body>
-    <div class="app-container">
-    <!-- Header -->
-    <header class="header">
-        <div class="header-content">
-            <div class="logo">
-                <i class="fas fa-car"></i>
-                <span>CarShare Manager</span>
+    <!-- Layout Container -->
+    <div class="layout-container">
+        <!-- Include Sidebar Fragment -->
+        <div th:replace="fragments/sidebar :: sidebar"></div>
+        
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Top Bar -->
+            <div class="top-bar">
+                <div class="top-bar-left">
+                    <button class="mobile-menu-toggle" id="mobileMenuToggle">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <div class="page-info">
+                        <h1 class="page-title">
+                            <i class="fas fa-users"></i>
+                            Quản Lý Nhóm Đồng Sở Hữu
+                        </h1>
+                        <p class="page-subtitle">Tạo và quản lý các nhóm sở hữu chung xe điện</p>
+                    </div>
+                </div>
+                <div class="top-bar-actions">
+                    <button class="btn btn-outline" onclick="exportGroups()">
+                        <i class="fas fa-download"></i>
+                        Xuất danh sách
+                    </button>
+                    <button class="btn btn-primary" onclick="openCreateGroupModal()">
+                        <i class="fas fa-plus"></i>
+                        Tạo nhóm mới
+                    </button>
+                </div>
             </div>
-            <nav class="nav-menu">
-                <a href="/dashboard" class="nav-link">Dashboard</a>
-                <a href="/costs" class="nav-link">Chi Phí</a>
-                <a href="/costs/sharing" class="nav-link">Chia Sẻ</a>
-                <a href="/groups" class="nav-link active">Nhóm</a>
-                <a href="/groups/voting" class="nav-link">Bỏ Phiếu</a>
-                <a href="/groups/fund" class="nav-link">Quỹ Chung</a>
-                <a href="/reports" class="nav-link">Báo Cáo</a>
-            </nav>
-        </div>
-    </header>
-
-    <!-- Main Content -->
-    <main class="main-content">
-        <div class="page-header">
-            <div class="page-title-section">
-                <h1 class="page-title">
-                    <i class="fas fa-users"></i>
-                    Quản Lý Nhóm Đồng Sở Hữu
-                </h1>
-                <p class="page-subtitle">Tạo và quản lý các nhóm sở hữu chung xe điện</p>
-            </div>
-            <div class="page-actions">
-                <button class="btn btn-outline" onclick="exportGroups()">
-                    <i class="fas fa-download"></i>
-                    Xuất danh sách
-                </button>
-                <button class="btn btn-primary" onclick="openCreateGroupModal()">
-                    <i class="fas fa-plus"></i>
-                    Tạo nhóm mới
-                </button>
-            </div>
-        </div>
-
+            
+            <!-- Content Area -->
+            <div class="content-area">
                 <!-- Summary Cards -->
                 <div class="summary-cards">
                     <div class="summary-card">
@@ -243,10 +237,12 @@
                         </div>
                     </div>
                 </div>
-            </main>
-        </div>
+            </div>
+        </main>
     </div>
 
+    <!-- Scripts -->
+    <script th:src="@{/js/layout.js}"></script>
     <script th:src="@{/js/group-management.js}"></script>
 </body>
 </html>

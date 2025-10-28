@@ -5,293 +5,297 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Chia Sẻ Chi Phí - CarShare Manager</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link th:href="@{/css/layout.css}" rel="stylesheet">
     <link th:href="@{/css/cost-sharing.css}" rel="stylesheet">
 </head>
 <body>
-    <!-- Header -->
-    <header class="header">
-        <div class="header-content">
-            <div class="logo">
-                <i class="fas fa-car"></i>
-                <span>CarShare Manager</span>
-            </div>
-            <nav class="nav-menu">
-                <a href="/dashboard" class="nav-link">Dashboard</a>
-                <a href="/costs" class="nav-link">Chi Phí</a>
-                <a href="/costs/sharing" class="nav-link active">Chia Sẻ</a>
-                <a href="/reports" class="nav-link">Báo Cáo</a>
-            </nav>
-        </div>
-    </header>
-
-    <!-- Main Content -->
-    <main class="main-content">
-        <div class="page-header">
-            <div class="page-title-section">
-                <h1 class="page-title">Chia Sẻ Chi Phí</h1>
-                <p class="page-subtitle">Tự động chia chi phí theo tỉ lệ sở hữu hoặc mức độ sử dụng</p>
-            </div>
-            <div class="page-actions">
-                <button class="btn btn-outline" onclick="generateReport()">
-                    <i class="fas fa-chart-bar"></i>
-                    Báo Cáo
-                </button>
-                <button class="btn btn-primary" onclick="openAddCostModal()">
-                    <i class="fas fa-plus"></i>
-                    Thêm Chi Phí
-                </button>
-            </div>
-        </div>
-
-        <!-- Stats Cards -->
-        <div class="stats-grid">
-            <div class="stat-card">
-                <div class="stat-icon">
-                    <i class="fas fa-receipt"></i>
-                </div>
-                <div class="stat-content">
-                    <div class="stat-value" id="totalCosts">0</div>
-                    <div class="stat-label">Tổng chi phí</div>
-                </div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-icon">
-                    <i class="fas fa-share-alt"></i>
-                </div>
-                <div class="stat-content">
-                    <div class="stat-value" id="totalShares">0</div>
-                    <div class="stat-label">Lần chia sẻ</div>
-                </div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-icon">
-                    <i class="fas fa-credit-card"></i>
-                </div>
-                <div class="stat-content">
-                    <div class="stat-value" id="totalPaid">0</div>
-                    <div class="stat-label">Đã thanh toán</div>
-                </div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-icon">
-                    <i class="fas fa-clock"></i>
-                </div>
-                <div class="stat-content">
-                    <div class="stat-value" id="pendingPayments">0</div>
-                    <div class="stat-label">Chờ thanh toán</div>
-                </div>
-            </div>
-        </div>
-
-        <div class="content-grid">
-            <!-- Left Column -->
-            <div class="left-column">
-                <!-- Cost Categories -->
-                <div class="card">
-                    <div class="card-header">
-                        <h3 class="card-title">Danh mục chi phí</h3>
+    <!-- Layout Container -->
+    <div class="layout-container">
+        <!-- Include Sidebar Fragment -->
+        <div th:replace="fragments/sidebar :: sidebar"></div>
+        
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Top Bar -->
+            <div class="top-bar">
+                <div class="top-bar-left">
+                    <button class="mobile-menu-toggle" id="mobileMenuToggle">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <div class="page-info">
+                        <h1 class="page-title">
+                            <i class="fas fa-share-alt"></i>
+                            Chia Sẻ Chi Phí
+                        </h1>
+                        <p class="page-subtitle">Tự động chia chi phí theo tỉ lệ sở hữu hoặc mức độ sử dụng</p>
                     </div>
-                    <div class="card-body">
-                        <div class="category-list">
-                            <div class="category-item" data-category="CHARGING">
-                                <div class="category-icon">
-                                    <i class="fas fa-bolt"></i>
-                                </div>
-                                <div class="category-content">
-                                    <div class="category-name">Phí sạc điện</div>
-                                    <div class="category-amount">0 VNĐ</div>
+                </div>
+                <div class="top-bar-actions">
+                    <button class="btn btn-outline" onclick="generateReport()">
+                        <i class="fas fa-chart-bar"></i>
+                        Báo Cáo
+                    </button>
+                    <button class="btn btn-primary" onclick="openAddCostModal()">
+                        <i class="fas fa-plus"></i>
+                        Thêm Chi Phí
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Content Area -->
+            <div class="content-area">
+                <!-- Stats Cards -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-receipt"></i>
+                        </div>
+                        <div class="stat-content">
+                            <div class="stat-value" id="totalCosts">0</div>
+                            <div class="stat-label">Tổng chi phí</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-share-alt"></i>
+                        </div>
+                        <div class="stat-content">
+                            <div class="stat-value" id="totalShares">0</div>
+                            <div class="stat-label">Lần chia sẻ</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-credit-card"></i>
+                        </div>
+                        <div class="stat-content">
+                            <div class="stat-value" id="totalPaid">0</div>
+                            <div class="stat-label">Đã thanh toán</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-clock"></i>
+                        </div>
+                        <div class="stat-content">
+                            <div class="stat-value" id="pendingPayments">0</div>
+                            <div class="stat-label">Chờ thanh toán</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="content-grid">
+                    <!-- Left Column -->
+                    <div class="left-column">
+                        <!-- Cost Categories -->
+                        <div class="card">
+                            <div class="card-header">
+                                <h3 class="card-title">Danh mục chi phí</h3>
+                            </div>
+                            <div class="card-body">
+                                <div class="category-list">
+                                    <div class="category-item" data-category="CHARGING">
+                                        <div class="category-icon">
+                                            <i class="fas fa-bolt"></i>
+                                        </div>
+                                        <div class="category-content">
+                                            <div class="category-name">Phí sạc điện</div>
+                                            <div class="category-amount">0 VNĐ</div>
+                                        </div>
+                                    </div>
+                                    <div class="category-item" data-category="MAINTENANCE">
+                                        <div class="category-icon">
+                                            <i class="fas fa-tools"></i>
+                                        </div>
+                                        <div class="category-content">
+                                            <div class="category-name">Bảo dưỡng</div>
+                                            <div class="category-amount">0 VNĐ</div>
+                                        </div>
+                                    </div>
+                                    <div class="category-item" data-category="INSURANCE">
+                                        <div class="category-icon">
+                                            <i class="fas fa-shield-alt"></i>
+                                        </div>
+                                        <div class="category-content">
+                                            <div class="category-name">Bảo hiểm</div>
+                                            <div class="category-amount">0 VNĐ</div>
+                                        </div>
+                                    </div>
+                                    <div class="category-item" data-category="REGISTRATION">
+                                        <div class="category-icon">
+                                            <i class="fas fa-file-alt"></i>
+                                        </div>
+                                        <div class="category-content">
+                                            <div class="category-name">Đăng kiểm</div>
+                                            <div class="category-amount">0 VNĐ</div>
+                                        </div>
+                                    </div>
+                                    <div class="category-item" data-category="CLEANING">
+                                        <div class="category-icon">
+                                            <i class="fas fa-spray-can"></i>
+                                        </div>
+                                        <div class="category-content">
+                                            <div class="category-name">Vệ sinh xe</div>
+                                            <div class="category-amount">0 VNĐ</div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
-                            <div class="category-item" data-category="MAINTENANCE">
-                                <div class="category-icon">
-                                    <i class="fas fa-tools"></i>
-                                </div>
-                                <div class="category-content">
-                                    <div class="category-name">Bảo dưỡng</div>
-                                    <div class="category-amount">0 VNĐ</div>
+                        </div>
+
+                        <!-- Recent Cost Splits -->
+                        <div class="card">
+                            <div class="card-header">
+                                <h3 class="card-title">Chia sẻ gần đây</h3>
+                                <a href="/costs" class="view-all">Xem tất cả</a>
+                            </div>
+                            <div class="card-body">
+                                <div class="split-list" id="recentSplits">
+                                    <!-- Recent splits will be loaded here -->
                                 </div>
                             </div>
-                            <div class="category-item" data-category="INSURANCE">
-                                <div class="category-icon">
-                                    <i class="fas fa-shield-alt"></i>
-                                </div>
-                                <div class="category-content">
-                                    <div class="category-name">Bảo hiểm</div>
-                                    <div class="category-amount">0 VNĐ</div>
-                                </div>
+                        </div>
+                    </div>
+
+                    <!-- Right Column -->
+                    <div class="right-column">
+                        <!-- Cost Sharing Form -->
+                        <div class="card">
+                            <div class="card-header">
+                                <h3 class="card-title">Thêm chi phí mới</h3>
                             </div>
-                            <div class="category-item" data-category="REGISTRATION">
-                                <div class="category-icon">
-                                    <i class="fas fa-file-alt"></i>
-                                </div>
-                                <div class="category-content">
-                                    <div class="category-name">Đăng kiểm</div>
-                                    <div class="category-amount">0 VNĐ</div>
-                                </div>
+                            <div class="card-body">
+                                <form id="costSharingForm" class="form">
+                                    <div class="form-group">
+                                        <label for="groupId">Nhóm sở hữu</label>
+                                        <select id="groupId" name="groupId" required>
+                                            <option value="">Chọn nhóm sở hữu</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <div class="form-group">
+                                        <label for="vehicleId">Xe</label>
+                                        <select id="vehicleId" name="vehicleId" required>
+                                            <option value="">Chọn xe</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <div class="form-group">
+                                        <label for="costType">Loại chi phí</label>
+                                        <select id="costType" name="costType" required>
+                                            <option value="">Chọn loại chi phí</option>
+                                            <option value="CHARGING">Phí sạc điện</option>
+                                            <option value="MAINTENANCE">Bảo dưỡng</option>
+                                            <option value="INSURANCE">Bảo hiểm</option>
+                                            <option value="REGISTRATION">Đăng kiểm</option>
+                                            <option value="CLEANING">Vệ sinh xe</option>
+                                            <option value="PARKING">Phí đỗ xe</option>
+                                            <option value="TOLLS">Phí cầu đường</option>
+                                            <option value="REPAIRS">Sửa chữa</option>
+                                            <option value="UPGRADES">Nâng cấp</option>
+                                            <option value="OTHER">Khác</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <div class="form-group">
+                                        <label for="splitMethod">Phương thức chia</label>
+                                        <select id="splitMethod" name="splitMethod" required>
+                                            <option value="OWNERSHIP_PERCENTAGE">Theo tỉ lệ sở hữu</option>
+                                            <option value="USAGE_BASED">Theo mức độ sử dụng</option>
+                                            <option value="EQUAL_SPLIT">Chia đều</option>
+                                            <option value="CUSTOM">Tùy chỉnh</option>
+                                        </select>
+                                    </div>
+                                    
+                                    <div class="form-group">
+                                        <label for="amount">Số tiền (VNĐ)</label>
+                                        <input type="number" id="amount" name="amount" placeholder="Nhập số tiền" required>
+                                    </div>
+                                    
+                                    <div class="form-group">
+                                        <label for="description">Mô tả</label>
+                                        <textarea id="description" name="description" placeholder="Mô tả chi phí" rows="3"></textarea>
+                                    </div>
+                                    
+                                    <div class="form-group">
+                                        <label for="invoiceNumber">Số hóa đơn</label>
+                                        <input type="text" id="invoiceNumber" name="invoiceNumber" placeholder="Số hóa đơn (nếu có)">
+                                    </div>
+                                    
+                                    <div class="form-group">
+                                        <label for="receiptUrl">Link hóa đơn</label>
+                                        <input type="url" id="receiptUrl" name="receiptUrl" placeholder="Link hóa đơn (nếu có)">
+                                    </div>
+                                    
+                                    <div class="form-actions">
+                                        <button type="button" class="btn btn-outline" onclick="previewSplit()">
+                                            <i class="fas fa-eye"></i>
+                                            Xem trước
+                                        </button>
+                                        <button type="submit" class="btn btn-primary">
+                                            <i class="fas fa-save"></i>
+                                            Lưu chi phí
+                                        </button>
+                                    </div>
+                                </form>
                             </div>
-                            <div class="category-item" data-category="CLEANING">
-                                <div class="category-icon">
-                                    <i class="fas fa-spray-can"></i>
-                                </div>
-                                <div class="category-content">
-                                    <div class="category-name">Vệ sinh xe</div>
-                                    <div class="category-amount">0 VNĐ</div>
+                        </div>
+
+                        <!-- Split Preview -->
+                        <div class="card" id="splitPreview" style="display: none;">
+                            <div class="card-header">
+                                <h3 class="card-title">Xem trước chia sẻ</h3>
+                            </div>
+                            <div class="card-body">
+                                <div class="split-preview" id="splitPreviewContent">
+                                    <!-- Split preview will be shown here -->
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Recent Cost Splits -->
+                <!-- Cost Splits Table -->
                 <div class="card">
                     <div class="card-header">
-                        <h3 class="card-title">Chia sẻ gần đây</h3>
-                        <a href="/costs" class="view-all">Xem tất cả</a>
+                        <h3 class="card-title">Lịch sử chia sẻ chi phí</h3>
+                        <div class="card-actions">
+                            <select id="filterStatus" class="filter-select">
+                                <option value="">Tất cả trạng thái</option>
+                                <option value="PENDING">Chờ thanh toán</option>
+                                <option value="PAID">Đã thanh toán</option>
+                                <option value="OVERDUE">Quá hạn</option>
+                            </select>
+                            <select id="filterGroup" class="filter-select">
+                                <option value="">Tất cả nhóm</option>
+                            </select>
+                        </div>
                     </div>
                     <div class="card-body">
-                        <div class="split-list" id="recentSplits">
-                            <!-- Recent splits will be loaded here -->
+                        <div class="table-container">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Chi phí</th>
+                                        <th>Nhóm</th>
+                                        <th>Thành viên</th>
+                                        <th>Số tiền</th>
+                                        <th>Trạng thái</th>
+                                        <th>Ngày tạo</th>
+                                        <th>Hành động</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="splitsTableBody">
+                                    <!-- Cost splits will be loaded here -->
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>
             </div>
-
-            <!-- Right Column -->
-            <div class="right-column">
-                <!-- Cost Sharing Form -->
-                <div class="card">
-                    <div class="card-header">
-                        <h3 class="card-title">Thêm chi phí mới</h3>
-                    </div>
-                    <div class="card-body">
-                        <form id="costSharingForm" class="form">
-                            <div class="form-group">
-                                <label for="groupId">Nhóm sở hữu</label>
-                                <select id="groupId" name="groupId" required>
-                                    <option value="">Chọn nhóm sở hữu</option>
-                                </select>
-                            </div>
-                            
-                            <div class="form-group">
-                                <label for="vehicleId">Xe</label>
-                                <select id="vehicleId" name="vehicleId" required>
-                                    <option value="">Chọn xe</option>
-                                </select>
-                            </div>
-                            
-                            <div class="form-group">
-                                <label for="costType">Loại chi phí</label>
-                                <select id="costType" name="costType" required>
-                                    <option value="">Chọn loại chi phí</option>
-                                    <option value="CHARGING">Phí sạc điện</option>
-                                    <option value="MAINTENANCE">Bảo dưỡng</option>
-                                    <option value="INSURANCE">Bảo hiểm</option>
-                                    <option value="REGISTRATION">Đăng kiểm</option>
-                                    <option value="CLEANING">Vệ sinh xe</option>
-                                    <option value="PARKING">Phí đỗ xe</option>
-                                    <option value="TOLLS">Phí cầu đường</option>
-                                    <option value="REPAIRS">Sửa chữa</option>
-                                    <option value="UPGRADES">Nâng cấp</option>
-                                    <option value="OTHER">Khác</option>
-                                </select>
-                            </div>
-                            
-                            <div class="form-group">
-                                <label for="splitMethod">Phương thức chia</label>
-                                <select id="splitMethod" name="splitMethod" required>
-                                    <option value="OWNERSHIP_PERCENTAGE">Theo tỉ lệ sở hữu</option>
-                                    <option value="USAGE_BASED">Theo mức độ sử dụng</option>
-                                    <option value="EQUAL_SPLIT">Chia đều</option>
-                                    <option value="CUSTOM">Tùy chỉnh</option>
-                                </select>
-                            </div>
-                            
-                            <div class="form-group">
-                                <label for="amount">Số tiền (VNĐ)</label>
-                                <input type="number" id="amount" name="amount" placeholder="Nhập số tiền" required>
-                            </div>
-                            
-                            <div class="form-group">
-                                <label for="description">Mô tả</label>
-                                <textarea id="description" name="description" placeholder="Mô tả chi phí" rows="3"></textarea>
-                            </div>
-                            
-                            <div class="form-group">
-                                <label for="invoiceNumber">Số hóa đơn</label>
-                                <input type="text" id="invoiceNumber" name="invoiceNumber" placeholder="Số hóa đơn (nếu có)">
-                            </div>
-                            
-                            <div class="form-group">
-                                <label for="receiptUrl">Link hóa đơn</label>
-                                <input type="url" id="receiptUrl" name="receiptUrl" placeholder="Link hóa đơn (nếu có)">
-                            </div>
-                            
-                            <div class="form-actions">
-                                <button type="button" class="btn btn-outline" onclick="previewSplit()">
-                                    <i class="fas fa-eye"></i>
-                                    Xem trước
-                                </button>
-                                <button type="submit" class="btn btn-primary">
-                                    <i class="fas fa-save"></i>
-                                    Lưu chi phí
-                                </button>
-                            </div>
-                        </form>
-                    </div>
-                </div>
-
-                <!-- Split Preview -->
-                <div class="card" id="splitPreview" style="display: none;">
-                    <div class="card-header">
-                        <h3 class="card-title">Xem trước chia sẻ</h3>
-                    </div>
-                    <div class="card-body">
-                        <div class="split-preview" id="splitPreviewContent">
-                            <!-- Split preview will be shown here -->
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Cost Splits Table -->
-        <div class="card">
-            <div class="card-header">
-                <h3 class="card-title">Lịch sử chia sẻ chi phí</h3>
-                <div class="card-actions">
-                    <select id="filterStatus" class="filter-select">
-                        <option value="">Tất cả trạng thái</option>
-                        <option value="PENDING">Chờ thanh toán</option>
-                        <option value="PAID">Đã thanh toán</option>
-                        <option value="OVERDUE">Quá hạn</option>
-                    </select>
-                    <select id="filterGroup" class="filter-select">
-                        <option value="">Tất cả nhóm</option>
-                    </select>
-                </div>
-            </div>
-            <div class="card-body">
-                <div class="table-container">
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>Chi phí</th>
-                                <th>Nhóm</th>
-                                <th>Thành viên</th>
-                                <th>Số tiền</th>
-                                <th>Trạng thái</th>
-                                <th>Ngày tạo</th>
-                                <th>Hành động</th>
-                            </tr>
-                        </thead>
-                        <tbody id="splitsTableBody">
-                            <!-- Cost splits will be loaded here -->
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </main>
+        </main>
+    </div>
 
     <!-- Payment Modal -->
     <div id="paymentModal" class="modal">
@@ -330,6 +334,8 @@
         </div>
     </div>
 
+    <!-- Scripts -->
+    <script th:src="@{/js/layout.js}"></script>
     <script th:src="@{/js/cost-sharing.js}"></script>
 </body>
 </html>

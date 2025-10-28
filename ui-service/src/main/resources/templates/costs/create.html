@@ -5,212 +5,213 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tạo chi phí mới - CarShare Manager</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link th:href="@{/css/layout.css}" rel="stylesheet">
     <link th:href="@{/css/cost-management.css}" rel="stylesheet">
 </head>
 <body>
-    <!-- Header -->
-    <header class="header">
-        <div class="header-content">
-            <div class="logo">
-                <i class="fas fa-car"></i>
-                <span>CarShare Manager</span>
+    <!-- Layout Container -->
+    <div class="layout-container">
+        <!-- Include Sidebar Fragment -->
+        <div th:replace="fragments/sidebar :: sidebar"></div>
+        
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Top Bar -->
+            <div class="top-bar">
+                <div class="top-bar-left">
+                    <button class="mobile-menu-toggle" id="mobileMenuToggle">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <div class="page-info">
+                        <h1 class="page-title">
+                            <i class="fas fa-plus-circle"></i>
+                            Tạo chi phí mới
+                        </h1>
+                        <p class="page-subtitle">Thêm chi phí mới cho xe điện của bạn</p>
+                    </div>
+                </div>
+                <div class="top-bar-actions">
+                    <a href="/costs" class="btn btn-secondary">
+                        <i class="fas fa-arrow-left"></i>
+                        Quay lại
+                    </a>
+                </div>
             </div>
-            <nav class="nav-menu">
-                <a href="/dashboard" class="nav-link">Dashboard</a>
-                <a href="/costs" class="nav-link">Chi Phí</a>
-                <a href="/costs/sharing" class="nav-link">Chia Sẻ</a>
-                <a href="/groups" class="nav-link">Nhóm</a>
-                <a href="/groups/voting" class="nav-link">Bỏ Phiếu</a>
-                <a href="/groups/fund" class="nav-link">Quỹ Chung</a>
-                <a href="/reports" class="nav-link">Báo Cáo</a>
-            </nav>
-        </div>
-    </header>
-
-    <!-- Main Content -->
-    <main class="main-content">
-        <div class="page-header">
-            <div class="page-title-section">
-                <h1 class="page-title">Tạo chi phí mới</h1>
-                <p class="page-subtitle">Thêm chi phí mới cho xe điện của bạn</p>
-            </div>
-            <div class="page-actions">
-                <a href="/costs" class="btn btn-secondary">
-                    <i class="fas fa-arrow-left"></i>
-                    <span>Quay lại</span>
-                </a>
-            </div>
-        </div>
-
-        <!-- Cost Creation Form -->
-        <div class="form-container">
-            <div class="form-card">
-                <form th:action="@{/costs/create}" th:object="${cost}" method="post" id="costForm">
-                    <div class="form-header">
-                        <h2>Thông tin chi phí</h2>
-                        <p>Điền đầy đủ thông tin để tạo chi phí mới</p>
+            
+            <!-- Content Area -->
+            <div class="content-area">
+                <!-- Cost Creation Form -->
+                <div class="form-container">
+                    <div class="form-card">
+                        <form th:action="@{/costs/create}" th:object="${cost}" method="post" id="costForm">
+                            <div class="form-header">
+                                <h2>Thông tin chi phí</h2>
+                                <p>Điền đầy đủ thông tin để tạo chi phí mới</p>
                             </div>
-                            
-                    <div class="form-body">
-                        <!-- Vehicle Selection -->
-                        <div class="form-group">
-                            <label for="vehicleId" class="form-label">
-                                <i class="fas fa-car"></i>
-                                Xe điện
-                            </label>
-                            <select th:field="*{vehicleId}" id="vehicleId" class="form-select" required>
-                                <option value="">Chọn xe điện</option>
-                                <option value="1">Tesla Model 3 - ID: 1</option>
-                                <option value="2">BMW i3 - ID: 2</option>
-                                <option value="3">Audi e-tron - ID: 3</option>
-                                </select>
-                            <div class="form-help">Chọn xe điện mà chi phí này liên quan</div>
-                            </div>
-                            
-                        <!-- Cost Type -->
-                        <div class="form-group">
-                            <label for="costType" class="form-label">
-                                <i class="fas fa-tags"></i>
-                                Loại chi phí
-                            </label>
-                            <div class="cost-type-grid">
-                                <div class="cost-type-option" data-type="ElectricCharge">
-                                    <input type="radio" th:field="*{costType}" value="ElectricCharge" id="ElectricCharge" class="cost-type-radio">
-                                    <label for="ElectricCharge" class="cost-type-label">
-                                        <div class="cost-type-icon electric">
-                                            <i class="fas fa-bolt"></i>
-                                        </div>
-                                        <div class="cost-type-info">
-                                            <span class="cost-type-name">Sạc điện</span>
-                                            <span class="cost-type-desc">Chi phí sạc pin xe điện</span>
-                                        </div>
+                                
+                            <div class="form-body">
+                                <!-- Vehicle Selection -->
+                                <div class="form-group">
+                                    <label for="vehicleId" class="form-label">
+                                        <i class="fas fa-car"></i>
+                                        Xe điện
                                     </label>
+                                    <select th:field="*{vehicleId}" id="vehicleId" class="form-select" required>
+                                        <option value="">Chọn xe điện</option>
+                                        <option value="1">Tesla Model 3 - ID: 1</option>
+                                        <option value="2">BMW i3 - ID: 2</option>
+                                        <option value="3">Audi e-tron - ID: 3</option>
+                                    </select>
+                                    <div class="form-help">Chọn xe điện mà chi phí này liên quan</div>
                                 </div>
-                                <div class="cost-type-option" data-type="Maintenance">
-                                    <input type="radio" th:field="*{costType}" value="Maintenance" id="Maintenance" class="cost-type-radio">
-                                    <label for="Maintenance" class="cost-type-label">
-                                        <div class="cost-type-icon maintenance">
-                                            <i class="fas fa-tools"></i>
-                                        </div>
-                                        <div class="cost-type-info">
-                                            <span class="cost-type-name">Bảo dưỡng</span>
-                                            <span class="cost-type-desc">Bảo dưỡng định kỳ xe</span>
-                                        </div>
+                                
+                                <!-- Cost Type -->
+                                <div class="form-group">
+                                    <label for="costType" class="form-label">
+                                        <i class="fas fa-tags"></i>
+                                        Loại chi phí
                                     </label>
-                                </div>
-                                <div class="cost-type-option" data-type="Insurance">
-                                    <input type="radio" th:field="*{costType}" value="Insurance" id="Insurance" class="cost-type-radio">
-                                    <label for="Insurance" class="cost-type-label">
-                                        <div class="cost-type-icon insurance">
-                                            <i class="fas fa-shield-alt"></i>
+                                    <div class="cost-type-grid">
+                                        <div class="cost-type-option" data-type="ElectricCharge">
+                                            <input type="radio" th:field="*{costType}" value="ElectricCharge" id="ElectricCharge" class="cost-type-radio">
+                                            <label for="ElectricCharge" class="cost-type-label">
+                                                <div class="cost-type-icon electric">
+                                                    <i class="fas fa-bolt"></i>
+                                                </div>
+                                                <div class="cost-type-info">
+                                                    <span class="cost-type-name">Sạc điện</span>
+                                                    <span class="cost-type-desc">Chi phí sạc pin xe điện</span>
+                                                </div>
+                                            </label>
                                         </div>
-                                        <div class="cost-type-info">
-                                            <span class="cost-type-name">Bảo hiểm</span>
-                                            <span class="cost-type-desc">Bảo hiểm xe điện</span>
+                                        <div class="cost-type-option" data-type="Maintenance">
+                                            <input type="radio" th:field="*{costType}" value="Maintenance" id="Maintenance" class="cost-type-radio">
+                                            <label for="Maintenance" class="cost-type-label">
+                                                <div class="cost-type-icon maintenance">
+                                                    <i class="fas fa-tools"></i>
+                                                </div>
+                                                <div class="cost-type-info">
+                                                    <span class="cost-type-name">Bảo dưỡng</span>
+                                                    <span class="cost-type-desc">Bảo dưỡng định kỳ xe</span>
+                                                </div>
+                                            </label>
                                         </div>
-                                    </label>
-                                </div>
-                                <div class="cost-type-option" data-type="Inspection">
-                                    <input type="radio" th:field="*{costType}" value="Inspection" id="Inspection" class="cost-type-radio">
-                                    <label for="Inspection" class="cost-type-label">
-                                        <div class="cost-type-icon inspection">
-                                            <i class="fas fa-search"></i>
+                                        <div class="cost-type-option" data-type="Insurance">
+                                            <input type="radio" th:field="*{costType}" value="Insurance" id="Insurance" class="cost-type-radio">
+                                            <label for="Insurance" class="cost-type-label">
+                                                <div class="cost-type-icon insurance">
+                                                    <i class="fas fa-shield-alt"></i>
+                                                </div>
+                                                <div class="cost-type-info">
+                                                    <span class="cost-type-name">Bảo hiểm</span>
+                                                    <span class="cost-type-desc">Bảo hiểm xe điện</span>
+                                                </div>
+                                            </label>
                                         </div>
-                                        <div class="cost-type-info">
-                                            <span class="cost-type-name">Kiểm định</span>
-                                            <span class="cost-type-desc">Kiểm định định kỳ</span>
+                                        <div class="cost-type-option" data-type="Inspection">
+                                            <input type="radio" th:field="*{costType}" value="Inspection" id="Inspection" class="cost-type-radio">
+                                            <label for="Inspection" class="cost-type-label">
+                                                <div class="cost-type-icon inspection">
+                                                    <i class="fas fa-search"></i>
+                                                </div>
+                                                <div class="cost-type-info">
+                                                    <span class="cost-type-name">Kiểm định</span>
+                                                    <span class="cost-type-desc">Kiểm định định kỳ</span>
+                                                </div>
+                                            </label>
                                         </div>
-                                    </label>
-                                </div>
-                                <div class="cost-type-option" data-type="Cleaning">
-                                    <input type="radio" th:field="*{costType}" value="Cleaning" id="Cleaning" class="cost-type-radio">
-                                    <label for="Cleaning" class="cost-type-label">
-                                        <div class="cost-type-icon cleaning">
-                                            <i class="fas fa-broom"></i>
+                                        <div class="cost-type-option" data-type="Cleaning">
+                                            <input type="radio" th:field="*{costType}" value="Cleaning" id="Cleaning" class="cost-type-radio">
+                                            <label for="Cleaning" class="cost-type-label">
+                                                <div class="cost-type-icon cleaning">
+                                                    <i class="fas fa-broom"></i>
+                                                </div>
+                                                <div class="cost-type-info">
+                                                    <span class="cost-type-name">Vệ sinh</span>
+                                                    <span class="cost-type-desc">Vệ sinh và chăm sóc xe</span>
+                                                </div>
+                                            </label>
                                         </div>
-                                        <div class="cost-type-info">
-                                            <span class="cost-type-name">Vệ sinh</span>
-                                            <span class="cost-type-desc">Vệ sinh và chăm sóc xe</span>
-                                        </div>
-                                    </label>
-                                </div>
-                                <div class="cost-type-option" data-type="Other">
-                                    <input type="radio" th:field="*{costType}" value="Other" id="Other" class="cost-type-radio">
-                                    <label for="Other" class="cost-type-label">
-                                        <div class="cost-type-icon other">
-                                            <i class="fas fa-file-alt"></i>
-                                        </div>
-                                        <div class="cost-type-info">
-                                            <span class="cost-type-name">Khác</span>
-                                            <span class="cost-type-desc">Chi phí khác</span>
-                                        </div>
-                                    </label>
-                                </div>
-                            </div>
-                            </div>
-                            
-                        <!-- Amount -->
-                        <div class="form-group">
-                            <label for="amount" class="form-label">
-                                <i class="fas fa-dollar-sign"></i>
-                                Số tiền (VNĐ)
-                            </label>
-                            <div class="input-group">
-                                <input type="number" th:field="*{amount}" id="amount" class="form-input" 
-                                       placeholder="Nhập số tiền" min="0" step="1000" required>
-                                <span class="input-suffix">VNĐ</span>
-                            </div>
-                            <div class="form-help">Nhập số tiền chi phí (tối thiểu 1,000 VNĐ)</div>
-                        </div>
-
-                        <!-- Description -->
-                        <div class="form-group">
-                            <label for="description" class="form-label">
-                                <i class="fas fa-align-left"></i>
-                                Mô tả chi tiết
-                            </label>
-                            <textarea th:field="*{description}" id="description" class="form-textarea" 
-                                      placeholder="Mô tả chi tiết về chi phí này..." rows="4" required></textarea>
-                            <div class="form-help">Mô tả chi tiết về chi phí để các thành viên hiểu rõ</div>
-                            </div>
-                            
-                        <!-- Cost Preview -->
-                        <div class="form-group">
-                            <div class="cost-preview" id="costPreview" style="display: none;">
-                                <h3>Xem trước chi phí</h3>
-                                <div class="preview-card">
-                                    <div class="preview-header">
-                                        <div class="preview-type" id="previewType">
-                                            <i class="fas fa-file-alt"></i>
-                                        </div>
-                                        <div class="preview-amount" id="previewAmount">0 VNĐ</div>
-                                    </div>
-                                    <div class="preview-body">
-                                        <div class="preview-description" id="previewDescription">Mô tả chi phí</div>
-                                        <div class="preview-meta">
-                                            <span class="preview-vehicle" id="previewVehicle">Xe ID: -</span>
-                                            <span class="preview-date" id="previewDate">Hôm nay</span>
+                                        <div class="cost-type-option" data-type="Other">
+                                            <input type="radio" th:field="*{costType}" value="Other" id="Other" class="cost-type-radio">
+                                            <label for="Other" class="cost-type-label">
+                                                <div class="cost-type-icon other">
+                                                    <i class="fas fa-file-alt"></i>
+                                                </div>
+                                                <div class="cost-type-info">
+                                                    <span class="cost-type-name">Khác</span>
+                                                    <span class="cost-type-desc">Chi phí khác</span>
+                                                </div>
+                                            </label>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
-                        </div>
-                    </div>
+                                
+                                <!-- Amount -->
+                                <div class="form-group">
+                                    <label for="amount" class="form-label">
+                                        <i class="fas fa-dollar-sign"></i>
+                                        Số tiền (VNĐ)
+                                    </label>
+                                    <div class="input-group">
+                                        <input type="number" th:field="*{amount}" id="amount" class="form-input" 
+                                               placeholder="Nhập số tiền" min="0" step="1000" required>
+                                        <span class="input-suffix">VNĐ</span>
+                                    </div>
+                                    <div class="form-help">Nhập số tiền chi phí (tối thiểu 1,000 VNĐ)</div>
+                                </div>
 
-                    <div class="form-footer">
-                        <button type="button" class="btn btn-secondary" onclick="resetForm()">
-                            <i class="fas fa-undo"></i>
-                            <span>Làm mới</span>
-                        </button>
-                        <button type="submit" class="btn btn-primary">
-                            <i class="fas fa-save"></i>
-                            <span>Tạo chi phí</span>
-                        </button>
+                                <!-- Description -->
+                                <div class="form-group">
+                                    <label for="description" class="form-label">
+                                        <i class="fas fa-align-left"></i>
+                                        Mô tả chi tiết
+                                    </label>
+                                    <textarea th:field="*{description}" id="description" class="form-textarea" 
+                                              placeholder="Mô tả chi tiết về chi phí này..." rows="4" required></textarea>
+                                    <div class="form-help">Mô tả chi tiết về chi phí để các thành viên hiểu rõ</div>
+                                </div>
+                                
+                                <!-- Cost Preview -->
+                                <div class="form-group">
+                                    <div class="cost-preview" id="costPreview" style="display: none;">
+                                        <h3>Xem trước chi phí</h3>
+                                        <div class="preview-card">
+                                            <div class="preview-header">
+                                                <div class="preview-type" id="previewType">
+                                                    <i class="fas fa-file-alt"></i>
+                                                </div>
+                                                <div class="preview-amount" id="previewAmount">0 VNĐ</div>
+                                            </div>
+                                            <div class="preview-body">
+                                                <div class="preview-description" id="previewDescription">Mô tả chi phí</div>
+                                                <div class="preview-meta">
+                                                    <span class="preview-vehicle" id="previewVehicle">Xe ID: -</span>
+                                                    <span class="preview-date" id="previewDate">Hôm nay</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="form-footer">
+                                <button type="button" class="btn btn-secondary" onclick="resetForm()">
+                                    <i class="fas fa-undo"></i>
+                                    <span>Làm mới</span>
+                                </button>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save"></i>
+                                    <span>Tạo chi phí</span>
+                                </button>
+                            </div>
+                        </form>
                     </div>
-                </form>
+                </div>
             </div>
-        </div>
-    </main>
+        </main>
+    </div>
 
     <!-- Success Modal -->
     <div class="modal" id="successModal">
@@ -235,6 +236,8 @@
         </div>
     </div>
 
+    <!-- Scripts -->
+    <script th:src="@{/js/layout.js}"></script>
     <script th:src="@{/js/cost-create.js}"></script>
 </body>
 </html>

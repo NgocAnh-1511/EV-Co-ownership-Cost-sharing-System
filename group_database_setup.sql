@@ -5,7 +5,7 @@ CREATE DATABASE IF NOT EXISTS Group_Management_DB;
 USE Group_Management_DB;
 
 -- 1️⃣ Bảng GROUP (Nhóm đồng sở hữu)
-CREATE TABLE `Group` (
+CREATE TABLE `group` (
     groupId INT AUTO_INCREMENT PRIMARY KEY,
     groupName VARCHAR(100) NOT NULL,
     adminId INT NOT NULL,
@@ -21,7 +21,7 @@ CREATE TABLE GroupMember (
     userId INT NOT NULL,
     role ENUM('Admin', 'Member') DEFAULT 'Member',
     joinedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (groupId) REFERENCES `Group`(groupId) ON DELETE CASCADE
+    FOREIGN KEY (groupId) REFERENCES `group`(groupId) ON DELETE CASCADE
 );
 
 -- 3️⃣ Bảng VOTING (Phiên bỏ phiếu)
@@ -34,7 +34,7 @@ CREATE TABLE Voting (
     finalResult VARCHAR(100),
     totalVotes INT DEFAULT 0,
     createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (groupId) REFERENCES `Group`(groupId) ON DELETE CASCADE
+    FOREIGN KEY (groupId) REFERENCES `group`(groupId) ON DELETE CASCADE
 );
 
 -- 4️⃣ Bảng VOTING_RESULT (Kết quả bỏ phiếu theo thành viên)
@@ -49,7 +49,7 @@ CREATE TABLE VotingResult (
 );
 
 -- Insert sample data
-INSERT INTO `Group` (groupName, adminId, vehicleId, status) VALUES 
+INSERT INTO `group` (groupName, adminId, vehicleId, status) VALUES 
 ('EV Group Tesla Model 3', 1, 1, 'Active'),
 ('EV Group BMW i3', 2, 2, 'Active');
 

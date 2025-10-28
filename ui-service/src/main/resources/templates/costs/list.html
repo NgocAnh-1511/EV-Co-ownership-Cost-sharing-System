@@ -5,50 +5,43 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Quản lý Chi phí - CarShare Manager</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <link th:href="@{/css/cost-list.css}" rel="stylesheet">
+    <link th:href="@{/css/layout.css}" rel="stylesheet">
+    <link th:href="@{/css/cost-management.css}" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
-    <!-- Header -->
-    <header class="header">
-        <div class="header-content">
-            <div class="logo">
-                <i class="fas fa-car"></i>
-                <span>CarShare Manager</span>
+    <!-- Layout Container -->
+    <div class="layout-container">
+        <!-- Include Sidebar Fragment -->
+        <div th:replace="fragments/sidebar :: sidebar"></div>
+        
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Top Bar -->
+            <div class="top-bar">
+                <div class="top-bar-left">
+                    <button class="mobile-menu-toggle" id="mobileMenuToggle">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <div class="page-info">
+                        <h1 class="page-title">Quản lý Chi phí</h1>
+                        <p class="page-subtitle">Theo dõi và quản lý các khoản chi phí trong nhóm sở hữu chung</p>
+                    </div>
+                </div>
+                <div class="top-bar-actions">
+                    <button class="btn btn-outline" onclick="exportCosts()">
+                        <i class="fas fa-download"></i>
+                        Xuất báo cáo
+                    </button>
+                    <a href="/costs/create" class="btn btn-primary">
+                        <i class="fas fa-plus"></i>
+                        Thêm chi phí mới
+                    </a>
+                </div>
             </div>
-            <nav class="nav-menu">
-                <a href="/dashboard" class="nav-link">Dashboard</a>
-                <a href="/costs" class="nav-link active">Chi Phí</a>
-                <a href="/costs/sharing" class="nav-link">Chia Sẻ</a>
-                <a href="/groups" class="nav-link">Nhóm</a>
-                <a href="/groups/voting" class="nav-link">Bỏ Phiếu</a>
-                <a href="/groups/fund" class="nav-link">Quỹ Chung</a>
-                <a href="/reports" class="nav-link">Báo Cáo</a>
-            </nav>
-        </div>
-    </header>
-
-    <!-- Main Content -->
-    <main class="main-content">
-        <div class="page-header">
-            <div class="page-title-section">
-                <h1 class="page-title">
-                    <i class="fas fa-receipt"></i>
-                    Quản lý Chi phí
-                </h1>
-                <p class="page-subtitle">Theo dõi và quản lý các khoản chi phí trong nhóm sở hữu chung</p>
-            </div>
-            <div class="page-actions">
-                <button class="btn btn-outline" onclick="exportCosts()">
-                    <i class="fas fa-download"></i>
-                    Xuất báo cáo
-                </button>
-                <a href="/costs/create" class="btn btn-primary">
-                    <i class="fas fa-plus"></i>
-                    Thêm chi phí mới
-                </a>
-            </div>
-        </div>
+            
+            <!-- Content Area -->
+            <div class="content-area">
 
         <!-- Statistics Cards -->
         <div class="stats-grid">
@@ -201,9 +194,13 @@
                     </a>
                 </div>
             </div>
-        </div>
-    </main>
+            </div>
+        </main>
+    </div>
 
+    <!-- Layout JavaScript -->
+    <script th:src="@{/js/layout.js}"></script>
+    
     <!-- Custom JavaScript -->
     <script>
         // Search functionality

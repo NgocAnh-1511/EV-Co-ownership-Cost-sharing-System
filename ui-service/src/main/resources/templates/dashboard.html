@@ -5,37 +5,39 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard - CarShare Manager</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <link th:href="@{/css/cost-sharing.css}" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link th:href="@{/css/layout.css}" rel="stylesheet">
+    <link th:href="@{/css/dashboard.css}" rel="stylesheet">
 </head>
 <body>
-    <!-- Header -->
-    <header class="header">
-        <div class="header-content">
-            <div class="logo">
-                <i class="fas fa-car"></i>
-                <span>CarShare Manager</span>
-            </div>
-            <nav class="nav-menu">
-                <a href="/dashboard" class="nav-link active">Dashboard</a>
-                <a href="/costs" class="nav-link">Chi Phí</a>
-                <a href="/costs/sharing" class="nav-link">Chia Sẻ</a>
-                <a href="/groups" class="nav-link">Nhóm</a>
-                <a href="/groups/voting" class="nav-link">Bỏ Phiếu</a>
-                <a href="/groups/fund" class="nav-link">Quỹ Chung</a>
-                <a href="/reports" class="nav-link">Báo Cáo</a>
-            </nav>
-        </div>
-    </header>
+    <!-- Layout Container -->
+    <div class="layout-container">
+        <!-- Include Sidebar Fragment -->
+        <div th:replace="fragments/sidebar :: sidebar"></div>
 
     <!-- Main Content -->
     <main class="main-content">
-        <div class="page-header">
-            <div class="page-title-section">
+            <!-- Top Bar -->
+            <div class="top-bar">
+                <div class="top-bar-left">
+                    <button class="mobile-menu-toggle" id="mobileMenuToggle">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <div class="page-info">
                 <h1 class="page-title">Dashboard</h1>
                 <p class="page-subtitle">Tổng quan hệ thống quản lý đồng sở hữu xe</p>
+                    </div>
+                </div>
+                <div class="top-bar-actions">
+                    <button class="btn btn-outline" onclick="refreshDashboard()">
+                        <i class="fas fa-sync-alt"></i>
+                        Làm mới
+                    </button>
             </div>
         </div>
 
+            <!-- Content Area -->
+            <div class="content-area">
         <!-- Stats Cards -->
         <div class="stats-grid">
             <div class="stat-card">
@@ -77,8 +79,14 @@
         </div>
 
         <!-- Quick Actions -->
-        <div class="quick-actions">
-            <h2 class="section-title">Thao tác nhanh</h2>
+                <div class="card">
+                    <div class="card-header">
+                        <h3>
+                            <i class="fas fa-bolt"></i>
+                            Thao tác nhanh
+                        </h3>
+                    </div>
+                    <div class="card-content">
             <div class="action-buttons">
                 <a href="/costs/sharing" class="action-btn primary">
                     <i class="fas fa-share-alt"></i>
@@ -104,6 +112,7 @@
                     <i class="fas fa-chart-bar"></i>
                     <span>Xem báo cáo</span>
                 </a>
+                        </div>
             </div>
         </div>
 
@@ -111,10 +120,13 @@
         <div class="content-grid">
             <div class="card">
                 <div class="card-header">
-                    <h3 class="card-title">Nhóm gần đây</h3>
-                    <a href="/groups" class="view-all">Xem tất cả</a>
+                            <h3>
+                                <i class="fas fa-users"></i>
+                                Nhóm gần đây
+                            </h3>
+                            <a href="/groups" class="btn btn-sm btn-outline">Xem tất cả</a>
                 </div>
-                <div class="card-body">
+                        <div class="card-content">
                     <div class="data-list" th:if="${groups != null and !groups.empty}">
                         <div class="data-item" th:each="group : ${groups}">
                             <div class="data-icon">
@@ -135,10 +147,13 @@
 
             <div class="card">
                 <div class="card-header">
-                    <h3 class="card-title">Chi phí gần đây</h3>
-                    <a href="/costs" class="view-all">Xem tất cả</a>
+                            <h3>
+                                <i class="fas fa-receipt"></i>
+                                Chi phí gần đây
+                            </h3>
+                            <a href="/costs" class="btn btn-sm btn-outline">Xem tất cả</a>
                 </div>
-                <div class="card-body">
+                        <div class="card-content">
                     <div class="data-list" th:if="${costs != null and !costs.empty}">
                         <div class="data-item" th:each="cost : ${costs}">
                             <div class="data-icon">
@@ -153,196 +168,27 @@
                     <div class="empty-state" th:if="${costs == null or costs.empty}">
                         <i class="fas fa-receipt"></i>
                         <p>Chưa có chi phí nào</p>
+                            </div>
                     </div>
                 </div>
             </div>
         </div>
     </main>
-
-    <style>
-        /* Dashboard specific styles */
-        .stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 1.5rem;
-            margin-bottom: 2rem;
+    </div>
+    
+    <!-- Scripts -->
+    <script th:src="@{/js/layout.js}"></script>
+    <script>
+        // Dashboard specific JavaScript
+        function refreshDashboard() {
+            window.location.reload();
         }
-
-        .stat-card {
-            background: white;
-            border-radius: 1rem;
-            padding: 1.5rem;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-        }
-
-        .stat-icon {
-            width: 3rem;
-            height: 3rem;
-            border-radius: 0.75rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.25rem;
-            color: white;
-            background: linear-gradient(135deg, #3B82F6, #1D4ED8);
-        }
-
-        .stat-content {
-            flex: 1;
-        }
-
-        .stat-value {
-            font-size: 1.5rem;
-            font-weight: bold;
-            color: #1e293b;
-            margin-bottom: 0.25rem;
-        }
-
-        .stat-label {
-            color: #64748b;
-            font-size: 0.9rem;
-        }
-
-        .quick-actions {
-            margin-bottom: 2rem;
-        }
-
-        .section-title {
-            font-size: 1.25rem;
-            font-weight: 600;
-            color: #1e293b;
-            margin-bottom: 1rem;
-        }
-
-        .action-buttons {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1rem;
-        }
-
-        .action-btn {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            padding: 1rem 1.5rem;
-            background: white;
-            border: 1px solid #e5e7eb;
-            border-radius: 0.75rem;
-            text-decoration: none;
-            color: #374151;
-            font-weight: 500;
-            transition: all 0.2s;
-        }
-
-        .action-btn:hover {
-            background: #f9fafb;
-            border-color: #d1d5db;
-            transform: translateY(-1px);
-        }
-
-        .action-btn.primary {
-            background: #3B82F6;
-            color: white;
-            border-color: #3B82F6;
-        }
-
-        .action-btn.primary:hover {
-            background: #2563eb;
-            border-color: #2563eb;
-        }
-
-        .action-btn i {
-            font-size: 1.25rem;
-        }
-
-        .view-all {
-            color: #3B82F6;
-            text-decoration: none;
-            font-size: 0.9rem;
-            font-weight: 500;
-        }
-
-        .view-all:hover {
-            text-decoration: underline;
-        }
-
-        .data-list {
-            display: flex;
-            flex-direction: column;
-            gap: 1rem;
-        }
-
-        .data-item {
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-            padding: 1rem;
-            background: #f8fafc;
-            border-radius: 0.5rem;
-            transition: background-color 0.2s;
-        }
-
-        .data-item:hover {
-            background: #f1f5f9;
-        }
-
-        .data-icon {
-            width: 2.5rem;
-            height: 2.5rem;
-            border-radius: 0.5rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            background: #3B82F6;
-            font-size: 1rem;
-        }
-
-        .data-content {
-            flex: 1;
-        }
-
-        .data-title {
-            font-weight: 600;
-            color: #1e293b;
-            margin-bottom: 0.25rem;
-        }
-
-        .data-subtitle {
-            color: #64748b;
-            font-size: 0.9rem;
-        }
-
-        .empty-state {
-            text-align: center;
-            padding: 2rem;
-            color: #9ca3af;
-        }
-
-        .empty-state i {
-            font-size: 2rem;
-            margin-bottom: 0.5rem;
-        }
-
-        .empty-state p {
-            margin: 0;
-        }
-
-        @media (max-width: 768px) {
-            .stats-grid {
-                grid-template-columns: 1fr;
-            }
-            
-            .action-buttons {
-                grid-template-columns: 1fr;
-            }
-        }
-    </style>
-</body>
-</html>
-    </style>
+        
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('Dashboard loaded');
+            setActiveNavItem();
+        });
+    </script>
 </body>
 </html>

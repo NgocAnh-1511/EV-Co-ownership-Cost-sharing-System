@@ -4,6 +4,8 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.Date;
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -13,4 +15,8 @@ public class GroupDto {
     private Integer adminId;
     private Integer vehicleId;
     private String status;
+    private Date createdAt;
+    private Integer memberCount;
+    private Double totalCost;
+    private Integer voteCount;
 }
