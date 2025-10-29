@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Quản Lý Người Dùng</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <style>
+        .alert-success { color: #155724; background-color: #d4edda; border-color: #c3e6cb; padding: .75rem 1.25rem; margin-bottom: 1rem; border: 1px solid transparent; border-radius: .25rem; }
+        .alert-danger { color: #721c24; background-color: #f8d7da; border-color: #f5c6cb; padding: .75rem 1.25rem; margin-bottom: 1rem; border: 1px solid transparent; border-radius: .25rem; }
+    </style>
+</head>
+<body>
+<div class="container mt-5">
+    <h1>Quản Lý Người Dùng</h1>
+
+    <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}"></div>
+    <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
+
+    <table class="table table-striped table-bordered">
+        <thead class="thead-dark">
+        <tr>
+            <th>ID</th>
+            <th>Tên Đăng Nhập (Full Name)</th>
+            <th>Email</th>
+            <th>Vai trò</th>
+            <th>Hành động</th>
+        </tr>
+        </thead>
+        <tbody>
+        <tr th:each="user : ${users}">
+            <td th:text="${user.userId}">1</td>
+            <td th:text="${user.fullName}">Tên mẫu</td>
+            <td th:text="${user.email}">email@example.com</td>
+            <td th:text="${user.role}">ROLE_USER</td>
+            <td>
+                <form th:if="${user.role != 'ROLE_ADMIN'}"
+                      th:action="@{/admin/users/promote/{id}(id=${user.userId})}"
+                      method="post" style="display: inline;">
+                    <button type="submit" class="btn btn-sm btn-success">Nâng cấp thành Admin</button>
+                </form>
+                <span th:if="${user.role == 'ROLE_ADMIN'}" class="text-muted">Đã là Admin</span>
+            </td>
+        </tr>
+        </tbody>
+    </table>
+
+    <p><a th:href="@{/admin/dashboard}" class="btn btn-secondary">Quay lại Dashboard</a></p>
+    <form th:action="@{/logout}" method="post" style="display: inline;">
+        <button type="submit" class="btn btn-warning">Đăng xuất</button>
+    </form>
+</div>
+</body>
+</html>
