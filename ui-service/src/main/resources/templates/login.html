@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Đăng Nhập Tài Khoản</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <style>
+        .alert-danger {
+            color: #721c24; background-color: #f8d7da; border-color: #f5c6cb;
+            padding: .75rem 1.25rem; margin-bottom: 1rem; border: 1px solid transparent; border-radius: .25rem;
+        }
+        .alert-success {
+            color: #155724; background-color: #d4edda; border-color: #c3e6cb;
+            padding: .75rem 1.25rem; margin-bottom: 1rem; border: 1px solid transparent; border-radius: .25rem;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-5">
+            <div class="card shadow-sm border-0">
+                <div class="card-body p-4">
+                    <div class="text-center mb-4">
+                        <img src="https://via.placeholder.com/60" alt="logo" class="mb-3">
+                        <h4>Đăng Nhập Tài Khoản</h4>
+                        <p class="text-muted">Chào mừng bạn quay trở lại</p>
+                    </div>
+
+                    <form th:action="@{/login}" method="post">
+
+                        <div th:if="${param.logout}" class="alert alert-success">
+                            Bạn đã đăng xuất thành công.
+                        </div>
+
+                        <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}"></div>
+
+                        <div th:if="${param.error}" class="alert alert-danger">
+                            Tên đăng nhập hoặc mật khẩu không chính xác.
+                        </div>
+
+                        <div class="form-group">
+                            <label for="username">Tên đăng nhập hoặc Email</label>
+                            <input type="text" id="username" name="username" class="form-control" placeholder="Nhập tên đăng nhập hoặc email" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="password">Mật khẩu</label>
+                            <input type="password" id="password" name="password" class="form-control" placeholder="Nhập mật khẩu" required>
+                        </div>
+
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div class="custom-control custom-checkbox">
+                                <input type="checkbox" class="custom-control-input" id="rememberMe">
+                                <label class="custom-control-label" for="rememberMe">Ghi nhớ đăng nhập</label>
+                            </div>
+                            <a href="#">Quên mật khẩu?</a>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary btn-block">Đăng Nhập</button>
+
+                        <div class="text-center my-3 text-muted">hoặc</div>
+
+                        <a href="#" class="btn btn-outline-danger btn-block mb-2"> <i class="fab fa-google"></i> Đăng nhập bằng Google</a>
+                        <a href="#" class="btn btn-outline-primary btn-block"> <i class="fab fa-facebook-f"></i> Đăng nhập bằng Facebook</a>
+
+                    </form>
+
+                    <hr>
+                    <p class="text-center text-muted">
+                        Chưa có tài khoản? <a th:href="@{/register}">Đăng ký ngay</a>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.3/js/all.min.js"></script>
+
+</body>
+</html>
