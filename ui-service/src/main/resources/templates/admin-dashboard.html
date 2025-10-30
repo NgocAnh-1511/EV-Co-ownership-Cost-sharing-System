@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - CarShare Manager</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link th:href="@{/css/admin-dashboard.css}" rel="stylesheet">
+</head>
+<body>
+    <div class="admin-container">
+        <!-- Sidebar -->
+        <aside class="admin-sidebar">
+            <div class="admin-brand">
+                <i class="fas fa-shield-halved"></i>
+                <span>ADMIN PANEL</span>
+            </div>
+            
+            <nav class="admin-nav">
+                <a href="#overview" class="nav-link active" data-section="overview">
+                    <i class="fas fa-chart-line"></i>
+                    <span>Tổng quan</span>
+                </a>
+                <a href="#cost-management" class="nav-link" data-section="cost-management">
+                    <i class="fas fa-money-bill-wave"></i>
+                    <span>Quản lý chi phí</span>
+                </a>
+                <a href="#auto-split" class="nav-link" data-section="auto-split">
+                    <i class="fas fa-calculator"></i>
+                    <span>Chia tự động</span>
+                </a>
+                <a href="#payment-tracking" class="nav-link" data-section="payment-tracking">
+                    <i class="fas fa-credit-card"></i>
+                    <span>Theo dõi thanh toán</span>
+                </a>
+                <a href="#group-management" class="nav-link" data-section="group-management">
+                    <i class="fas fa-users"></i>
+                    <span>Quản lý nhóm</span>
+                </a>
+                <a href="#reports" class="nav-link" data-section="reports">
+                    <i class="fas fa-file-invoice"></i>
+                    <span>Báo cáo</span>
+                </a>
+            </nav>
+            
+            <div class="admin-user">
+                <div class="user-avatar">
+                    <i class="fas fa-user-shield"></i>
+                </div>
+                <div class="user-info">
+                    <div class="user-name">Admin</div>
+                    <div class="user-role">Quản trị viên</div>
+                </div>
+                <a href="/" class="logout-btn" title="Đăng xuất">
+                    <i class="fas fa-sign-out-alt"></i>
+                </a>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="admin-main">
+            <!-- Header -->
+            <header class="admin-header">
+                <div class="header-left">
+                    <h1 id="page-title">Tổng quan</h1>
+                    <p class="header-subtitle">Quản lý hệ thống chia sẻ chi phí xe điện</p>
+                </div>
+                <div class="header-right">
+                    <div class="search-box">
+                        <i class="fas fa-search"></i>
+                        <input type="text" placeholder="Tìm kiếm...">
+                    </div>
+                    <button class="btn-notifications">
+                        <i class="fas fa-bell"></i>
+                        <span class="badge">3</span>
+                    </button>
+                </div>
+            </header>
+
+            <!-- Content Sections -->
+            <div class="admin-content">
+                
+                <!-- OVERVIEW SECTION -->
+                <section id="overview-section" class="content-section active">
+                    <!-- Stats Cards -->
+                    <div class="stats-grid">
+                        <div class="stat-card primary">
+                            <div class="stat-icon">
+                                <i class="fas fa-dollar-sign"></i>
+                            </div>
+                            <div class="stat-details">
+                                <div class="stat-label">Tổng chi phí tháng này</div>
+                                <div class="stat-value" id="total-cost">0 ₫</div>
+                                <div class="stat-trend positive">
+                                    <i class="fas fa-arrow-up"></i> 12.5%
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="stat-card success">
+                            <div class="stat-icon">
+                                <i class="fas fa-check-circle"></i>
+                            </div>
+                            <div class="stat-details">
+                                <div class="stat-label">Đã thanh toán</div>
+                                <div class="stat-value" id="paid-amount">0 ₫</div>
+                                <div class="stat-trend positive">
+                                    <i class="fas fa-arrow-up"></i> 8.3%
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="stat-card warning">
+                            <div class="stat-icon">
+                                <i class="fas fa-clock"></i>
+                            </div>
+                            <div class="stat-details">
+                                <div class="stat-label">Chưa thanh toán</div>
+                                <div class="stat-value" id="pending-amount">0 ₫</div>
+                                <div class="stat-trend negative">
+                                    <i class="fas fa-arrow-down"></i> 4.2%
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="stat-card info">
+                            <div class="stat-icon">
+                                <i class="fas fa-users"></i>
+                            </div>
+                            <div class="stat-details">
+                                <div class="stat-label">Tổng số thành viên</div>
+                                <div class="stat-value" id="total-members">0</div>
+                                <div class="stat-trend positive">
+                                    <i class="fas fa-arrow-up"></i> 2
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Charts Row -->
+                    <div class="charts-row">
+                        <div class="chart-card">
+                            <div class="card-header">
+                                <h3>Chi phí theo tháng</h3>
+                                <select id="year-select">
+                                    <option value="2025">2025</option>
+                                    <option value="2024">2024</option>
+                                </select>
+                            </div>
+                            <div class="card-body">
+                                <canvas id="monthly-chart"></canvas>
+                            </div>
+                        </div>
+
+                        <div class="chart-card">
+                            <div class="card-header">
+                                <h3>Phân loại chi phí</h3>
+                            </div>
+                            <div class="card-body">
+                                <canvas id="category-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Recent Activities -->
+                    <div class="recent-activities">
+                        <div class="card-header">
+                            <h3>Hoạt động gần đây</h3>
+                            <a href="#" class="view-all">Xem tất cả</a>
+                        </div>
+                        <div class="activity-list" id="activity-list">
+                            <!-- Activities will be loaded here -->
+                        </div>
+                    </div>
+                </section>
+
+                <!-- COST MANAGEMENT SECTION -->
+                <section id="cost-management-section" class="content-section">
+                    <div class="section-header">
+                        <button class="btn btn-primary" id="btn-create-cost">
+                            <i class="fas fa-plus"></i> Tạo chi phí mới
+                        </button>
+                        <div class="filter-group">
+                            <select id="cost-type-filter">
+                                <option value="">Tất cả loại</option>
+                                <option value="ElectricCharge">Phí sạc điện</option>
+                                <option value="Maintenance">Bảo dưỡng</option>
+                                <option value="Insurance">Bảo hiểm</option>
+                                <option value="Inspection">Đăng kiểm</option>
+                                <option value="Cleaning">Vệ sinh</option>
+                                <option value="Other">Khác</option>
+                            </select>
+                            <select id="cost-status-filter">
+                                <option value="">Tất cả trạng thái</option>
+                                <option value="PENDING">Chưa thanh toán</option>
+                                <option value="PAID">Đã thanh toán</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="data-table">
+                        <table id="costs-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Loại chi phí</th>
+                                    <th>Số tiền</th>
+                                    <th>Phương thức chia</th>
+                                    <th>Ngày tạo</th>
+                                    <th>Trạng thái</th>
+                                    <th>Thao tác</th>
+                                </tr>
+                            </thead>
+                            <tbody id="costs-tbody">
+                                <!-- Data will be loaded here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- AUTO SPLIT SECTION -->
+                <section id="auto-split-section" class="content-section">
+                    <div class="split-form-card">
+                        <h3>Tạo chi phí và tự động chia</h3>
+                        
+                        <form id="auto-split-form">
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Nhóm/Xe</label>
+                                    <select id="group-select" required>
+                                        <option value="">-- Chọn nhóm --</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>Loại chi phí</label>
+                                    <select id="cost-type" required>
+                                        <option value="ElectricCharge">Phí sạc điện</option>
+                                        <option value="Maintenance">Bảo dưỡng</option>
+                                        <option value="Insurance">Bảo hiểm</option>
+                                        <option value="Inspection">Đăng kiểm</option>
+                                        <option value="Cleaning">Vệ sinh</option>
+                                        <option value="Other">Khác</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label>Số tiền</label>
+                                    <input type="number" id="amount" placeholder="VD: 500000" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Phương thức chia</label>
+                                    <select id="split-method" required>
+                                        <option value="BY_OWNERSHIP">Theo tỷ lệ sở hữu</option>
+                                        <option value="BY_USAGE">Theo km đã chạy</option>
+                                        <option value="EQUAL">Chia đều</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="form-group" id="usage-period" style="display: none;">
+                                <label>Tháng/Năm (cho phương thức theo km)</label>
+                                <div class="form-row">
+                                    <select id="month">
+                                        <option value="1">Tháng 1</option>
+                                        <option value="2">Tháng 2</option>
+                                        <option value="3">Tháng 3</option>
+                                        <option value="4">Tháng 4</option>
+                                        <option value="5">Tháng 5</option>
+                                        <option value="6">Tháng 6</option>
+                                        <option value="7">Tháng 7</option>
+                                        <option value="8">Tháng 8</option>
+                                        <option value="9">Tháng 9</option>
+                                        <option value="10">Tháng 10</option>
+                                        <option value="11">Tháng 11</option>
+                                        <option value="12">Tháng 12</option>
+                                    </select>
+                                    <input type="number" id="year" placeholder="2025" value="2025">
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Mô tả</label>
+                                <textarea id="description" rows="3" placeholder="Mô tả chi tiết về khoản chi..."></textarea>
+                            </div>
+
+                            <div class="form-actions">
+                                <button type="button" class="btn btn-secondary" id="btn-preview">
+                                    <i class="fas fa-eye"></i> Xem trước
+                                </button>
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-save"></i> Tạo và chia tự động
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <!-- Preview Result -->
+                    <div id="preview-result" class="preview-card" style="display: none;">
+                        <h3>Kết quả chia chi phí</h3>
+                        <div id="preview-content"></div>
+                    </div>
+                </section>
+
+                <!-- PAYMENT TRACKING SECTION -->
+                <section id="payment-tracking-section" class="content-section">
+                    <div class="section-header">
+                        <h3>Theo dõi thanh toán</h3>
+                        <div class="filter-group">
+                            <input type="date" id="date-from" placeholder="Từ ngày">
+                            <input type="date" id="date-to" placeholder="Đến ngày">
+                            <button class="btn btn-secondary" id="btn-filter-payment">
+                                <i class="fas fa-filter"></i> Lọc
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="data-table">
+                        <table id="payments-table">
+                            <thead>
+                                <tr>
+                                    <th>Người dùng</th>
+                                    <th>Chi phí</th>
+                                    <th>Số tiền phải trả</th>
+                                    <th>Đã thanh toán</th>
+                                    <th>Phương thức</th>
+                                    <th>Trạng thái</th>
+                                    <th>Thao tác</th>
+                                </tr>
+                            </thead>
+                            <tbody id="payments-tbody">
+                                <!-- Data will be loaded here -->
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <!-- GROUP MANAGEMENT SECTION -->
+                <section id="group-management-section" class="content-section">
+                    <div class="section-header">
+                        <button class="btn btn-primary" id="btn-create-group">
+                            <i class="fas fa-plus"></i> Tạo nhóm mới
+                        </button>
+                    </div>
+
+                    <div class="groups-grid" id="groups-grid">
+                        <!-- Groups will be loaded here -->
+                    </div>
+                </section>
+
+                <!-- REPORTS SECTION -->
+                <section id="reports-section" class="content-section">
+                    <div class="reports-grid">
+                        <div class="report-card">
+                            <i class="fas fa-file-excel"></i>
+                            <h4>Báo cáo chi phí Excel</h4>
+                            <p>Xuất tất cả chi phí ra file Excel</p>
+                            <button class="btn btn-primary">
+                                <i class="fas fa-download"></i> Tải xuống
+                            </button>
+                        </div>
+
+                        <div class="report-card">
+                            <i class="fas fa-file-pdf"></i>
+                            <h4>Báo cáo PDF</h4>
+                            <p>Báo cáo tổng hợp theo tháng</p>
+                            <button class="btn btn-primary">
+                                <i class="fas fa-download"></i> Tải xuống
+                            </button>
+                        </div>
+
+                        <div class="report-card">
+                            <i class="fas fa-chart-pie"></i>
+                            <h4>Phân tích chi tiết</h4>
+                            <p>Phân tích chi tiêu theo nhóm</p>
+                            <button class="btn btn-primary">
+                                <i class="fas fa-eye"></i> Xem chi tiết
+                            </button>
+                        </div>
+                    </div>
+                </section>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- Modals -->
+    <div id="modal-overlay" class="modal-overlay"></div>
+    
+    <div id="cost-modal" class="modal">
+        <div class="modal-header">
+            <h3>Chi tiết chi phí</h3>
+            <button class="modal-close">&times;</button>
+        </div>
+        <div class="modal-body" id="cost-modal-body">
+            <!-- Content loaded dynamically -->
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script th:src="@{/js/admin-dashboard.js}"></script>
+</body>
+</html>
+

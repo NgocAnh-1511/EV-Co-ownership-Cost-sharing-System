@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - CarShare Manager</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link th:href="@{/css/user-dashboard.css}" rel="stylesheet">
+</head>
+<body>
+    <div class="user-container">
+        <!-- Header -->
+        <header class="user-header">
+            <div class="header-left">
+                <div class="brand">
+                    <i class="fas fa-car-battery"></i>
+                    <span>CarShare</span>
+                </div>
+            </div>
+            <div class="header-center">
+                <nav class="main-nav">
+                    <a href="#" class="nav-item active" data-page="home">
+                        <i class="fas fa-home"></i>
+                        <span>Trang chủ</span>
+                    </a>
+                    <a href="#" class="nav-item" data-page="costs">
+                        <i class="fas fa-receipt"></i>
+                        <span>Chi phí của tôi</span>
+                    </a>
+                    <a href="#" class="nav-item" data-page="usage">
+                        <i class="fas fa-road"></i>
+                        <span>Nhập km</span>
+                    </a>
+                    <a href="#" class="nav-item" data-page="payments">
+                        <i class="fas fa-credit-card"></i>
+                        <span>Thanh toán</span>
+                    </a>
+                </nav>
+            </div>
+            <div class="header-right">
+                <div class="user-menu">
+                    <div class="user-avatar">
+                        <i class="fas fa-user"></i>
+                    </div>
+                    <div class="user-info">
+                        <div class="user-name">Người dùng</div>
+                        <div class="user-email">user@example.com</div>
+                    </div>
+                    <div class="dropdown">
+                        <button class="dropdown-toggle">
+                            <i class="fas fa-chevron-down"></i>
+                        </button>
+                        <div class="dropdown-menu">
+                            <a href="#"><i class="fas fa-user-circle"></i> Hồ sơ</a>
+                            <a href="#"><i class="fas fa-cog"></i> Cài đặt</a>
+                            <a href="/"><i class="fas fa-sign-out-alt"></i> Đăng xuất</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="user-main">
+            
+            <!-- HOME PAGE -->
+            <div id="home-page" class="page active">
+                <!-- Welcome Banner -->
+                <div class="welcome-banner">
+                    <div class="banner-content">
+                        <h1>Chào mừng trở lại! 👋</h1>
+                        <p>Quản lý chi phí xe điện của bạn một cách dễ dàng</p>
+                    </div>
+                    <div class="banner-illustration">
+                        <i class="fas fa-charging-station"></i>
+                    </div>
+                </div>
+
+                <!-- Quick Stats -->
+                <div class="quick-stats">
+                    <div class="stat-box primary">
+                        <div class="stat-icon">
+                            <i class="fas fa-wallet"></i>
+                        </div>
+                        <div class="stat-info">
+                            <div class="stat-label">Cần thanh toán</div>
+                            <div class="stat-value" id="my-pending">0 ₫</div>
+                        </div>
+                    </div>
+
+                    <div class="stat-box success">
+                        <div class="stat-icon">
+                            <i class="fas fa-check-double"></i>
+                        </div>
+                        <div class="stat-info">
+                            <div class="stat-label">Đã thanh toán</div>
+                            <div class="stat-value" id="my-paid">0 ₫</div>
+                        </div>
+                    </div>
+
+                    <div class="stat-box info">
+                        <div class="stat-icon">
+                            <i class="fas fa-tachometer-alt"></i>
+                        </div>
+                        <div class="stat-info">
+                            <div class="stat-label">Km tháng này</div>
+                            <div class="stat-value" id="my-km">0 km</div>
+                        </div>
+                    </div>
+
+                    <div class="stat-box warning">
+                        <div class="stat-icon">
+                            <i class="fas fa-percent"></i>
+                        </div>
+                        <div class="stat-info">
+                            <div class="stat-label">Tỷ lệ sở hữu</div>
+                            <div class="stat-value" id="my-ownership">0%</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- My Groups -->
+                <div class="section-card">
+                    <div class="card-header">
+                        <h2><i class="fas fa-users"></i> Nhóm của tôi</h2>
+                    </div>
+                    <div class="card-body">
+                        <div class="groups-list" id="my-groups-list">
+                            <!-- Groups loaded dynamically -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Costs -->
+                <div class="section-card">
+                    <div class="card-header">
+                        <h2><i class="fas fa-clock"></i> Chi phí gần đây</h2>
+                        <a href="#" class="view-all" data-page="costs">Xem tất cả</a>
+                    </div>
+                    <div class="card-body">
+                        <div class="timeline" id="recent-costs-timeline">
+                            <!-- Recent costs loaded dynamically -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- COSTS PAGE -->
+            <div id="costs-page" class="page">
+                <div class="page-header">
+                    <h1><i class="fas fa-receipt"></i> Chi phí của tôi</h1>
+                    <p>Xem chi tiết các khoản chi phí bạn cần thanh toán</p>
+                </div>
+
+                <!-- Filters -->
+                <div class="filter-bar">
+                    <select id="user-cost-filter">
+                        <option value="all">Tất cả</option>
+                        <option value="pending">Chưa thanh toán</option>
+                        <option value="paid">Đã thanh toán</option>
+                    </select>
+                    <select id="user-month-filter">
+                        <option value="">Tất cả tháng</option>
+                        <option value="1">Tháng 1</option>
+                        <option value="2">Tháng 2</option>
+                        <option value="3">Tháng 3</option>
+                        <option value="4">Tháng 4</option>
+                        <option value="5">Tháng 5</option>
+                        <option value="6">Tháng 6</option>
+                        <option value="7">Tháng 7</option>
+                        <option value="8">Tháng 8</option>
+                        <option value="9">Tháng 9</option>
+                        <option value="10">Tháng 10</option>
+                        <option value="11">Tháng 11</option>
+                        <option value="12">Tháng 12</option>
+                    </select>
+                </div>
+
+                <!-- Costs List -->
+                <div class="costs-grid" id="user-costs-grid">
+                    <!-- Costs loaded dynamically -->
+                </div>
+            </div>
+
+            <!-- USAGE PAGE -->
+            <div id="usage-page" class="page">
+                <div class="page-header">
+                    <h1><i class="fas fa-road"></i> Nhập số km đã chạy</h1>
+                    <p>Cập nhật số km bạn đã sử dụng xe trong tháng</p>
+                </div>
+
+                <div class="usage-form-card">
+                    <form id="usage-form">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Nhóm</label>
+                                <select id="usage-group" required>
+                                    <option value="">-- Chọn nhóm --</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Tháng</label>
+                                <select id="usage-month" required>
+                                    <option value="1">Tháng 1</option>
+                                    <option value="2">Tháng 2</option>
+                                    <option value="3">Tháng 3</option>
+                                    <option value="4">Tháng 4</option>
+                                    <option value="5">Tháng 5</option>
+                                    <option value="6">Tháng 6</option>
+                                    <option value="7">Tháng 7</option>
+                                    <option value="8">Tháng 8</option>
+                                    <option value="9">Tháng 9</option>
+                                    <option value="10">Tháng 10</option>
+                                    <option value="11">Tháng 11</option>
+                                    <option value="12">Tháng 12</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Năm</label>
+                                <input type="number" id="usage-year" value="2025" required>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Số km đã chạy</label>
+                            <div class="km-input-group">
+                                <input type="number" id="km-driven" placeholder="VD: 150" required>
+                                <span class="unit">km</span>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Ghi chú (tùy chọn)</label>
+                            <textarea id="usage-note" rows="3" placeholder="VD: Đi làm hàng ngày, đi chơi cuối tuần..."></textarea>
+                        </div>
+
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="fas fa-save"></i> Lưu thông tin
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Usage History -->
+                <div class="section-card">
+                    <div class="card-header">
+                        <h2><i class="fas fa-history"></i> Lịch sử sử dụng</h2>
+                    </div>
+                    <div class="card-body">
+                        <div class="usage-history" id="usage-history-list">
+                            <!-- Usage history loaded dynamically -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PAYMENTS PAGE -->
+            <div id="payments-page" class="page">
+                <div class="page-header">
+                    <h1><i class="fas fa-credit-card"></i> Thanh toán</h1>
+                    <p>Thanh toán các khoản chi phí của bạn</p>
+                </div>
+
+                <!-- Payment Methods -->
+                <div class="payment-methods">
+                    <div class="method-card active" data-method="ewallet">
+                        <i class="fas fa-mobile-alt"></i>
+                        <span>Ví điện tử</span>
+                    </div>
+                    <div class="method-card" data-method="banking">
+                        <i class="fas fa-university"></i>
+                        <span>Chuyển khoản</span>
+                    </div>
+                    <div class="method-card" data-method="cash">
+                        <i class="fas fa-money-bill"></i>
+                        <span>Tiền mặt</span>
+                    </div>
+                </div>
+
+                <!-- Pending Payments -->
+                <div class="section-card">
+                    <div class="card-header">
+                        <h2><i class="fas fa-exclamation-circle"></i> Cần thanh toán</h2>
+                    </div>
+                    <div class="card-body">
+                        <div class="payment-list" id="pending-payments-list">
+                            <!-- Pending payments loaded dynamically -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Payment History -->
+                <div class="section-card">
+                    <div class="card-header">
+                        <h2><i class="fas fa-history"></i> Lịch sử thanh toán</h2>
+                    </div>
+                    <div class="card-body">
+                        <div class="payment-history" id="payment-history-list">
+                            <!-- Payment history loaded dynamically -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="toast">
+        <div class="toast-icon"></div>
+        <div class="toast-message"></div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script th:src="@{/js/user-dashboard.js}"></script>
+</body>
+</html>
+
