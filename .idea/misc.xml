@@ -9,6 +9,7 @@
         <option value="$PROJECT_DIR$/DisputeResolutionService/pom.xml" />
         <option value="$PROJECT_DIR$/VehicleServiceManagementService/pom.xml" />
         <option value="$PROJECT_DIR$/ui-service/pom.xml" />
+        <option value="$PROJECT_DIR$/user-account-service/pom.xml" />
       </list>
     </option>
     <option name="ignoredFiles">

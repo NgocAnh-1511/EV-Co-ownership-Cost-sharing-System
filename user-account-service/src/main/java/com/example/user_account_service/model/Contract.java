@@ -1,11 +1,11 @@
-package com.example.ui_service.model;
+package com.example.user_account_service.model;
 
 import jakarta.persistence.*; // Import các annotation JPA
 import lombok.Getter;
 import lombok.Setter;
 import java.time.LocalDate; // Import LocalDate cho ngày
 import java.time.Instant; // Import Instant cho timestamp
-import com.example.ui_service.model.Asset; // Import Asset để tạo liên kết
+import com.example.user_account_service.model.Asset; // Import Asset để tạo liên kết
 import org.hibernate.annotations.CreationTimestamp; // Import CreationTimestamp
 import java.util.List; // <-- THÊM IMPORT NÀY
 import jakarta.persistence.OneToMany; // <-- THÊM IMPORT NÀY

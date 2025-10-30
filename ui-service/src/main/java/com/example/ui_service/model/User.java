@@ -1,45 +1,37 @@
-package com.example.ui_service.model;
+package com.example.ui_service.model; // <-- Phải khớp với package bị lỗi
 
-import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
-import org.hibernate.annotations.CreationTimestamp;
-
 import java.time.Instant;
+import java.time.LocalDate;
 
+// LƯU Ý: KHÔNG CÓ @Entity, @Table, @Id, @Column...
+// Đây chỉ là một lớp POJO (khuôn chứa dữ liệu)
 @Getter
 @Setter
-@Entity
-@Table(name = "Users")
 public class User {
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "user_id")
+    // Giữ lại TẤT CẢ các trường
     private Long userId;
-
-    @Column(unique = true, nullable = false, length = 255)
     private String email;
-
-    @Column(name = "password_hash", nullable = false, length = 255)
-    private String passwordHash;
-
-    @Column(name = "full_name", length = 255)
+    private String passwordHash; // Cần cho UserDetailsServiceImp
     private String fullName;
-
-    @Column(name = "phone_number", unique = true, length = 20)
     private String phoneNumber;
-
-    @Column(name = "is_verified")
-    private boolean isVerified = false;
-
-    @CreationTimestamp
-    @Column(name = "created_at", updatable = false)
+    private boolean isVerified;
     private Instant createdAt;
+    private String role; // Cần cho UserDetailsServiceImp
 
-    // --- PHẦN NÂNG CẤP ---
-    // Đã thêm cột role, không được null
-    @Column(name = "role", nullable = false)
-    private String role;
-    // --- KẾT THÚC NÂNG CẤP ---
+    // Các trường hồ sơ
+    private LocalDate dateOfBirth;
+    private String idCardNumber;
+    private LocalDate idCardIssueDate;
+    private String idCardIssuePlace;
+    private String licenseNumber;
+    private String licenseClass;
+    private LocalDate licenseIssueDate;
+    private LocalDate licenseExpiryDate;
+    private String idCardFrontUrl;
+    private String idCardBackUrl;
+    private String licenseImageUrl;
+    private String portraitImageUrl;
 }

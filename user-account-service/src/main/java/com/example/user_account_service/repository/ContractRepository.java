@@ -1,6 +1,6 @@
-package com.example.ui_service.repository;
+package com.example.user_account_service.repository;
 
-import com.example.ui_service.model.Contract;
+import com.example.user_account_service.model.Contract;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;

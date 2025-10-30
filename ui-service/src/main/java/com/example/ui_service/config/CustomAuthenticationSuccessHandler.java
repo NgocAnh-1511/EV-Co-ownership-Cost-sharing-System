@@ -55,7 +55,8 @@ public class CustomAuthenticationSuccessHandler implements AuthenticationSuccess
         if (isAdmin) {
             return "/admin/dashboard"; // Trả về URL trang admin
         } else {
-            return "/contract-management"; // Trả về URL trang user
+            return "/contract-management";
+            // Trả về URL trang user
         }
     }
 }

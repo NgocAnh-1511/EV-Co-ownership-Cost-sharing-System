@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Trạng Thái Hồ Sơ</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"/>
+</head>
+<body>
+<!-- Header -->
+<nav class="navbar navbar-expand-lg navbar-light bg-light shadow-sm">
+    <!-- ... Nội dung header ... -->
+    <a class="navbar-brand" href="#">CarShare</a>
+</nav>
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card text-center shadow-sm">
+                <div class="card-header bg-primary text-white">
+                    <h4>Trạng Thái Hồ Sơ Chủ Xe Đồng Sở Hữu</h4>
+                </div>
+                <div class="card-body">
+                    <!-- Hiển thị thông báo thành công sau khi cập nhật -->
+                    <div th:if="${successMessage}" class="alert alert-success alert-dismissible fade show" role="alert">
+                        <span th:text="${successMessage}"></span>
+                        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                            <span aria-hidden="true">&times;</span>
+                        </button>
+                    </div>
+
+                    <!-- Trạng thái dựa trên isVerified -->
+                    <div th:if="${isVerified != null}">
+                        <div th:if="${isVerified}" class="alert alert-success">
+                            <h5 class="alert-heading"><i class="fas fa-check-circle mr-2"></i>Hồ sơ đã được xác thực!</h5>
+                            <p>Thông tin của bạn đã được quản trị viên phê duyệt.</p>
+                        </div>
+                        <div th:unless="${isVerified}" class="alert alert-warning">
+                            <h5 class="alert-heading"><i class="fas fa-hourglass-half mr-2"></i>Hồ sơ đang chờ duyệt</h5>
+                            <p>Thông tin của bạn đã được gửi thành công và đang chờ quản trị viên xem xét. Chúng tôi sẽ thông báo cho bạn khi có kết quả.</p>
+                            <hr>
+                            <p class="mb-0">Trong thời gian chờ đợi, bạn có thể <a th:href="@{/ho-so}">xem lại thông tin đã gửi</a> hoặc <a th:href="@{/dang-ky-chu-xe}">cập nhật thông tin</a> nếu cần thiết.</p>
+                        </div>
+                    </div>
+                    <div th:unless="${isVerified != null}" class="alert alert-secondary">
+                        Không thể xác định trạng thái hồ sơ.
+                    </div>
+                </div>
+                <div class="card-footer text-muted">
+                    <a th:href="@{/}" class="btn btn-secondary">Quay về Trang chủ</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Footer -->
+<footer class="text-center mt-5 mb-3 text-muted">
+    <p>&copy; <span th:text="${#dates.year(#dates.createNow())}">2025</span> CarShare. All rights reserved.</p>
+</footer>
+
+<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</body>
+</html>

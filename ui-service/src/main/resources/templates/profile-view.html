@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8">
+    <title>Thông Tin Hồ Sơ</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"/>
+    <style>
+        .profile-section { margin-bottom: 2rem; }
+        .profile-label { font-weight: bold; color: #555; }
+        .profile-value { margin-bottom: 0.5rem; }
+        .profile-image { max-width: 100%; height: auto; max-height: 200px; border: 1px solid #ddd; border-radius: 4px; margin-top: 5px; }
+        .image-container { margin-bottom: 1rem; }
+    </style>
+</head>
+<body>
+<!-- Header (Copy từ trang contract-management nếu cần) -->
+<nav class="navbar navbar-expand-lg navbar-light bg-light shadow-sm">
+    <!-- ... Nội dung header ... -->
+    <a class="navbar-brand" href="#">CarShare</a>
+</nav>
+
+<div class="container mt-4 mb-5">
+    <h2>Thông Tin Hồ Sơ Chủ Xe</h2>
+    <hr/>
+
+    <div th:if="${user != null}">
+
+        <!-- Thông Tin Cá Nhân -->
+        <div class="profile-section">
+            <h4><i class="fas fa-user mr-2 text-primary"></i>Thông Tin Cá Nhân</h4>
+            <div class="row">
+                <div class="col-md-6">
+                    <p class="profile-label">Họ và Tên:</p>
+                    <p class="profile-value" th:text="${user.fullName}">...</p>
+                </div>
+                <div class="col-md-6">
+                    <p class="profile-label">Số Điện Thoại:</p>
+                    <p class="profile-value" th:text="${user.phoneNumber}">...</p>
+                </div>
+                <div class="col-md-6">
+                    <p class="profile-label">Email:</p>
+                    <p class="profile-value" th:text="${user.email}">...</p>
+                </div>
+                <div class="col-md-6">
+                    <p class="profile-label">Ngày Sinh:</p>
+                    <p class="profile-value" th:text="${user.dateOfBirth != null ? #temporals.format(user.dateOfBirth, 'dd/MM/yyyy') : 'Chưa cập nhật'}">...</p>
+                </div>
+                <div class="col-md-6">
+                    <p class="profile-label">Trạng thái xác thực:</p>
+                    <p class="profile-value">
+                        <span th:if="${user.isVerified}" class="badge badge-success">Đã xác thực</span>
+                        <span th:unless="${user.isVerified}" class="badge badge-warning">Chưa xác thực</span>
+                    </p>
+                </div>
+                <div class="col-md-6">
+                    <p class="profile-label">Vai trò:</p>
+                    <p class="profile-value" th:text="${user.role}">...</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Giấy Tờ Tùy Thân -->
+        <div class="profile-section">
+            <h4><i class="fas fa-id-card mr-2 text-info"></i>Giấy Tờ Tùy Thân</h4>
+            <div class="row">
+                <div class="col-md-6">
+                    <p class="profile-label">Số CMND/CCCD:</p>
+                    <p class="profile-value" th:text="${user.idCardNumber ?: 'Chưa cập nhật'}">...</p>
+                </div>
+                <div class="col-md-6">
+                    <p class="profile-label">Ngày Cấp:</p>
+                    <p class="profile-value" th:text="${user.idCardIssueDate != null ? #temporals.format(user.idCardIssueDate, 'dd/MM/yyyy') : 'Chưa cập nhật'}">...</p>
+                </div>
+                <div class="col-md-12">
+                    <p class="profile-label">Nơi Cấp:</p>
+                    <p class="profile-value" th:text="${user.idCardIssuePlace ?: 'Chưa cập nhật'}">...</p>
+                </div>
+            </div>
+            <div class="row mt-3">
+                <div class="col-md-6 image-container">
+                    <p class="profile-label">Ảnh CMND/CCCD (Mặt trước):</p>
+                    <img th:if="${user.idCardFrontUrl != null}" th:src="@{${user.idCardFrontUrl}}" alt="CMND Mặt trước" class="profile-image"/>
+                    <p th:unless="${user.idCardFrontUrl != null}" class="text-muted">Chưa tải lên</p>
+                </div>
+                <div class="col-md-6 image-container">
+                    <p class="profile-label">Ảnh CMND/CCCD (Mặt sau):</p>
+                    <img th:if="${user.idCardBackUrl != null}" th:src="@{${user.idCardBackUrl}}" alt="CMND Mặt sau" class="profile-image"/>
+                    <p th:unless="${user.idCardBackUrl != null}" class="text-muted">Chưa tải lên</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Giấy Phép Lái Xe -->
+        <div class="profile-section">
+            <h4><i class="fas fa-address-card mr-2 text-success"></i>Giấy Phép Lái Xe</h4>
+            <div class="row">
+                <div class="col-md-6">
+                    <p class="profile-label">Số Giấy Phép:</p>
+                    <p class="profile-value" th:text="${user.licenseNumber ?: 'Chưa cập nhật'}">...</p>
+                </div>
+                <div class="col-md-6">
+                    <p class="profile-label">Hạng Giấy Phép:</p>
+                    <p class="profile-value" th:text="${user.licenseClass ?: 'Chưa cập nhật'}">...</p>
+                </div>
+                <div class="col-md-6">
+                    <p class="profile-label">Ngày Cấp:</p>
+                    <p class="profile-value" th:text="${user.licenseIssueDate != null ? #temporals.format(user.licenseIssueDate, 'dd/MM/yyyy') : 'Chưa cập nhật'}">...</p>
+                </div>
+                <div class="col-md-6">
+                    <p class="profile-label">Ngày Hết Hạn:</p>
+                    <p class="profile-value" th:text="${user.licenseExpiryDate != null ? #temporals.format(user.licenseExpiryDate, 'dd/MM/yyyy') : 'Chưa cập nhật'}">...</p>
+                </div>
+            </div>
+            <div class="row mt-3">
+                <div class="col-md-6 image-container">
+                    <p class="profile-label">Ảnh Giấy Phép Lái Xe:</p>
+                    <img th:if="${user.licenseImageUrl != null}" th:src="@{${user.licenseImageUrl}}" alt="GPLX" class="profile-image"/>
+                    <p th:unless="${user.licenseImageUrl != null}" class="text-muted">Chưa tải lên</p>
+                </div>
+                <div class="col-md-6 image-container">
+                    <p class="profile-label">Ảnh Chân Dung:</p>
+                    <img th:if="${user.portraitImageUrl != null}" th:src="@{${user.portraitImageUrl}}" alt="Chân dung" class="profile-image"/>
+                    <p th:unless="${user.portraitImageUrl != null}" class="text-muted">Chưa tải lên</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Nút chỉnh sửa -->
+        <a th:href="@{/dang-ky-chu-xe}" class="btn btn-primary"><i class="fas fa-edit mr-1"></i> Chỉnh sửa thông tin</a>
+
+    </div>
+
+    <div th:unless="${user != null}" class="alert alert-warning">
+        Không thể tải thông tin hồ sơ. Vui lòng đăng nhập lại.
+    </div>
+
+</div>
+
+<!-- Footer -->
+<footer class="text-center mt-5 mb-3 text-muted">
+    <p>&copy; <span th:text="${#dates.year(#dates.createNow())}">2025</span> CarShare. All rights reserved.</p>
+</footer>
+
+<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.4/dist/umd/popper.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</body>
+</html>

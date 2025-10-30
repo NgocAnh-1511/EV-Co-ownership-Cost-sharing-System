@@ -1,15 +1,16 @@
-package com.example.ui_service.dto;
+package com.example.user_account_service.dto;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.Size;
 import lombok.Data;
 
-@Data // Lombok tự tạo getter/setter
+@Data // Lombok tự tạo getter/setter/toString
 public class RegistrationDto {
 
-    // --- ĐÃ XÓA TRƯỜNG "username" ---
-    // (Xóa dòng "private String username;" khỏi đây)
+    // Map với trường "Tên đăng nhập" của form
+    @NotEmpty(message = "Tên đăng nhập không được để trống")
+    private String username;
 
     @NotEmpty(message = "Email không được để trống")
     @Email(message = "Email không hợp lệ")

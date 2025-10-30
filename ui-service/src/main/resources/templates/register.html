@@ -5,29 +5,8 @@
     <title>Đăng Ký Tài Khoản</title>
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
     <style>
-        /* CSS đơn giản để hiển thị lỗi */
-        .text-danger {
-            color: #dc3545;
-            font-size: 0.875em;
-        }
-        .alert-danger {
-            color: #721c24;
-            background-color: #f8d7da;
-            border-color: #f5c6cb;
-            padding: .75rem 1.25rem;
-            margin-bottom: 1rem;
-            border: 1px solid transparent;
-            border-radius: .25rem;
-        }
-        .alert-success {
-            color: #155724;
-            background-color: #d4edda;
-            border-color: #c3e6cb;
-            padding: .75rem 1.25rem;
-            margin-bottom: 1rem;
-            border: 1px solid transparent;
-            border-radius: .25rem;
-        }
+        .text-danger { color: #dc3545; font-size: 0.875em; }
+        /* (Các style khác...) */
     </style>
 </head>
 <body>
@@ -43,12 +22,6 @@
                     <form th:action="@{/register}" th:object="${userDto}" method="post">
 
                         <div th:if="${errorMessage}" class="alert alert-danger" th:text="${errorMessage}"></div>
-
-                        <div class="form-group">
-                            <label for="username">Tên đăng nhập *</label>
-                            <input type="text" id="username" class="form-control" th:field="*{username}" placeholder="Nhập tên đăng nhập">
-                            <p th:if="${#fields.hasErrors('username')}" th:errors="*{username}" class="text-danger"></p>
-                        </div>
 
                         <div class="form-group">
                             <label for="email">Địa chỉ email *</label>
@@ -70,7 +43,7 @@
 
                         <div class="form-group form-check">
                             <input type="checkbox" id="terms" class="form-check-input" required>
-                            <label for="terms" class="form-check-label">Tôi đồng ý với Điều khoản dịch vụ và Chính sách bảo mật</label>
+                            <label for="terms" class="form-check-label">Tôi đồng ý với Điều khoản dịch vụ</label>
                         </div>
 
                         <button type="submit" class="btn btn-primary btn-block">Đăng Ký Tài Khoản</button>

@@ -37,12 +37,12 @@
                         <div th:if="${successMessage}" class="alert alert-success" th:text="${successMessage}"></div>
 
                         <div th:if="${param.error}" class="alert alert-danger">
-                            Tên đăng nhập hoặc mật khẩu không chính xác.
+                            Email hoặc mật khẩu không chính xác.
                         </div>
 
                         <div class="form-group">
-                            <label for="username">Tên đăng nhập hoặc Email</label>
-                            <input type="text" id="username" name="username" class="form-control" placeholder="Nhập tên đăng nhập hoặc email" required>
+                            <label for="email">Địa chỉ Email</label>
+                            <input type="email" id="email" name="email" class="form-control" placeholder="Nhập địa chỉ email" required>
                         </div>
 
                         <div class="form-group">
@@ -52,7 +52,7 @@
 
                         <div class="d-flex justify-content-between align-items-center mb-3">
                             <div class="custom-control custom-checkbox">
-                                <input type="checkbox" class="custom-control-input" id="rememberMe">
+                                <input type="checkbox" class="custom-control-input" id="rememberMe" name="remember-me">
                                 <label class="custom-control-label" for="rememberMe">Ghi nhớ đăng nhập</label>
                             </div>
                             <a href="#">Quên mật khẩu?</a>

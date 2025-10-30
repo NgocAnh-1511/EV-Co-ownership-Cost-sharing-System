@@ -1,6 +1,6 @@
-package com.example.ui_service.repository;
+package com.example.user_account_service.repository;
 
-import com.example.ui_service.model.Ownership;
+import com.example.user_account_service.model.Ownership;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
