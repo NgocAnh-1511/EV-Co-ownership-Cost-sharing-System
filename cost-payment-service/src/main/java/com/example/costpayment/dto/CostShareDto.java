@@ -9,6 +9,7 @@ public class CostShareDto {
     private Double percent;
     private Double amountShare;
     private LocalDateTime calculatedAt;
+    private String status;
 
     // Constructors
     public CostShareDto() {}
@@ -20,6 +21,17 @@ public class CostShareDto {
         this.percent = percent;
         this.amountShare = amountShare;
         this.calculatedAt = calculatedAt;
+        this.status = "PENDING"; // Default status
+    }
+
+    public CostShareDto(Integer shareId, Integer costId, Integer userId, Double percent, Double amountShare, LocalDateTime calculatedAt, String status) {
+        this.shareId = shareId;
+        this.costId = costId;
+        this.userId = userId;
+        this.percent = percent;
+        this.amountShare = amountShare;
+        this.calculatedAt = calculatedAt;
+        this.status = status;
     }
 
     // Getters & Setters
@@ -71,6 +83,14 @@ public class CostShareDto {
         this.calculatedAt = calculatedAt;
     }
 
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
+    }
+
     @Override
     public String toString() {
         return "CostShareDto{" +
@@ -80,6 +100,7 @@ public class CostShareDto {
                 ", percent=" + percent +
                 ", amountShare=" + amountShare +
                 ", calculatedAt=" + calculatedAt +
+                ", status='" + status + '\'' +
                 '}';
     }
 }

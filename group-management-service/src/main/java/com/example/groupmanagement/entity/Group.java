@@ -1,5 +1,6 @@
 package com.example.groupmanagement.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -9,10 +10,11 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 @Entity
-@Table(name = "`group`")
+@Table(name = "`Group`")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@JsonIgnoreProperties({"members", "votings"})
 public class Group {
     
     @Id
@@ -30,16 +32,20 @@ public class Group {
     private Integer vehicleId;
     
     @Column(name = "createdAt")
-    private LocalDateTime createdAt = LocalDateTime.now();
+    private LocalDateTime createdAt;
     
     @Enumerated(EnumType.STRING)
     @Column(name = "status")
-    private GroupStatus status = GroupStatus.Active;
+    private GroupStatus status;
     
     @OneToMany(mappedBy = "group", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @lombok.ToString.Exclude
+    @lombok.EqualsAndHashCode.Exclude
     private List<GroupMember> members;
     
     @OneToMany(mappedBy = "group", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @lombok.ToString.Exclude
+    @lombok.EqualsAndHashCode.Exclude
     private List<Voting> votings;
     
     public enum GroupStatus {

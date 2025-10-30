@@ -1,5 +1,6 @@
 package com.example.groupmanagement.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -12,6 +13,7 @@ import java.time.LocalDateTime;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@JsonIgnoreProperties({"voting", "groupMember"})
 public class VotingResult {
     
     @Id
@@ -21,10 +23,14 @@ public class VotingResult {
     
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "voteId", nullable = false)
+    @lombok.ToString.Exclude
+    @lombok.EqualsAndHashCode.Exclude
     private Voting voting;
     
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "memberId", nullable = false)
+    @lombok.ToString.Exclude
+    @lombok.EqualsAndHashCode.Exclude
     private GroupMember groupMember;
     
     @Enumerated(EnumType.STRING)

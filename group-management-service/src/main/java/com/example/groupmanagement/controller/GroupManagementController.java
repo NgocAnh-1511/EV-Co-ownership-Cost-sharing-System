@@ -32,10 +32,27 @@ public class GroupManagementController {
     @Autowired
     private VotingResultRepository votingResultRepository;
 
+    // Health check endpoint
+    @GetMapping("/health")
+    public ResponseEntity<String> healthCheck() {
+        try {
+            long count = groupRepository.count();
+            return ResponseEntity.ok("Database connected. Groups count: " + count);
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body("Database error: " + e.getMessage());
+        }
+    }
+
     // Group endpoints
     @GetMapping
-    public List<Group> getAllGroups() {
-        return groupRepository.findAll();
+    public ResponseEntity<?> getAllGroups() {
+        try {
+            List<Group> groups = groupRepository.findAll();
+            return ResponseEntity.ok(groups);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(500).body("Error: " + e.getMessage() + " - Cause: " + (e.getCause() != null ? e.getCause().getMessage() : "null"));
+        }
     }
 
     @GetMapping("/{id}")

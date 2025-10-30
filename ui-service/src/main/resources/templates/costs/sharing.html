@@ -85,6 +85,30 @@
                     </div>
                 </div>
 
+                <!-- Search Section -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">🔍 Tìm kiếm chi phí</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="search-form">
+                            <div class="form-group">
+                                <label for="searchCostId">Tìm kiếm theo ID chi phí</label>
+                                <div class="input-group">
+                                    <input type="number" id="searchCostId" placeholder="Nhập ID chi phí" class="form-control">
+                                    <button type="button" class="btn btn-primary" onclick="searchCostById()">
+                                        <i class="fas fa-search"></i>
+                                        Tìm kiếm
+                                    </button>
+                                </div>
+                            </div>
+                            <div id="searchResult" class="search-result" style="display: none;">
+                                <!-- Kết quả tìm kiếm sẽ hiển thị ở đây -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="content-grid">
                     <!-- Left Column -->
                     <div class="left-column">
@@ -95,48 +119,57 @@
                             </div>
                             <div class="card-body">
                                 <div class="category-list">
-                                    <div class="category-item" data-category="CHARGING">
+                                    <div class="category-item" data-category="ElectricCharge">
                                         <div class="category-icon">
                                             <i class="fas fa-bolt"></i>
                                         </div>
                                         <div class="category-content">
-                                            <div class="category-name">Phí sạc điện</div>
+                                            <div class="category-name">⚡ Sạc điện</div>
                                             <div class="category-amount">0 VNĐ</div>
                                         </div>
                                     </div>
-                                    <div class="category-item" data-category="MAINTENANCE">
+                                    <div class="category-item" data-category="Maintenance">
                                         <div class="category-icon">
                                             <i class="fas fa-tools"></i>
                                         </div>
                                         <div class="category-content">
-                                            <div class="category-name">Bảo dưỡng</div>
+                                            <div class="category-name">🔧 Bảo dưỡng</div>
                                             <div class="category-amount">0 VNĐ</div>
                                         </div>
                                     </div>
-                                    <div class="category-item" data-category="INSURANCE">
+                                    <div class="category-item" data-category="Insurance">
                                         <div class="category-icon">
                                             <i class="fas fa-shield-alt"></i>
                                         </div>
                                         <div class="category-content">
-                                            <div class="category-name">Bảo hiểm</div>
+                                            <div class="category-name">🛡️ Bảo hiểm</div>
                                             <div class="category-amount">0 VNĐ</div>
                                         </div>
                                     </div>
-                                    <div class="category-item" data-category="REGISTRATION">
+                                    <div class="category-item" data-category="Inspection">
                                         <div class="category-icon">
-                                            <i class="fas fa-file-alt"></i>
+                                            <i class="fas fa-search"></i>
                                         </div>
                                         <div class="category-content">
-                                            <div class="category-name">Đăng kiểm</div>
+                                            <div class="category-name">🔍 Kiểm định</div>
                                             <div class="category-amount">0 VNĐ</div>
                                         </div>
                                     </div>
-                                    <div class="category-item" data-category="CLEANING">
+                                    <div class="category-item" data-category="Cleaning">
                                         <div class="category-icon">
                                             <i class="fas fa-spray-can"></i>
                                         </div>
                                         <div class="category-content">
-                                            <div class="category-name">Vệ sinh xe</div>
+                                            <div class="category-name">🧽 Vệ sinh</div>
+                                            <div class="category-amount">0 VNĐ</div>
+                                        </div>
+                                    </div>
+                                    <div class="category-item" data-category="Other">
+                                        <div class="category-icon">
+                                            <i class="fas fa-ellipsis-h"></i>
+                                        </div>
+                                        <div class="category-content">
+                                            <div class="category-name">📝 Khác</div>
                                             <div class="category-amount">0 VNĐ</div>
                                         </div>
                                     </div>
@@ -185,16 +218,12 @@
                                         <label for="costType">Loại chi phí</label>
                                         <select id="costType" name="costType" required>
                                             <option value="">Chọn loại chi phí</option>
-                                            <option value="CHARGING">Phí sạc điện</option>
-                                            <option value="MAINTENANCE">Bảo dưỡng</option>
-                                            <option value="INSURANCE">Bảo hiểm</option>
-                                            <option value="REGISTRATION">Đăng kiểm</option>
-                                            <option value="CLEANING">Vệ sinh xe</option>
-                                            <option value="PARKING">Phí đỗ xe</option>
-                                            <option value="TOLLS">Phí cầu đường</option>
-                                            <option value="REPAIRS">Sửa chữa</option>
-                                            <option value="UPGRADES">Nâng cấp</option>
-                                            <option value="OTHER">Khác</option>
+                                            <option value="ElectricCharge">⚡ Sạc điện</option>
+                                            <option value="Maintenance">🔧 Bảo dưỡng</option>
+                                            <option value="Insurance">🛡️ Bảo hiểm</option>
+                                            <option value="Inspection">🔍 Kiểm định</option>
+                                            <option value="Cleaning">🧽 Vệ sinh</option>
+                                            <option value="Other">📝 Khác</option>
                                         </select>
                                     </div>
                                     

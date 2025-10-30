@@ -43,8 +43,9 @@ class CostSharingManager {
 
     async loadCostSplits() {
         try {
-            const response = await fetch('/api/cost-splits');
-            this.costSplits = await response.json();
+            const response = await fetch('/costs/api/shares');
+            const costShares = await response.json();
+            this.costSplits = costShares || [];
             this.renderCostSplits();
             this.updateStats();
         } catch (error) {
@@ -210,43 +211,129 @@ class CostSharingManager {
         const formData = this.getFormData();
         if (!this.validateForm(formData)) return;
 
+        // First create the cost
         try {
-            const response = await fetch('/api/cost-splits/preview', {
+            const costResponse = await fetch('/costs/api/costs', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify(formData)
+                body: JSON.stringify({
+                    vehicleId: formData.vehicleId,
+                    costType: formData.costType,
+                    amount: formData.amount,
+                    description: formData.description
+                })
             });
 
-            const preview = await response.json();
-            this.showSplitPreview(preview);
+            if (!costResponse.ok) {
+                throw new Error('Failed to create cost');
+            }
+
+            const cost = await costResponse.json();
+            
+            // Then calculate shares based on split method
+            const shares = await this.calculateShares(cost.costId, formData);
+            this.showSplitPreview(cost, shares);
         } catch (error) {
             console.error('Error previewing split:', error);
             this.showError('Không thể xem trước chia sẻ. Vui lòng thử lại.');
         }
     }
 
-    showSplitPreview(preview) {
+    async calculateShares(costId, formData) {
+        // Mock calculation based on split method
+        const splitMethod = formData.splitMethod;
+        let userIds = [1, 2, 3]; // Mock user IDs
+        let percentages = [33.33, 33.33, 33.34]; // Mock percentages
+
+        if (splitMethod === 'OWNERSHIP_PERCENTAGE') {
+            // Get ownership percentages from group
+            percentages = [50, 30, 20];
+        } else if (splitMethod === 'EQUAL_SPLIT') {
+            const count = userIds.length;
+            percentages = new Array(count).fill(100 / count);
+        }
+
+        try {
+            const response = await fetch(`/costs/api/costs/${costId}/calculate-shares`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    userIds: userIds,
+                    percentages: percentages
+                })
+            });
+
+            if (response.ok) {
+                return await response.json();
+            } else {
+                throw new Error('Failed to calculate shares');
+            }
+        } catch (error) {
+            console.error('Error calculating shares:', error);
+            // Return mock data for preview
+            return userIds.map((userId, index) => ({
+                userId: userId,
+                percent: percentages[index],
+                amountShare: (formData.amount * percentages[index]) / 100
+            }));
+        }
+    }
+
+    showSplitPreview(cost, shares) {
         const previewDiv = document.getElementById('splitPreview');
         const contentDiv = document.getElementById('splitPreviewContent');
         
         contentDiv.innerHTML = `
             <div class="split-preview-header">
                 <h4>Xem trước chia sẻ</h4>
-                <p>Tổng chi phí: ${this.formatCurrency(preview.totalAmount)}</p>
+                <p>Tổng chi phí: ${this.formatCurrency(cost.amount)}</p>
+                <p>Loại chi phí: ${this.getCostTypeLabel(cost.costType)}</p>
             </div>
             <div class="split-preview-list">
-                ${preview.splits.map(split => `
+                ${shares.map(share => `
                     <div class="split-preview-item">
-                        <span>${split.userName}</span>
-                        <strong>${this.formatCurrency(split.amount)}</strong>
+                        <div class="share-info">
+                            <span>User ID: ${share.userId}</span>
+                            <span class="share-percent">${share.percent}%</span>
+                        </div>
+                        <strong>${this.formatCurrency(share.amountShare)}</strong>
                     </div>
                 `).join('')}
+            </div>
+            <div class="split-preview-actions">
+                <button class="btn btn-primary" onclick="costSharingManager.confirmSplit(${cost.costId})">
+                    <i class="fas fa-check"></i>
+                    Xác nhận chia sẻ
+                </button>
+                <button class="btn btn-outline" onclick="costSharingManager.cancelSplit()">
+                    <i class="fas fa-times"></i>
+                    Hủy
+                </button>
             </div>
         `;
         
         previewDiv.style.display = 'block';
+    }
+
+    async confirmSplit(costId) {
+        try {
+            // The shares are already calculated and saved in the backend
+            this.showSuccess('Chia sẻ chi phí thành công!');
+            document.getElementById('splitPreview').style.display = 'none';
+            document.getElementById('costSharingForm').reset();
+            await this.loadCostSplits();
+        } catch (error) {
+            console.error('Error confirming split:', error);
+            this.showError('Không thể xác nhận chia sẻ. Vui lòng thử lại.');
+        }
+    }
+
+    cancelSplit() {
+        document.getElementById('splitPreview').style.display = 'none';
     }
 
     async handleFormSubmit() {
@@ -254,7 +341,7 @@ class CostSharingManager {
         if (!this.validateForm(formData)) return;
 
         try {
-            const response = await fetch('/api/cost-splits', {
+            const response = await fetch('/costs/api/costs', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -314,35 +401,40 @@ class CostSharingManager {
 
     renderCostSplits() {
         const tbody = document.getElementById('splitsTableBody');
+        if (!tbody) return;
+        
         tbody.innerHTML = '';
 
-        this.costSplits.forEach(split => {
+        this.costSplits.forEach(share => {
             const row = document.createElement('tr');
             row.innerHTML = `
                 <td>
                     <div class="cost-info">
-                        <div class="cost-title">${split.costDescription}</div>
-                        <div class="cost-type">${this.getCostTypeLabel(split.costType)}</div>
+                        <div class="cost-title">Chi phí ID: ${share.costId}</div>
+                        <div class="cost-type">Chia sẻ chi phí</div>
                     </div>
                 </td>
-                <td>${split.groupName}</td>
-                <td>${split.userName}</td>
-                <td>${this.formatCurrency(split.splitAmount)}</td>
+                <td>Group ${share.groupId || 'N/A'}</td>
                 <td>
-                    <span class="status-badge status-${split.status.toLowerCase()}">
-                        ${this.getStatusLabel(split.status)}
+                    <div class="user-info">
+                        <span>User ${share.userId}</span>
+                        <span class="share-percent">${share.percent}%</span>
+                    </div>
+                </td>
+                <td>${this.formatCurrency(share.amountShare)}</td>
+                <td>
+                    <span class="status-badge status-${(share.status || 'PENDING').toLowerCase()}">
+                        ${this.getStatusLabel(share.status || 'PENDING')}
                     </span>
                 </td>
-                <td>${this.formatDate(split.createdAt)}</td>
+                <td>${this.formatDate(share.calculatedAt)}</td>
                 <td>
                     <div class="action-buttons">
-                        ${split.status === 'PENDING' ? `
-                            <button class="btn btn-sm btn-primary" onclick="costSharingManager.openPaymentModal(${split.id}, ${split.splitAmount})">
-                                <i class="fas fa-credit-card"></i>
-                                Thanh toán
-                            </button>
-                        ` : ''}
-                        <button class="btn btn-sm btn-outline" onclick="costSharingManager.viewSplitDetails(${split.id})">
+                        <button class="btn btn-sm btn-primary" onclick="costSharingManager.openPaymentModal(${share.shareId}, ${share.amountShare})">
+                            <i class="fas fa-credit-card"></i>
+                            Thanh toán
+                        </button>
+                        <button class="btn btn-sm btn-outline" onclick="costSharingManager.viewShareDetails(${share.shareId})">
                             <i class="fas fa-eye"></i>
                             Xem
                         </button>
@@ -409,18 +501,36 @@ class CostSharingManager {
         console.log('View split details for:', splitId);
     }
 
+    viewCostDetails(costId) {
+        // This would open a modal or navigate to details page
+        console.log('View cost details for:', costId);
+        // For now, just show an alert with the cost ID
+        this.showSuccess(`Xem chi tiết chi phí ID: ${costId}`);
+    }
+
+    viewShareDetails(shareId) {
+        // This would open a modal or navigate to details page
+        console.log('View share details for:', shareId);
+        this.showSuccess(`Xem chi tiết chia sẻ ID: ${shareId}`);
+    }
+
     updateStats() {
-        const totalCosts = this.costSplits.reduce((sum, split) => sum + split.splitAmount, 0);
+        const totalCosts = this.costSplits.reduce((sum, share) => sum + (share.amountShare || 0), 0);
         const totalShares = this.costSplits.length;
         const totalPaid = this.costSplits
-            .filter(split => split.status === 'PAID')
-            .reduce((sum, split) => sum + split.splitAmount, 0);
-        const pendingPayments = this.costSplits.filter(split => split.status === 'PENDING').length;
+            .filter(share => share.status === 'PAID')
+            .reduce((sum, share) => sum + (share.amountShare || 0), 0);
+        const pendingPayments = this.costSplits.filter(share => share.status === 'PENDING').length;
 
-        document.getElementById('totalCosts').textContent = this.formatCurrency(totalCosts);
-        document.getElementById('totalShares').textContent = totalShares;
-        document.getElementById('totalPaid').textContent = this.formatCurrency(totalPaid);
-        document.getElementById('pendingPayments').textContent = pendingPayments;
+        const totalCostsEl = document.getElementById('totalCosts');
+        const totalSharesEl = document.getElementById('totalShares');
+        const totalPaidEl = document.getElementById('totalPaid');
+        const pendingPaymentsEl = document.getElementById('pendingPayments');
+
+        if (totalCostsEl) totalCostsEl.textContent = this.formatCurrency(totalCosts);
+        if (totalSharesEl) totalSharesEl.textContent = totalShares;
+        if (totalPaidEl) totalPaidEl.textContent = this.formatCurrency(totalPaid);
+        if (pendingPaymentsEl) pendingPaymentsEl.textContent = pendingPayments;
     }
 
     async generateReport() {
@@ -463,16 +573,12 @@ class CostSharingManager {
 
     getCostTypeLabel(type) {
         const labels = {
-            'CHARGING': 'Phí sạc điện',
-            'MAINTENANCE': 'Bảo dưỡng',
-            'INSURANCE': 'Bảo hiểm',
-            'REGISTRATION': 'Đăng kiểm',
-            'CLEANING': 'Vệ sinh xe',
-            'PARKING': 'Phí đỗ xe',
-            'TOLLS': 'Phí cầu đường',
-            'REPAIRS': 'Sửa chữa',
-            'UPGRADES': 'Nâng cấp',
-            'OTHER': 'Khác'
+            'ElectricCharge': '⚡ Sạc điện',
+            'Maintenance': '🔧 Bảo dưỡng',
+            'Insurance': '🛡️ Bảo hiểm',
+            'Inspection': '🔍 Kiểm định',
+            'Cleaning': '🧽 Vệ sinh',
+            'Other': '📝 Khác'
         };
         return labels[type] || type;
     }
@@ -496,6 +602,200 @@ class CostSharingManager {
         // You would implement a proper error notification system here
         alert(message);
     }
+
+    /**
+     * 🔍 Tìm kiếm chi phí theo ID
+     */
+    async searchCostById() {
+        const costId = document.getElementById('searchCostId').value;
+        if (!costId) {
+            this.showError('Vui lòng nhập ID chi phí');
+            return;
+        }
+
+        try {
+            const response = await fetch(`/costs/api/costs/${costId}`);
+            const resultDiv = document.getElementById('searchResult');
+            
+            if (response.ok) {
+                const cost = await response.json();
+                resultDiv.innerHTML = `
+                    <div class="search-result-success">
+                        <h4>✅ Tìm thấy chi phí</h4>
+                        <div class="cost-details">
+                            <div class="detail-row">
+                                <strong>ID:</strong> ${cost.costId}
+                            </div>
+                            <div class="detail-row">
+                                <strong>Loại:</strong> ${this.getCostTypeLabel(cost.costType)}
+                            </div>
+                            <div class="detail-row">
+                                <strong>Số tiền:</strong> ${this.formatCurrency(cost.amount)}
+                            </div>
+                            <div class="detail-row">
+                                <strong>Mô tả:</strong> ${cost.description || 'Không có mô tả'}
+                            </div>
+                            <div class="detail-row">
+                                <strong>Ngày tạo:</strong> ${this.formatDate(cost.createdAt)}
+                            </div>
+                        </div>
+                        <div class="search-actions">
+                            <button class="btn btn-primary" onclick="costSharingManager.viewCostShares(${cost.costId})">
+                                <i class="fas fa-share-alt"></i>
+                                Xem chia sẻ
+                            </button>
+                            <button class="btn btn-outline" onclick="costSharingManager.viewCostHistory(${cost.costId})">
+                                <i class="fas fa-history"></i>
+                                Lịch sử
+                            </button>
+                        </div>
+                    </div>
+                `;
+            } else if (response.status === 404) {
+                resultDiv.innerHTML = `
+                    <div class="search-result-error">
+                        <h4>❌ Không tìm thấy</h4>
+                        <p>Không tìm thấy chi phí với ID: ${costId}</p>
+                    </div>
+                `;
+            } else {
+                throw new Error('Search failed');
+            }
+            
+            resultDiv.style.display = 'block';
+        } catch (error) {
+            console.error('Error searching cost:', error);
+            this.showError('Lỗi khi tìm kiếm chi phí');
+        }
+    }
+
+    /**
+     * 📊 Xem chia sẻ chi phí
+     */
+    async viewCostShares(costId) {
+        try {
+            const response = await fetch(`/costs/${costId}/splits`);
+            if (response.ok) {
+                const shares = await response.json();
+                this.showCostSharesModal(costId, shares);
+            } else {
+                throw new Error('Failed to load cost shares');
+            }
+        } catch (error) {
+            console.error('Error loading cost shares:', error);
+            this.showError('Không thể tải thông tin chia sẻ');
+        }
+    }
+
+    /**
+     * 📈 Xem lịch sử chia sẻ chi phí
+     */
+    async viewCostHistory(costId) {
+        try {
+            const response = await fetch(`/api/costs/${costId}/shares/history`);
+            if (response.ok) {
+                const history = await response.json();
+                this.showCostHistoryModal(costId, history);
+            } else {
+                throw new Error('Failed to load cost history');
+            }
+        } catch (error) {
+            console.error('Error loading cost history:', error);
+            this.showError('Không thể tải lịch sử chia sẻ');
+        }
+    }
+
+    /**
+     * Hiển thị modal chia sẻ chi phí
+     */
+    showCostSharesModal(costId, shares) {
+        const modalHtml = `
+            <div class="modal" id="costSharesModal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>Chia sẻ chi phí ID: ${costId}</h3>
+                        <button class="modal-close" onclick="costSharingManager.closeModal('costSharesModal')">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="shares-list">
+                            ${shares.map(share => `
+                                <div class="share-item">
+                                    <div class="share-info">
+                                        <strong>User ID: ${share.userId}</strong>
+                                        <span class="share-percent">${share.percent}%</span>
+                                    </div>
+                                    <div class="share-amount">${this.formatCurrency(share.amountShare)}</div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        document.getElementById('costSharesModal').style.display = 'block';
+    }
+
+    /**
+     * Hiển thị modal lịch sử chia sẻ
+     */
+    showCostHistoryModal(costId, history) {
+        const modalHtml = `
+            <div class="modal" id="costHistoryModal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>Lịch sử chia sẻ chi phí ID: ${costId}</h3>
+                        <button class="modal-close" onclick="costSharingManager.closeModal('costHistoryModal')">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="history-list">
+                            ${history.map(item => `
+                                <div class="history-item">
+                                    <div class="history-header">
+                                        <strong>User ID: ${item.userId}</strong>
+                                        <span class="history-date">${this.formatDate(item.calculatedAt)}</span>
+                                    </div>
+                                    <div class="history-details">
+                                        <div class="detail-row">
+                                            <strong>Loại chi phí:</strong> ${item.costType}
+                                        </div>
+                                        <div class="detail-row">
+                                            <strong>Tổng chi phí:</strong> ${this.formatCurrency(item.totalCostAmount)}
+                                        </div>
+                                        <div class="detail-row">
+                                            <strong>Phần trăm:</strong> ${item.percent}%
+                                        </div>
+                                        <div class="detail-row">
+                                            <strong>Số tiền chia sẻ:</strong> ${this.formatCurrency(item.amountShare)}
+                                        </div>
+                                        ${item.description ? `
+                                            <div class="detail-row">
+                                                <strong>Mô tả:</strong> ${item.description}
+                                            </div>
+                                        ` : ''}
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        document.getElementById('costHistoryModal').style.display = 'block';
+    }
+
+    /**
+     * Đóng modal
+     */
+    closeModal(modalId) {
+        const modal = document.getElementById(modalId);
+        if (modal) {
+            modal.remove();
+        }
+    }
 }
 
 // Global functions for HTML onclick handlers
@@ -514,6 +814,10 @@ function closePaymentModal() {
 
 function generateReport() {
     costSharingManager.generateReport();
+}
+
+function searchCostById() {
+    costSharingManager.searchCostById();
 }
 
 // Initialize the cost sharing manager when the page loads

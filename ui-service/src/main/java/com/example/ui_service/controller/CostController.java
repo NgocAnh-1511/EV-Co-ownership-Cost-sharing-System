@@ -138,9 +138,26 @@ public class CostController {
 
     @GetMapping("/sharing")
     public String costSharing(Model model) {
-        // Load costs for sharing page
+        // Load costs and cost shares for sharing page
         List<CostDto> costs = costPaymentClient.getAllCosts();
+        List<CostSplitDto> costShares = costPaymentClient.getAllCostShares();
+        
         model.addAttribute("costs", costs);
+        model.addAttribute("costShares", costShares);
+        
+        // Calculate statistics
+        int totalCosts = costs != null ? costs.size() : 0;
+        int totalShares = costShares != null ? costShares.size() : 0;
+        double totalPaid = costShares != null ? 
+            costShares.stream().filter(s -> "PAID".equals(s.getStatus())).mapToDouble(CostSplitDto::getAmountShare).sum() : 0;
+        int pendingPayments = costShares != null ? 
+            (int) costShares.stream().filter(s -> "PENDING".equals(s.getStatus())).count() : 0;
+        
+        model.addAttribute("totalCosts", totalCosts);
+        model.addAttribute("totalShares", totalShares);
+        model.addAttribute("totalPaid", totalPaid);
+        model.addAttribute("pendingPayments", pendingPayments);
+        
         return "costs/sharing";
     }
 
@@ -150,6 +167,60 @@ public class CostController {
         try {
             costPaymentClient.createCost(costDto);
             return "success";
+        } catch (Exception e) {
+            return "error: " + e.getMessage();
+        }
+    }
+
+    // Cost Sharing API endpoints
+    @GetMapping("/api/shares")
+    @ResponseBody
+    public List<CostSplitDto> getAllCostSharesApi() {
+        return costPaymentClient.getAllCostShares();
+    }
+
+    @GetMapping("/api/shares/{id}")
+    @ResponseBody
+    public CostSplitDto getCostShareApi(@PathVariable Integer id) {
+        return costPaymentClient.getCostShareById(id);
+    }
+
+    @GetMapping("/{costId}/split-result")
+    public String splitResultPage(@PathVariable Integer costId, Model model) {
+        model.addAttribute("costId", costId);
+        return "costs/split-result";
+    }
+
+    @GetMapping("/api/costs/{costId}/shares")
+    @ResponseBody
+    public List<CostSplitDto> getCostSharesByCostIdApi(@PathVariable Integer costId) {
+        return costPaymentClient.getCostSharesByCostId(costId);
+    }
+
+    @PostMapping("/api/costs/{costId}/calculate-shares")
+    @ResponseBody
+    public List<CostSplitDto> calculateCostSharesApi(@PathVariable Integer costId, 
+                                                   @RequestBody CostPaymentClient.CostShareRequest request) {
+        return costPaymentClient.calculateCostShares(costId, request.getUserIds(), request.getPercentages());
+    }
+
+    @PutMapping("/api/shares/{id}")
+    @ResponseBody
+    public String updateCostShareApi(@PathVariable Integer id, @RequestBody CostSplitDto costShareDto) {
+        try {
+            costPaymentClient.updateCostShare(id, costShareDto);
+            return "success";
+        } catch (Exception e) {
+            return "error: " + e.getMessage();
+        }
+    }
+
+    @DeleteMapping("/api/shares/{id}")
+    @ResponseBody
+    public String deleteCostShareApi(@PathVariable Integer id) {
+        try {
+            boolean deleted = costPaymentClient.deleteCostShare(id);
+            return deleted ? "success" : "error: Could not delete cost share";
         } catch (Exception e) {
             return "error: " + e.getMessage();
         }
