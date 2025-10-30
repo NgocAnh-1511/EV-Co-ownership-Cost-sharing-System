@@ -23,11 +23,22 @@ public class AutoSplitRestController {
      */
     @PostMapping("/create-and-split")
     public ResponseEntity<Map<String, Object>> createAndAutoSplit(@RequestBody Map<String, Object> request) {
-        Map<String, Object> result = costPaymentClient.createAndAutoSplit(request);
-        if (result != null) {
-            return ResponseEntity.ok(result);
-        } else {
-            return ResponseEntity.internalServerError().build();
+        System.out.println("=== UI SERVICE: CREATE AND SPLIT ===");
+        System.out.println("Request data: " + request);
+        
+        try {
+            Map<String, Object> result = costPaymentClient.createAndAutoSplit(request);
+            if (result != null) {
+                System.out.println("Success! Result: " + result);
+                return ResponseEntity.ok(result);
+            } else {
+                System.err.println("Result is null!");
+                return ResponseEntity.status(500).body(Map.of("error", "Backend returned null"));
+            }
+        } catch (Exception e) {
+            System.err.println("Error in UI service: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(500).body(Map.of("error", e.getMessage()));
         }
     }
 

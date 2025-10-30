@@ -236,15 +236,24 @@ public class CostPaymentClient {
     // Auto Split APIs
     public Map<String, Object> createAndAutoSplit(Map<String, Object> request) {
         try {
+            System.out.println("=== FEIGN CLIENT: CREATE AND SPLIT ===");
+            System.out.println("Calling: " + costPaymentUrl + "/api/auto-split/create-and-split");
+            System.out.println("Request: " + request);
+            
             ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
                 costPaymentUrl + "/api/auto-split/create-and-split",
                 HttpMethod.POST,
                 new org.springframework.http.HttpEntity<>(request),
                 new ParameterizedTypeReference<Map<String, Object>>() {}
             );
+            
+            System.out.println("Response status: " + response.getStatusCode());
+            System.out.println("Response body: " + response.getBody());
+            
             return response.getBody();
         } catch (Exception e) {
             System.err.println("Error creating and auto-splitting cost: " + e.getMessage());
+            e.printStackTrace();
             return null;
         }
     }

@@ -220,7 +220,7 @@ public class AutoCostSplitServiceImpl implements AutoCostSplitService {
     public Map<Integer, Double> getGroupOwnership(Integer groupId) {
         // Mock data - Trong thực tế sẽ call Group Management Service
         Map<Integer, Double> ownershipMap = new HashMap<>();
-        
+
         if (groupId == 1) {
             ownershipMap.put(1, 50.0);
             ownershipMap.put(2, 30.0);
@@ -271,8 +271,8 @@ public class AutoCostSplitServiceImpl implements AutoCostSplitService {
         }
 
         if (usageMap.isEmpty()) {
-            throw new RuntimeException("Không có dữ liệu km cho nhóm " + groupId + 
-                                     " trong tháng " + month + "/" + year);
+            throw new RuntimeException("Không có dữ liệu km cho nhóm " + groupId +
+                    " trong tháng " + month + "/" + year);
         }
 
         return usageMap;
@@ -284,7 +284,7 @@ public class AutoCostSplitServiceImpl implements AutoCostSplitService {
     private List<Integer> getUserIdsByGroup(Integer groupId) {
         // Mock data - Trong thực tế call Group Management Service
         List<Integer> userIds = new ArrayList<>();
-        
+
         if (groupId == 1) {
             userIds.addAll(Arrays.asList(1, 2, 3));
         } else if (groupId == 2) {

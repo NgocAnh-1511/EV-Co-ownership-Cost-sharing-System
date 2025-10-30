@@ -340,55 +340,110 @@ function initPaymentMethods() {
 async function loadPendingPayments() {
     const container = document.getElementById('pending-payments-list');
     
-    // Mock data - replace with actual API
-    const pendingPayments = [
-        { id: 1, name: 'Phí sạc điện', amount: 250000, date: '2025-10-25' },
-        { id: 2, name: 'Bảo dưỡng', amount: 200000, date: '2025-10-28' }
-    ];
-    
-    container.innerHTML = pendingPayments.map(payment => `
-        <div class="payment-item">
-            <div class="payment-item-left">
-                <h4>${payment.name}</h4>
-                <p><i class="fas fa-calendar"></i> ${formatDate(payment.date)}</p>
+    try {
+        // Load pending payments from API
+        const response = await fetch(`${API.PAYMENTS}/user/${CURRENT_USER_ID}/pending`);
+        const pendingPayments = await response.json();
+        
+        if (pendingPayments && pendingPayments.length > 0) {
+            container.innerHTML = pendingPayments.map(payment => {
+                // Get cost description or use default
+                const description = payment.description || `Thanh toán #${payment.paymentId}`;
+                const paymentDate = payment.paymentDate || new Date().toISOString();
+                
+                return `
+                    <div class="payment-item">
+                        <div class="payment-item-left">
+                            <h4>${description}</h4>
+                            <p><i class="fas fa-calendar"></i> ${formatDate(paymentDate)}</p>
+                            <small style="color: var(--text-light);">Mã giao dịch: ${payment.transactionCode || 'N/A'}</small>
+                        </div>
+                        <div class="payment-item-right">
+                            <div class="payment-amount">${formatCurrency(payment.amount)}</div>
+                            <button class="btn btn-success" onclick="processPayment(${payment.paymentId})">
+                                <i class="fas fa-credit-card"></i> Thanh toán
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        } else {
+            container.innerHTML = `
+                <div style="text-align: center; padding: 40px; color: var(--text-light);">
+                    <i class="fas fa-check-circle" style="font-size: 48px; margin-bottom: 16px; color: var(--success);"></i>
+                    <p>Bạn không có khoản thanh toán nào đang chờ</p>
+                </div>
+            `;
+        }
+    } catch (error) {
+        console.error('Error loading pending payments:', error);
+        container.innerHTML = `
+            <div style="text-align: center; padding: 40px; color: var(--text-light);">
+                <i class="fas fa-exclamation-circle" style="font-size: 48px; margin-bottom: 16px; color: var(--danger);"></i>
+                <p>Không thể tải dữ liệu thanh toán</p>
             </div>
-            <div class="payment-item-right">
-                <div class="payment-amount">${formatCurrency(payment.amount)}</div>
-                <button class="btn btn-success" onclick="processPayment(${payment.id})">
-                    <i class="fas fa-credit-card"></i> Thanh toán
-                </button>
-            </div>
-        </div>
-    `).join('');
+        `;
+    }
 }
 
 async function loadPaymentHistory() {
     const container = document.getElementById('payment-history-list');
     
-    // Mock data
-    const history = [
-        { id: 1, name: 'Phí sạc điện', amount: 300000, date: '2025-10-15', method: 'E-Wallet' },
-        { id: 2, name: 'Bảo hiểm', amount: 500000, date: '2025-09-10', method: 'Banking' },
-        { id: 3, name: 'Vệ sinh', amount: 100000, date: '2025-09-05', method: 'Cash' }
-    ];
-    
-    container.innerHTML = history.map(item => `
-        <div class="payment-history-item">
-            <div class="payment-history-left">
-                <div class="payment-title">${item.name}</div>
-                <div class="payment-date">
-                    <i class="fas fa-calendar"></i> ${formatDate(item.date)}
+    try {
+        // Load payment history from API
+        const response = await fetch(`${API.PAYMENTS}/user/${CURRENT_USER_ID}/history`);
+        const history = await response.json();
+        
+        if (history && history.length > 0) {
+            container.innerHTML = history.map(item => {
+                // Map payment method to Vietnamese
+                const methodNames = {
+                    'EWallet': 'Ví điện tử',
+                    'Banking': 'Chuyển khoản',
+                    'Cash': 'Tiền mặt'
+                };
+                const methodName = methodNames[item.method] || item.method;
+                const description = item.description || `Thanh toán #${item.paymentId}`;
+                
+                return `
+                    <div class="payment-history-item">
+                        <div class="payment-history-left">
+                            <div class="payment-title">${description}</div>
+                            <div class="payment-date">
+                                <i class="fas fa-calendar"></i> ${formatDate(item.paymentDate)}
+                            </div>
+                            <small style="color: var(--text-light);">Mã: ${item.transactionCode}</small>
+                        </div>
+                        <div class="payment-history-right">
+                            <div class="payment-history-amount">${formatCurrency(item.amount)}</div>
+                            <div class="payment-method">
+                                <i class="fas ${getPaymentMethodIcon(item.method)}"></i>
+                                ${methodName}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        } else {
+            container.innerHTML = `
+                <div style="text-align: center; padding: 40px; color: var(--text-light);">
+                    <i class="fas fa-history" style="font-size: 48px; margin-bottom: 16px;"></i>
+                    <p>Chưa có lịch sử thanh toán</p>
                 </div>
+            `;
+        }
+    } catch (error) {
+        console.error('Error loading payment history:', error);
+        container.innerHTML = `
+            <div style="text-align: center; padding: 40px; color: var(--text-light);">
+                <i class="fas fa-exclamation-circle" style="font-size: 48px; margin-bottom: 16px; color: var(--danger);"></i>
+                <p>Không thể tải lịch sử thanh toán</p>
             </div>
-            <div class="payment-history-right">
-                <div class="payment-history-amount">${formatCurrency(item.amount)}</div>
-                <div class="payment-method">${item.method}</div>
-            </div>
-        </div>
-    `).join('');
+        `;
+    }
 }
 
-function processPayment(paymentId) {
+async function processPayment(paymentId) {
     const selectedMethod = document.querySelector('.method-card.active');
     if (!selectedMethod) {
         showToast('Vui lòng chọn phương thức thanh toán', 'error');
@@ -397,14 +452,39 @@ function processPayment(paymentId) {
     
     const method = selectedMethod.getAttribute('data-method');
     
-    // Mock payment process
-    showToast('Đang xử lý thanh toán...', 'success');
+    // Show loading state
+    showToast('Đang xử lý thanh toán...', 'info');
     
-    setTimeout(() => {
-        showToast('Thanh toán thành công!', 'success');
-        loadPendingPayments();
-        loadPaymentHistory();
-    }, 1500);
+    try {
+        // Call API to process payment
+        const response = await fetch(`${API.PAYMENTS}/${paymentId}/process`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                method: method
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showToast(`Thanh toán thành công! Mã GD: ${result.transactionCode}`, 'success');
+            
+            // Reload payment lists
+            await loadPendingPayments();
+            await loadPaymentHistory();
+            
+            // Update quick stats
+            await loadQuickStats();
+        } else {
+            showToast(result.message || 'Lỗi khi xử lý thanh toán', 'error');
+        }
+    } catch (error) {
+        console.error('Error processing payment:', error);
+        showToast('Có lỗi xảy ra khi thanh toán. Vui lòng thử lại!', 'error');
+    }
 }
 
 // ============ UTILITY FUNCTIONS ============
@@ -427,6 +507,15 @@ function getCostTypeName(type) {
         'Other': 'Khác'
     };
     return types[type] || type;
+}
+
+function getPaymentMethodIcon(method) {
+    const icons = {
+        'EWallet': 'fa-mobile-alt',
+        'Banking': 'fa-university',
+        'Cash': 'fa-money-bill'
+    };
+    return icons[method] || 'fa-credit-card';
 }
 
 function showToast(message, type) {

@@ -366,6 +366,9 @@ async function previewSplit() {
 async function createAndSplit() {
     const data = getFormData();
     
+    console.log('=== CREATING COST ===');
+    console.log('Data:', data);
+    
     try {
         const response = await fetch(`${API.AUTO_SPLIT}/create-and-split`, {
             method: 'POST',
@@ -373,20 +376,29 @@ async function createAndSplit() {
             body: JSON.stringify(data)
         });
         
+        console.log('Response status:', response.status);
+        
         if (response.ok) {
+            const result = await response.json();
+            console.log('Result:', result);
+            
             showNotification('Đã tạo và chia chi phí thành công!', 'success');
             document.getElementById('auto-split-form').reset();
             document.getElementById('preview-result').style.display = 'none';
             
             // Reload costs
-            switchSection('cost-management');
+            setTimeout(() => {
+                switchSection('cost-management');
+            }, 1000);
         } else {
-            showNotification('Lỗi khi tạo chi phí', 'error');
+            const errorText = await response.text();
+            console.error('Error response:', errorText);
+            showNotification('Lỗi khi tạo chi phí: ' + errorText, 'error');
         }
         
     } catch (error) {
         console.error('Error creating cost:', error);
-        showNotification('Lỗi khi tạo chi phí', 'error');
+        showNotification('Lỗi khi tạo chi phí: ' + error.message, 'error');
     }
 }
 
