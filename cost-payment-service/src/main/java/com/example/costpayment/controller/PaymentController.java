@@ -1,6 +1,7 @@
 package com.example.costpayment.controller;
 
 import com.example.costpayment.entity.Payment;
+import com.example.costpayment.entity.PaymentStatus;
 import com.example.costpayment.service.impl.PaymentServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -147,6 +148,69 @@ public class PaymentController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(
                 "success", false,
                 "message", "Lỗi khi xử lý thanh toán: " + e.getMessage()
+            ));
+        }
+    }
+
+    /**
+     * Confirm payment with QR code
+     * POST /api/payments/{id}/confirm
+     * Body: { userId, method, transactionCode }
+     */
+    @PostMapping("/{id}/confirm")
+    public ResponseEntity<Map<String, Object>> confirmPayment(
+            @PathVariable Integer id,
+            @RequestBody Map<String, Object> request) {
+        try {
+            // Get payment
+            Optional<Payment> paymentOpt = paymentService.getPaymentById(id);
+            
+            if (!paymentOpt.isPresent()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of(
+                    "success", false,
+                    "message", "Không tìm thấy thanh toán"
+                ));
+            }
+            
+            Payment payment = paymentOpt.get();
+            
+            // Update payment information
+            String method = (String) request.get("method");
+            String transactionCode = (String) request.get("transactionCode");
+            
+            if (method != null) {
+                try {
+                    payment.setMethod(Payment.Method.valueOf(method));
+                } catch (IllegalArgumentException e) {
+                    // If invalid method, ignore or use default
+                    System.out.println("Invalid payment method: " + method);
+                }
+            }
+            
+            if (transactionCode != null) {
+                payment.setTransactionCode(transactionCode);
+            }
+            
+            // Mark as PAID
+            payment.setStatus(PaymentStatus.PAID);
+            payment.setPaymentDate(java.time.LocalDateTime.now());
+            
+            // Save payment
+            Payment updatedPayment = paymentService.createPayment(payment);
+            
+            return ResponseEntity.ok(Map.of(
+                "success", true,
+                "message", "Xác nhận thanh toán thành công",
+                "payment", updatedPayment,
+                "transactionCode", updatedPayment.getTransactionCode()
+            ));
+            
+        } catch (Exception e) {
+            System.err.println("Error confirming payment: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(
+                "success", false,
+                "message", "Lỗi khi xác nhận thanh toán: " + e.getMessage()
             ));
         }
     }

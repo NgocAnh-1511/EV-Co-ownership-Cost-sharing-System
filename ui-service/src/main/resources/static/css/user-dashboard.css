@@ -915,6 +915,241 @@ body {
     color: var(--dark);
 }
 
+/* ============ PAYMENT QR MODAL ============ */
+.payment-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    animation: fadeIn 0.3s;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+.payment-modal {
+    background: white;
+    border-radius: 16px;
+    width: 90%;
+    max-width: 600px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    animation: slideUp 0.3s;
+}
+
+@keyframes slideUp {
+    from {
+        transform: translateY(50px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
+
+.payment-modal .modal-header {
+    background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    color: white;
+    padding: 1.5rem 2rem;
+    border-radius: 16px 16px 0 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.payment-modal .modal-header h2 {
+    font-size: 1.5rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.payment-modal .close-modal {
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    color: white;
+    font-size: 1.25rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s;
+}
+
+.payment-modal .close-modal:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: rotate(90deg);
+}
+
+.payment-modal .modal-body {
+    padding: 2rem;
+}
+
+.payment-info-box {
+    background: var(--light);
+    border-radius: 12px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid var(--border);
+}
+
+.info-row:last-child {
+    border-bottom: none;
+}
+
+.info-row.highlight {
+    background: white;
+    margin: 0 -1rem;
+    padding: 1rem;
+    border-radius: 8px;
+    border: 2px solid var(--primary);
+}
+
+.info-label {
+    font-weight: 500;
+    color: var(--text-light);
+}
+
+.info-value {
+    font-weight: 600;
+    color: var(--dark);
+}
+
+.info-value.amount {
+    font-size: 1.5rem;
+    color: var(--primary);
+}
+
+.qr-code-container {
+    text-align: center;
+    padding: 2rem 0;
+    background: white;
+    border-radius: 12px;
+    margin-bottom: 1.5rem;
+}
+
+.qr-code-container h3 {
+    color: var(--dark);
+    margin-bottom: 1.5rem;
+    font-size: 1.125rem;
+}
+
+.qr-code {
+    display: inline-block;
+    padding: 1.5rem;
+    background: white;
+    border: 2px solid var(--border);
+    border-radius: 12px;
+    margin-bottom: 1rem;
+}
+
+.qr-code img {
+    display: block;
+    width: 250px;
+    height: 250px;
+}
+
+.qr-note {
+    color: var(--text-light);
+    font-size: 0.875rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+}
+
+.cash-payment-note {
+    text-align: center;
+    padding: 3rem 2rem;
+    background: linear-gradient(135deg, #FEF3C7, #FDE68A);
+    border-radius: 12px;
+    margin-bottom: 1.5rem;
+}
+
+.cash-payment-note i {
+    font-size: 4rem;
+    color: var(--warning);
+    margin-bottom: 1rem;
+}
+
+.cash-payment-note p {
+    font-size: 1.125rem;
+    color: var(--dark);
+    font-weight: 500;
+}
+
+.payment-instructions {
+    background: #EFF6FF;
+    border-left: 4px solid var(--primary);
+    border-radius: 8px;
+    padding: 1.5rem;
+}
+
+.payment-instructions h4 {
+    color: var(--primary);
+    margin-bottom: 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.payment-instructions ol {
+    margin-left: 1.5rem;
+    color: var(--text);
+}
+
+.payment-instructions li {
+    margin-bottom: 0.5rem;
+    line-height: 1.6;
+}
+
+.payment-modal .modal-footer {
+    padding: 1.5rem 2rem;
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-end;
+}
+
+.payment-modal .modal-footer .btn {
+    padding: 0.75rem 2rem;
+    font-size: 1rem;
+}
+
+.payment-modal .btn-secondary {
+    background: var(--border);
+    color: var(--text);
+}
+
+.payment-modal .btn-secondary:hover {
+    background: #D1D5DB;
+}
+
 /* Responsive */
 @media (max-width: 768px) {
     .user-header {
@@ -960,6 +1195,221 @@ body {
     
     .payment-methods {
         flex-direction: column;
+    }
+    
+    .payment-modal {
+        width: 95%;
+        max-height: 95vh;
+    }
+    
+    .payment-modal .modal-body {
+        padding: 1.5rem;
+    }
+    
+    .payment-modal .modal-footer {
+        flex-direction: column;
+    }
+    
+    .payment-modal .modal-footer .btn {
+        width: 100%;
+    }
+    
+    .qr-code img {
+        width: 200px;
+        height: 200px;
+    }
+}
+
+/* ============ QR PAYMENT MODAL STYLES ============ */
+.payment-info-section {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 1.5rem;
+    border-radius: 0.75rem;
+    margin-bottom: 1.5rem;
+}
+
+.payment-info-section .info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+}
+
+.payment-info-section .info-row:last-child {
+    margin-bottom: 0;
+}
+
+.payment-info-section .info-label {
+    font-weight: 500;
+    opacity: 0.9;
+}
+
+.payment-info-section .info-value {
+    font-weight: 600;
+    font-size: 1.1rem;
+}
+
+.payment-info-section .info-value.amount {
+    font-size: 1.5rem;
+    color: #fbbf24;
+}
+
+.bank-info-box {
+    background: #f1f5f9;
+    border-radius: 0.5rem;
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.bank-info-box .bank-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+    font-size: 0.95rem;
+}
+
+.bank-info-box .bank-row:last-child {
+    margin-bottom: 0;
+}
+
+.bank-info-box .bank-row i {
+    color: var(--primary);
+    font-size: 1.2rem;
+    width: 24px;
+}
+
+.bank-info-box .bank-row .label {
+    font-weight: 500;
+    color: var(--text-light);
+    min-width: 90px;
+}
+
+.qr-code-section {
+    margin-top: 1rem;
+}
+
+.qr-code-display {
+    text-align: center;
+    margin: 1.5rem 0;
+}
+
+.qr-code-display h4 {
+    color: var(--text);
+    margin-bottom: 1rem;
+    font-size: 1.1rem;
+}
+
+.qr-code-img {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 1rem 0;
+    padding: 1rem;
+    background: white;
+    border-radius: 0.75rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.qr-code-img img {
+    max-width: 300px;
+    width: 100%;
+    height: auto;
+    border-radius: 0.5rem;
+}
+
+.qr-note {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    color: var(--text-light);
+    font-size: 0.9rem;
+    margin-top: 1rem;
+}
+
+.qr-note i {
+    color: var(--primary);
+}
+
+.payment-instructions {
+    background: #eff6ff;
+    border-left: 4px solid var(--primary);
+    padding: 1rem 1.5rem;
+    border-radius: 0.5rem;
+    margin-top: 1.5rem;
+}
+
+.payment-instructions h4 {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--primary);
+    margin-bottom: 0.75rem;
+    font-size: 1rem;
+}
+
+.payment-instructions ol {
+    margin-left: 1.25rem;
+    color: var(--text);
+}
+
+.payment-instructions li {
+    margin-bottom: 0.5rem;
+    line-height: 1.6;
+}
+
+.cash-payment-section {
+    text-align: center;
+    padding: 2rem;
+}
+
+.cash-notice {
+    background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+    color: white;
+    padding: 2rem;
+    border-radius: 1rem;
+    margin: 1rem 0;
+}
+
+.cash-notice i {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    opacity: 0.9;
+}
+
+.cash-notice p {
+    margin: 0.5rem 0;
+    font-size: 1.1rem;
+}
+
+.cash-amount {
+    font-size: 1.8rem !important;
+    font-weight: 700 !important;
+    margin-top: 1rem !important;
+}
+
+/* Responsive for QR Modal */
+@media (max-width: 768px) {
+    .payment-info-section .info-value.amount {
+        font-size: 1.2rem;
+    }
+    
+    .qr-code-img img {
+        max-width: 250px;
+    }
+    
+    .payment-instructions {
+        padding: 0.75rem 1rem;
+    }
+    
+    .cash-notice {
+        padding: 1.5rem;
+    }
+    
+    .cash-amount {
+        font-size: 1.5rem !important;
     }
 }
 

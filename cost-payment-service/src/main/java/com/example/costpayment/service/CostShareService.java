@@ -18,10 +18,12 @@ public interface CostShareService {
     
     // 🔍 Tìm kiếm và thống kê
     List<CostShare> getCostSharesByUserId(Integer userId);
+    List<CostShare> getCostSharesByUserIdAndStatus(Integer userId, String status);
     Map<String, Object> getCostShareStatisticsByUser(Integer userId);
     List<Map<String, Object>> getCostShareHistory(Integer costId);
     
     // ✅ Kiểm tra và validation
     boolean isCostShared(Integer costId);
     CostShare updateCostShareWithValidation(Integer id, CostShare updatedShare);
+    CostShare updateCostShare(CostShare costShare);
 }

@@ -10,6 +10,7 @@ public class CostShareDto {
     private Double amountShare;
     private LocalDateTime calculatedAt;
     private String status;
+    private String description; // Added for displaying cost description
 
     // Constructors
     public CostShareDto() {}
@@ -91,6 +92,14 @@ public class CostShareDto {
         this.status = status;
     }
 
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
     @Override
     public String toString() {
         return "CostShareDto{" +
@@ -101,6 +110,7 @@ public class CostShareDto {
                 ", amountShare=" + amountShare +
                 ", calculatedAt=" + calculatedAt +
                 ", status='" + status + '\'' +
+                ", description='" + description + '\'' +
                 '}';
     }
 }

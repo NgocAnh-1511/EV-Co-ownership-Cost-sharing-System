@@ -170,3 +170,83 @@ FROM CostShare cs LEFT JOIN Payment p ON cs.`costId`=p.`costId` AND cs.`userId`=
 GROUP BY cs.`userId`;
 
 SELECT '✅ HOÀN TẤT!' as '';
+-- ==========================================
+-- PHƯƠNG ÁN 1: Cập nhật trực tiếp cột status
+-- Giữ nguyên cột status, không tạo status_new
+-- ==========================================
+
+USE Cost_Payment_DB;
+
+-- ==========================================
+-- BƯỚC 0: Xử lý cột status_new nếu tồn tại
+-- Nếu bạn đã chạy script update_payment_status_enum.sql trước đó,
+-- thì sẽ có cột status_new. Chúng ta cần xóa nó.
+-- Nếu chưa có, bỏ qua bước này.
+-- ==========================================
+
+-- Kiểm tra xem có cột status_new không (chạy query này để kiểm tra trước)
+-- SELECT COUNT(*) as has_status_new
+-- FROM information_schema.COLUMNS 
+-- WHERE TABLE_SCHEMA = 'Cost_Payment_DB' 
+-- AND TABLE_NAME = 'Payment' 
+-- AND COLUMN_NAME = 'status_new';
+
+-- Nếu có cột status_new, chạy 2 lệnh sau (bỏ comment):
+-- UPDATE Payment SET status = status_new WHERE status_new IS NOT NULL;
+-- ALTER TABLE Payment DROP COLUMN status_new;
+
+-- Bước 1: Mở rộng ENUM để chấp nhận cả giá trị cũ và mới
+-- Điều này cho phép chuyển đổi dữ liệu an toàn
+ALTER TABLE Payment 
+MODIFY COLUMN status ENUM('Pending', 'Completed', 'Failed', 'PENDING', 'PAID', 'OVERDUE', 'CANCELLED') DEFAULT 'PENDING';
+
+-- Bước 2: Chuyển đổi giá trị cũ sang giá trị mới
+UPDATE Payment SET status = 
+    CASE 
+        WHEN status = 'Pending' THEN 'PENDING'
+        WHEN status = 'Completed' THEN 'PAID'
+        WHEN status = 'Failed' THEN 'CANCELLED'
+        -- Giữ nguyên nếu đã là giá trị mới
+        WHEN status IN ('PENDING', 'PAID', 'OVERDUE', 'CANCELLED') THEN status
+        ELSE 'PENDING'
+    END;
+
+-- Bước 3: Thu hẹp ENUM về chỉ giá trị mới
+ALTER TABLE Payment 
+MODIFY COLUMN status ENUM('PENDING', 'PAID', 'OVERDUE', 'CANCELLED') DEFAULT 'PENDING';
+
+-- ==========================================
+-- XÁC MINH KẾT QUẢ
+-- ==========================================
+
+-- Kiểm tra cấu trúc cột
+SELECT 
+    COLUMN_NAME,
+    COLUMN_TYPE,
+    COLUMN_DEFAULT,
+    IS_NULLABLE
+FROM information_schema.COLUMNS
+WHERE TABLE_SCHEMA = 'Cost_Payment_DB'
+AND TABLE_NAME = 'Payment'
+AND COLUMN_NAME = 'status';
+
+-- Xem 10 bản ghi mới nhất
+SELECT paymentId, userId, costId, amount, status, paymentDate 
+FROM Payment 
+ORDER BY paymentDate DESC
+LIMIT 10;
+
+-- Phân bố theo trạng thái
+SELECT status, COUNT(*) as count 
+FROM Payment 
+GROUP BY status
+ORDER BY count DESC;
+
+-- Thông báo hoàn thành
+SELECT 'Migration hoàn tất! Cột status đã được cập nhật với ENUM mới.' as result;
+
+
+
+
+
+SET SQL_SAFE_UPDATES = 0;

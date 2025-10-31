@@ -509,6 +509,198 @@ body {
     padding: 1.5rem;
 }
 
+/* Payment QR Modal Styles */
+.payment-qr-modal {
+    max-width: 600px !important;
+}
+
+.payment-info-section {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 1.5rem;
+    border-radius: 0.75rem;
+    margin-bottom: 1.5rem;
+}
+
+.info-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.75rem;
+}
+
+.info-row:last-child {
+    margin-bottom: 0;
+}
+
+.info-label {
+    font-weight: 500;
+    opacity: 0.9;
+}
+
+.info-value {
+    font-weight: 600;
+    font-size: 1.1rem;
+}
+
+.info-value.amount {
+    font-size: 1.5rem;
+    color: #fbbf24;
+}
+
+.bank-info-box {
+    background: #f1f5f9;
+    border-radius: 0.5rem;
+    padding: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.bank-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+    font-size: 0.95rem;
+}
+
+.bank-row:last-child {
+    margin-bottom: 0;
+}
+
+.bank-row i {
+    color: var(--primary-color);
+    font-size: 1.2rem;
+}
+
+.bank-row .label {
+    font-weight: 500;
+    color: var(--text-secondary);
+    min-width: 70px;
+}
+
+.qr-code-section {
+    margin-top: 1rem;
+}
+
+.qr-code-display {
+    text-align: center;
+    margin: 1.5rem 0;
+}
+
+.qr-code-display h4 {
+    color: var(--text-primary);
+    margin-bottom: 1rem;
+    font-size: 1.1rem;
+}
+
+.qr-code-img {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 1rem 0;
+    padding: 1rem;
+    background: white;
+    border-radius: 0.75rem;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.qr-code-img img {
+    max-width: 300px;
+    width: 100%;
+    height: auto;
+    border-radius: 0.5rem;
+}
+
+.qr-note {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    margin-top: 1rem;
+}
+
+.qr-note i {
+    color: var(--primary-color);
+}
+
+.payment-instructions {
+    background: #eff6ff;
+    border-left: 4px solid var(--primary-color);
+    padding: 1rem 1.5rem;
+    border-radius: 0.5rem;
+    margin-top: 1.5rem;
+}
+
+.payment-instructions h4 {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--primary-color);
+    margin-bottom: 0.75rem;
+    font-size: 1rem;
+}
+
+.payment-instructions ol {
+    margin-left: 1.25rem;
+    color: var(--text-primary);
+}
+
+.payment-instructions li {
+    margin-bottom: 0.5rem;
+    line-height: 1.6;
+}
+
+.cash-payment-section {
+    text-align: center;
+    padding: 2rem;
+}
+
+.cash-notice {
+    background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+    color: white;
+    padding: 2rem;
+    border-radius: 1rem;
+    margin: 1rem 0;
+}
+
+.cash-notice i {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+    opacity: 0.9;
+}
+
+.cash-notice p {
+    margin: 0.5rem 0;
+    font-size: 1.1rem;
+}
+
+.cash-amount {
+    font-size: 1.8rem !important;
+    font-weight: 700 !important;
+    margin-top: 1rem !important;
+}
+
+/* Responsive for QR Modal */
+@media (max-width: 640px) {
+    .payment-qr-modal {
+        max-width: 95% !important;
+    }
+    
+    .qr-code-img img {
+        max-width: 250px;
+    }
+    
+    .info-value.amount {
+        font-size: 1.2rem;
+    }
+    
+    .payment-instructions {
+        padding: 0.75rem 1rem;
+    }
+}
+
 /* Split Preview */
 .split-preview {
     background: #F8FAFC;

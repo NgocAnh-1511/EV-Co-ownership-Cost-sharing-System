@@ -326,37 +326,99 @@
         </main>
     </div>
 
-    <!-- Payment Modal -->
+    <!-- Payment Modal with QR Code -->
     <div id="paymentModal" class="modal">
-        <div class="modal-content">
+        <div class="modal-content payment-qr-modal">
             <div class="modal-header">
-                <h3>Thanh toán</h3>
+                <h3><i class="fas fa-qrcode"></i> Thanh toán</h3>
                 <button class="modal-close" onclick="closePaymentModal()">&times;</button>
             </div>
             <div class="modal-body">
                 <form id="paymentForm">
+                    <!-- Payment Info Box -->
+                    <div class="payment-info-section">
+                        <div class="info-row">
+                            <span class="info-label">Số tiền:</span>
+                            <span class="info-value amount" id="displayAmount">0 VNĐ</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Nội dung:</span>
+                            <span class="info-value" id="displayContent">PAYMENT</span>
+                        </div>
+                    </div>
+
+                    <!-- Payment Method Selection -->
                     <div class="form-group">
-                        <label for="paymentMethod">Phương thức thanh toán</label>
-                        <select id="paymentMethod" name="paymentMethod" required>
-                            <option value="EWallet">Ví điện tử</option>
-                            <option value="Banking">Chuyển khoản</option>
+                        <label for="paymentMethod">Chọn phương thức thanh toán</label>
+                        <select id="paymentMethod" name="paymentMethod" required onchange="updateQRCode()">
+                            <option value="EWallet">Ví điện tử (MoMo)</option>
+                            <option value="Banking">Chuyển khoản (Vietcombank)</option>
                             <option value="Cash">Tiền mặt</option>
                         </select>
                     </div>
-                    
-                    <div class="form-group">
-                        <label for="paymentAmount">Số tiền (VNĐ)</label>
-                        <input type="number" id="paymentAmount" name="paymentAmount" readonly>
+
+                    <!-- QR Code Container -->
+                    <div id="qrCodeSection" class="qr-code-section">
+                        <div class="bank-info-box">
+                            <div class="bank-row">
+                                <i class="fas fa-university"></i>
+                                <span id="bankName">MoMo</span>
+                            </div>
+                            <div class="bank-row">
+                                <span class="label">Số TK:</span>
+                                <span id="accountNumber">0123456789</span>
+                            </div>
+                            <div class="bank-row">
+                                <span class="label">Tên TK:</span>
+                                <span id="accountName">NGUYEN VAN A</span>
+                            </div>
+                        </div>
+
+                        <div class="qr-code-display">
+                            <h4>Quét mã QR để thanh toán</h4>
+                            <div class="qr-code-img">
+                                <img id="qrCodeImage" src="" alt="QR Code">
+                            </div>
+                            <p class="qr-note">
+                                <i class="fas fa-info-circle"></i>
+                                <span id="qrNote">Quét mã QR bằng app MoMo của bạn</span>
+                            </p>
+                        </div>
+
+                        <div class="payment-instructions">
+                            <h4><i class="fas fa-clipboard-list"></i> Hướng dẫn:</h4>
+                            <ol id="instructionsList">
+                                <li>Mở app MoMo trên điện thoại</li>
+                                <li>Quét mã QR hoặc nhập thông tin chuyển khoản</li>
+                                <li>Kiểm tra số tiền và nội dung chuyển khoản</li>
+                                <li>Xác nhận thanh toán trên app</li>
+                                <li>Sau khi chuyển khoản thành công, nhập mã giao dịch và bấm "Xác nhận"</li>
+                            </ol>
+                        </div>
+                    </div>
+
+                    <!-- Cash Payment Notice -->
+                    <div id="cashPaymentSection" class="cash-payment-section" style="display: none;">
+                        <div class="cash-notice">
+                            <i class="fas fa-hand-holding-usd"></i>
+                            <p>Vui lòng thanh toán tiền mặt trực tiếp cho admin</p>
+                            <p class="cash-amount" id="cashAmount">0 VNĐ</p>
+                        </div>
                     </div>
                     
                     <div class="form-group">
-                        <label for="transactionCode">Mã giao dịch</label>
-                        <input type="text" id="transactionCode" name="transactionCode" placeholder="Nhập mã giao dịch">
+                        <label for="transactionCode">Mã giao dịch (tùy chọn)</label>
+                        <input type="text" id="transactionCode" name="transactionCode" placeholder="Nhập mã giao dịch nếu có">
+                        <input type="hidden" id="paymentAmount" name="paymentAmount">
                     </div>
                     
                     <div class="form-actions">
-                        <button type="button" class="btn btn-outline" onclick="closePaymentModal()">Hủy</button>
-                        <button type="submit" class="btn btn-primary">Xác nhận thanh toán</button>
+                        <button type="button" class="btn btn-outline" onclick="closePaymentModal()">
+                            <i class="fas fa-times"></i> Hủy
+                        </button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-check-circle"></i> Xác nhận thanh toán
+                        </button>
                     </div>
                 </form>
             </div>

@@ -4,6 +4,8 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDateTime;
+
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
@@ -14,6 +16,8 @@ public class CostSplitDto {
     private Double percent;
     private Double amountShare;
     private String status;
+    private LocalDateTime calculatedAt;
+    private String description;
     
     // Constructor without status for backward compatibility
     public CostSplitDto(Integer shareId, Integer costId, Integer userId, Double percent, Double amountShare) {

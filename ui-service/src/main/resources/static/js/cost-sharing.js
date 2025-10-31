@@ -455,8 +455,23 @@ class CostSharingManager {
 
     openPaymentModal(splitId, amount) {
         this.currentSplit = splitId;
+        
+        // Set payment amount
         document.getElementById('paymentAmount').value = amount;
+        
+        // Update displayed amount
+        document.getElementById('displayAmount').textContent = formatCurrency(amount);
+        
+        // Set payment content
+        document.getElementById('displayContent').textContent = `SPLIT${splitId}`;
+        
+        // Show modal
         document.getElementById('paymentModal').style.display = 'block';
+        
+        // Generate QR code immediately with default method (EWallet)
+        setTimeout(() => {
+            updateQRCode();
+        }, 100);
     }
 
     closePaymentModal() {
@@ -495,6 +510,96 @@ class CostSharingManager {
             this.showError('Không thể xử lý thanh toán. Vui lòng thử lại.');
         }
     }
+}
+
+// Global function for updating QR code when payment method changes
+function updateQRCode() {
+    const method = document.getElementById('paymentMethod').value;
+    const amount = parseFloat(document.getElementById('paymentAmount').value) || 0;
+    const content = document.getElementById('displayContent').textContent;
+    
+    const qrSection = document.getElementById('qrCodeSection');
+    const cashSection = document.getElementById('cashPaymentSection');
+    
+    const methodInfo = {
+        'EWallet': { 
+            name: 'MoMo', 
+            account: '0123456789', 
+            accountName: 'NGUYEN VAN A',
+            note: 'Quét mã QR bằng app MoMo của bạn',
+            instructions: [
+                'Mở app MoMo trên điện thoại',
+                'Chọn "Quét QR" hoặc "Chuyển tiền"',
+                'Quét mã QR hoặc nhập số điện thoại: 0123456789',
+                'Kiểm tra số tiền và nội dung chuyển khoản',
+                'Xác nhận thanh toán',
+                'Nhập mã giao dịch và bấm "Xác nhận thanh toán"'
+            ]
+        },
+        'Banking': { 
+            name: 'Vietcombank', 
+            account: '0987654321', 
+            accountName: 'NGUYEN VAN A',
+            note: 'Quét mã QR bằng app ngân hàng của bạn',
+            instructions: [
+                'Mở app Vietcombank (hoặc app ngân hàng khác)',
+                'Chọn "Chuyển khoản" hoặc "Quét QR"',
+                'Quét mã QR hoặc nhập STK: 0987654321',
+                'Kiểm tra thông tin: Vietcombank - NGUYEN VAN A',
+                'Nhập số tiền và nội dung chuyển khoản',
+                'Xác nhận và hoàn tất giao dịch',
+                'Nhập mã giao dịch và bấm "Xác nhận thanh toán"'
+            ]
+        },
+        'Cash': {
+            name: 'Tiền mặt',
+            account: 'N/A',
+            accountName: 'Admin',
+            note: 'Thanh toán trực tiếp',
+            instructions: [
+                'Chuẩn bị số tiền cần thanh toán',
+                'Liên hệ với admin để thanh toán',
+                'Nhận biên lai (nếu có)',
+                'Bấm "Xác nhận thanh toán" sau khi đã thanh toán'
+            ]
+        }
+    };
+    
+    const info = methodInfo[method] || methodInfo['EWallet'];
+    
+    // Update bank info
+    document.getElementById('bankName').textContent = info.name;
+    document.getElementById('accountNumber').textContent = info.account;
+    document.getElementById('accountName').textContent = info.accountName;
+    document.getElementById('qrNote').textContent = info.note;
+    
+    // Update instructions
+    const instructionsList = document.getElementById('instructionsList');
+    instructionsList.innerHTML = info.instructions.map(step => `<li>${step}</li>`).join('');
+    
+    if (method === 'Cash') {
+        // Hide QR section, show cash section
+        qrSection.style.display = 'none';
+        cashSection.style.display = 'block';
+        document.getElementById('cashAmount').textContent = formatCurrency(amount);
+    } else {
+        // Show QR section, hide cash section
+        qrSection.style.display = 'block';
+        cashSection.style.display = 'none';
+        
+        // Generate QR code
+        const qrContent = `Bank: ${info.name}\nAccount: ${info.account}\nAmount: ${amount}\nContent: ${content}`;
+        const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(qrContent)}`;
+        document.getElementById('qrCodeImage').src = qrCodeUrl;
+    }
+}
+
+function formatCurrency(amount) {
+    return new Intl.NumberFormat('vi-VN', { 
+        style: 'currency', 
+        currency: 'VND' 
+    }).format(amount);
+}
 
     viewSplitDetails(splitId) {
         // This would open a modal or navigate to details page

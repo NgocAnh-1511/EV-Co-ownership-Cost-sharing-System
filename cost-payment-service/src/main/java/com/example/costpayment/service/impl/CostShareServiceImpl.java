@@ -168,6 +168,24 @@ public class CostShareServiceImpl implements CostShareService {
     }
 
     /**
+     * ✅ Lấy cost shares của user theo status
+     * Note: CostShare entity không có status field, nên method này chỉ return all shares
+     */
+    @Override
+    public List<CostShare> getCostSharesByUserIdAndStatus(Integer userId, String status) {
+        // CostShare không có status, nên chỉ return tất cả shares của user
+        return costShareRepository.findByUserId(userId);
+    }
+
+    /**
+     * ✅ Cập nhật cost share
+     */
+    @Override
+    public CostShare updateCostShare(CostShare costShare) {
+        return costShareRepository.save(costShare);
+    }
+
+    /**
      * ✅ Kiểm tra xem một chi phí đã được chia sẻ chưa
      */
     public boolean isCostShared(Integer costId) {

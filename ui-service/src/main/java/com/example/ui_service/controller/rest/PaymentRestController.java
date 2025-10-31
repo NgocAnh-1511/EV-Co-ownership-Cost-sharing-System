@@ -156,5 +156,54 @@ public class PaymentRestController {
             ));
         }
     }
+
+    /**
+     * Get payment by ID
+     * GET /api/payments/{id}
+     */
+    @GetMapping("/{id}")
+    public ResponseEntity<Map<String, Object>> getPaymentById(@PathVariable Integer id) {
+        try {
+            ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
+                costPaymentUrl + "/api/payments/" + id,
+                HttpMethod.GET,
+                null,
+                new ParameterizedTypeReference<Map<String, Object>>() {}
+            );
+            return ResponseEntity.ok(response.getBody());
+        } catch (Exception e) {
+            System.err.println("Error fetching payment: " + e.getMessage());
+            return ResponseEntity.status(404).body(Map.of(
+                "success", false,
+                "message", "Không tìm thấy thanh toán"
+            ));
+        }
+    }
+
+    /**
+     * Confirm payment with QR code
+     * POST /api/payments/{id}/confirm
+     */
+    @PostMapping("/{id}/confirm")
+    public ResponseEntity<Map<String, Object>> confirmPayment(
+            @PathVariable Integer id,
+            @RequestBody Map<String, Object> request) {
+        try {
+            ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
+                costPaymentUrl + "/api/payments/" + id + "/confirm",
+                HttpMethod.POST,
+                new HttpEntity<>(request),
+                new ParameterizedTypeReference<Map<String, Object>>() {}
+            );
+            return ResponseEntity.ok(response.getBody());
+        } catch (Exception e) {
+            System.err.println("Error confirming payment: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(500).body(Map.of(
+                "success", false,
+                "message", "Lỗi khi xác nhận thanh toán: " + e.getMessage()
+            ));
+        }
+    }
 }
 
