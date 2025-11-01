@@ -1,429 +1,210 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org" lang="vi">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Đặt lịch xe đồng sở hữu</title>
-
-    <!-- CDN -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/@sweetalert2/theme-bootstrap-4@5/bootstrap-4.min.css" rel="stylesheet">
-    <link href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" rel="stylesheet">
-
     <style>
-        :root {
-            --primary: #4361ee;
-            --primary-light: #e0e7ff;
-            --success: #10b981;
-            --danger: #ef4444;
-            --warning: #f59e0b;
-            --sidebar-w: 270px;
-            --sidebar-c: 75px;
-            --radius: 1rem;
-            --shadow: 0 10px 30px rgba(0,0,0,0.1);
-            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        * { box-sizing: border-box; }
         body {
-            background: linear-gradient(135deg, #f0f4f8 0%, #d9e2ec 100%);
-            font-family: 'Inter', 'Segoe UI', sans-serif;
-            margin: 0; padding: 0; min-height: 100vh;
+            background: linear-gradient(135deg, #eef2f7 0%, #e6ecf3 100%);
         }
 
-        /* ===== SIDEBAR NÂNG CẤP ===== */
-        .sidebar {
-            position: fixed; top: 0; left: 0; height: 100vh;
-            width: var(--sidebar-w); background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
-            color: #e2e8f0; z-index: 1000; box-shadow: var(--shadow);
-            transition: var(--transition); overflow: hidden;
-        }
-        .sidebar.collapsed { width: var(--sidebar-c); }
-
-        .sidebar-header {
-            padding: 1.8rem 1.2rem; text-align: center; border-bottom: 1px solid #334155;
-        }
-        .logo { display: flex; align-items: center; justify-content: center; gap: 0.8rem; font-weight: 800; font-size: 1.5rem; color: #60a5fa; }
-        .logo i { font-size: 2rem; background: linear-gradient(135deg, #60a5fa, #3b82f6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-
-        .nav-item {
-            display: flex; align-items: center; padding: 1rem 1.5rem; color: #94a3b8; text-decoration: none;
-            transition: var(--transition); position: relative; border-left: 4px solid transparent;
-        }
-        .nav-item i { width: 24px; font-size: 1.2rem; text-align: center; }
-        .nav-item span { margin-left: 1rem; white-space: nowrap; font-weight: 500; }
-        .sidebar.collapsed .nav-item span { opacity: 0; pointer-events: none; }
-        .nav-item:hover { background: #1e293b; color: white; padding-left: 1.8rem; }
-        .nav-item.active {
-            background: linear-gradient(90deg, #3b82f6, transparent); color: white; border-left-color: #60a5fa;
-            font-weight: 600; box-shadow: 0 4px 10px rgba(59, 130, 246, 0.3);
+        .brand {
+            font-weight: 800;
+            letter-spacing: .5px;
         }
 
-        .sidebar-toggle {
-            position: fixed; top: 1.5rem; left: calc(var(--sidebar-w) + 1rem);
-            background: white; border: none; width: 44px; height: 44px; border-radius: 50%;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.15); cursor: pointer; z-index: 999;
-            display: flex; align-items: center; justify-content: center; transition: var(--transition);
-        }
-        .sidebar.collapsed + .sidebar-toggle { left: calc(var(--sidebar-c) + 1rem); }
-        .sidebar-toggle i { font-size: 1.3rem; color: var(--primary); transition: transform 0.4s ease; }
-        .sidebar.collapsed + .sidebar-toggle i { transform: rotate(180deg); }
-
-        /* ===== MAIN CONTENT ===== */
-        .main-content {
-            margin-left: var(--sidebar-w); transition: var(--transition); padding: 2rem;
-            min-height: 100vh;
-        }
-        .sidebar.collapsed ~ .main-content { margin-left: var(--sidebar-c); }
-
-        /* Card nâng cấp */
-        .glass-card {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            border-radius: var(--radius);
-            box-shadow: var(--shadow);
-            transition: var(--transition);
-        }
-        .glass-card:hover { transform: translateY(-8px); box-shadow: 0 20px 40px rgba(0,0,0,0.15); }
-
-        .card-header {
-            background: linear-gradient(135deg, var(--primary), #3b82f6);
-            color: white; font-weight: 600; font-size: 1.15rem;
-            padding: 1.2rem 1.8rem; border-radius: var(--radius) var(--radius) 0 0;
-            display: flex; align-items: center; gap: 0.5rem;
+        .shell {
+            max-width: 1200px;
+            margin: 40px auto;
         }
 
-        /* Form nâng cấp */
-        .form-control, .form-select {
-            border-radius: 0.8rem; padding: 0.75rem 1rem; border: 2px solid #e2e8f0;
-            transition: var(--transition); font-size: 0.95rem;
-        }
-        .form-control:focus, .form-select:focus {
-            border-color: var(--primary); box-shadow: 0 0 0 0.2rem rgba(67, 97, 238, 0.2);
+        .glass {
+            background: #fff;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, .06);
+            border: 1px solid rgba(0, 0, 0, .06);
         }
 
-        .datetime-group {
-            position: relative;
-        }
-        .datetime-group .form-control {
-            padding-left: 3rem;
-        }
-        .datetime-group i {
-            position: absolute; left: 1rem; top: 50%; transform: translateY(-50%);
-            color: var(--primary); font-size: 1.1rem; z-index: 5;
+        .section-title {
+            font-weight: 700;
         }
 
-        .total-price {
-            background: linear-gradient(135deg, #ecfdf5, #d1fae5);
-            color: var(--success); padding: 1.2rem; border-radius: 0.8rem;
-            text-align: center; font-weight: 700; font-size: 1.1rem;
-            border: 2px dashed #34d399;
+        .form-label {
+            font-weight: 600;
+        }
+
+        .hero {
+            background: radial-gradient(1000px 400px at 10% -40%, #dbeafe 0, rgba(219, 234, 254, 0) 60%),
+                radial-gradient(1000px 400px at 110% -40%, #fde68a 0, rgba(253, 230, 138, 0) 60%);
+            border-radius: 16px;
+            padding: 24px;
         }
 
         .btn-primary {
-            background: linear-gradient(135deg, var(--primary), #3b82f6);
-            border: none; border-radius: 0.8rem; padding: 0.9rem 2.5rem;
-            font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;
-            box-shadow: 0 6px 15px rgba(67, 97, 238, 0.3);
-            transition: var(--transition);
+            background-image: linear-gradient(135deg, #2563eb, #7c3aed);
+            border: none;
         }
+
         .btn-primary:hover {
-            transform: translateY(-3px); box-shadow: 0 10px 20px rgba(67, 97, 238, 0.4);
+            filter: brightness(1.05);
         }
 
-        /* Bảng lịch */
-        .table {
-            border-radius: 0.8rem; overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.08);
-        }
-        .table thead { background: linear-gradient(135deg, #f8fafc, #e2e8f0); font-weight: 600; color: #1e293b; }
-
-        /* Mini Calendar */
-        .mini-calendar {
-            background: white; border-radius: 0.8rem; padding: 1rem;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.08); font-size: 0.85rem;
-        }
-        .fc-daygrid-day-number { font-weight: 600; }
-        .fc-event {
-            border: none !important; border-radius: 0.4rem !important;
-            padding: 0.2rem 0.4rem !important; font-size: 0.75rem !important;
-            font-weight: 500;
+        .muted {
+            color: #6b7280;
         }
 
-        /* Conflict Alert */
-        .conflict-alert {
-            background: #fee2e2; border: 1px solid #fecaca; color: #991b1b;
-            padding: 0.75rem 1rem; border-radius: 0.6rem; font-size: 0.9rem;
-            display: none; margin-top: 0.5rem;
-        }
-
-        /* Responsive */
-        @media (max-width: 992px) {
-            .sidebar, .sidebar.collapsed { width: var(--sidebar-c); }
-            .main-content { margin-left: var(--sidebar-c); }
-            .sidebar-toggle { left: calc(var(--sidebar-c) + 1rem); }
-            .nav-item span { opacity: 0; }
+        .table thead {
+            background: #f8fafc;
         }
     </style>
+    <script>
+        function onVehicleChange() {
+            const select = document.getElementById('vehicle');
+            const title = document.getElementById('vehicleTitle');
+            title.textContent = select.selectedIndex > 0 ? select.selectedOptions[0].text : 'Chọn xe';
+        }
+    </script>
+    <script defer src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const start = document.getElementById('startDate');
+            const end = document.getElementById('endDate');
+            start.addEventListener('change', () => { end.min = start.value; });
+        });
+    </script>
+    <style>
+        /* Tiny helpers */
+        .hint {
+            font-size: .9rem;
+        }
 
-    <!-- FullCalendar -->
-    <link href='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css' rel='stylesheet' />
+        .badge-soft {
+            background: #eef2ff;
+            color: #3730a3;
+        }
+    </style>
 </head>
+
 <body>
 
-<!-- SIDEBAR -->
-<aside class="sidebar" id="sidebar">
-    <div class="sidebar-header">
-        <a href="#" class="logo">
-            <i class="fas fa-car"></i>
-            <span>CarShare Pro</span>
-        </a>
-    </div>
-    <nav class="sidebar-nav">
-        <a href="#" class="nav-item"><i class="fas fa-tachometer-alt"></i><span>Dashboard</span></a>
-        <a href="#" class="nav-item"><i class="fas fa-car"></i><span>Xe</span></a>
-        <a href="#" class="nav-item active"><i class="fas fa-clipboard-check"></i><span>Đặt lịch</span></a>
-        <a href="#" class="nav-item"><i class="fas fa-users"></i><span>Thành viên</span></a>
-        <a href="#" class="nav-item"><i class="fas fa-chart-line"></i><span>Báo cáo</span></a>
-        <a href="#" class="nav-item"><i class="fas fa-cog"></i><span>Cài đặt</span></a>
-    </nav>
-</aside>
-
-<button class="sidebar-toggle" id="sidebarToggle">
-    <i class="fas fa-chevron-left"></i>
-</button>
-
-<!-- MAIN CONTENT -->
-<main class="main-content">
-    <div class="container-fluid">
-
-        <!-- Header -->
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <div>
-                <h2 class="fw-bold text-primary mb-1">
-                    <i class="bi bi-calendar-week"></i> Đặt Lịch Xe Đồng Sở Hữu
-                </h2>
-                <p class="text-muted">Hệ thống thông minh – Không trùng lịch – Miễn phí</p>
-            </div>
-            <button class="btn btn-outline-primary" onclick="toggleDarkMode()">
-                <i class="bi bi-moon-stars-fill"></i>
-            </button>
+    <div class="shell px-3">
+        <div class="mb-4 text-center">
+            <div class="brand fs-3">CarShare Pro</div>
+            <div class="muted">Đặt lịch xe đồng sở hữu • Nhanh • Trực quan • Tránh trùng</div>
         </div>
 
-        <!-- Lỗi -->
-        <div th:if="${error}" class="alert alert-danger alert-dismissible fade show" role="alert">
-            <i class="bi bi-exclamation-triangle-fill"></i> <span th:text="${error}"></span>
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        <div class="hero mb-4 glass">
+            <div class="row g-4 align-items-center">
+                <div class="col-lg-8">
+                    <div class="d-flex align-items-center gap-3">
+                        <i class="bi bi-calendar2-check fs-2 text-primary"></i>
+                        <div>
+                            <div class="section-title h4 m-0">Đặt lịch sử dụng</div>
+                            <div class="muted" id="vehicleTitle">Chọn xe</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-4 text-lg-end">
+                    <a class="btn btn-outline-secondary me-2" href="/" onclick="history.back();return false;"><i
+                            class="bi bi-arrow-left"></i> Quay lại</a>
+                    <button class="btn btn-primary"><i class="bi bi-moon-stars"></i> Chế độ tối</button>
+                </div>
+            </div>
         </div>
 
         <div class="row g-4">
-            <!-- Form đặt lịch -->
-            <div class="col-lg-7">
-                <div class="glass-card">
-                    <div class="card-header">
-                        <i class="bi bi-plus-circle"></i> Tạo lịch mới
-                    </div>
-                    <div class="card-body p-4">
-                        <form id="bookingForm" th:action="@{/reservations/book}" method="post">
-                            <div class="mb-4">
-                                <label class="form-label fw-semibold">
-                                    <i class="bi bi-truck text-primary"></i> Chọn xe
-                                </label>
-                                <select class="form-select" name="vehicleId" id="vehicle" required onchange="loadCalendar()">
-                                    <option value="">-- Chọn xe để xem lịch --</option>
-                                    <option th:each="v : ${vehicles}"
-                                            th:value="${v['vehicleId']}"
-                                            th:text="|${v['vehicleName']} • ${v['groupName']}|">
-                                    </option>
-                                </select>
-                                <div class="owner-list mt-2 text-muted" id="ownerList"></div>
-                            </div>
+            <div class="col-lg-6">
+                <div class="glass p-4">
+                    <div class="h5 mb-3">Tạo lịch mới</div>
+                    <form th:action="@{/reservations/book}" method="post" class="needs-validation" novalidate>
+                        <div class="mb-3">
+                            <label class="form-label">Chọn xe</label>
+                            <select class="form-select" name="vehicleId" id="vehicle" required
+                                onchange="onVehicleChange()">
+                                <option value="">-- Chọn xe để xem lịch --</option>
+                                <option th:each="v : ${vehicles}" th:value="${v['vehicleId']}"
+                                    th:text="|${v['vehicleName']} • ${v['groupName']}|"></option>
+                            </select>
+                            <div class="form-text hint">Danh sách lấy từ hệ thống đồng sở hữu.</div>
+                        </div>
 
-                            <div class="row g-3 mb-4">
-                                <div class="col-md-6">
-                                    <label class="form-label fw-semibold">
-                                        <i class="bi bi-play-circle text-success"></i> Bắt đầu
-                                    </label>
-                                    <div class="datetime-group">
-                                        <i class="bi bi-calendar-event"></i>
-                                        <input type="datetime-local" name="startDate" id="startDate" class="form-control" required>
-                                    </div>
-                                </div>
-                                <div class="col-md-6">
-                                    <label class="form-label fw-semibold">
-                                        <i class="bi bi-stop-circle text-danger"></i> Kết thúc
-                                    </label>
-                                    <div class="datetime-group">
-                                        <i class="bi bi-calendar-x"></i>
-                                        <input type="datetime-local" name="endDate" id="endDate" class="form-control" required>
-                                    </div>
-                                </div>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label">Bắt đầu</label>
+                                <input class="form-control" type="datetime-local" id="startDate" name="startDate"
+                                    required>
                             </div>
-
-                            <div id="conflictAlert" class="conflict-alert">
-                                <i class="bi bi-shield-fill-exclamation"></i>
-                                <span id="conflictMsg"></span>
+                            <div class="col-md-6">
+                                <label class="form-label">Kết thúc</label>
+                                <input class="form-control" type="datetime-local" id="endDate" name="endDate" required>
                             </div>
+                        </div>
 
-                            <div class="mb-4">
-                                <label class="form-label fw-semibold">
-                                    <i class="bi bi-chat-dots text-info"></i> Ghi chú
-                                </label>
-                                <input type="text" name="note" class="form-control" placeholder="VD: Đi họp khách hàng tại Hà Nội">
-                            </div>
+                        <div class="mt-3">
+                            <label class="form-label">Ghi chú</label>
+                            <input class="form-control" type="text" name="note" placeholder="VD: Đi họp khách hàng">
+                        </div>
 
-                            <div class="total-price mb-4">
-                                <i class="bi bi-check-circle-fill"></i>
-                                <strong>Miễn phí</strong> • Xe đồng sở hữu
-                            </div>
+                        <div th:if="${error}" class="alert alert-danger mt-3" role="alert" th:text="${error}"></div>
 
-                            <button type="submit" class="btn btn-primary w-100 btn-lg">
-                                <i class="bi bi-calendar-plus"></i> Đặt Lịch Ngay
-                            </button>
-                        </form>
-                    </div>
+                        <div class="d-grid mt-3">
+                            <button class="btn btn-primary btn-lg" type="submit"><i class="bi bi-plus-circle"></i> Đặt
+                                lịch ngay</button>
+                        </div>
+                    </form>
                 </div>
             </div>
 
-            <!-- Mini Calendar -->
-
-
-        <!-- Bảng lịch -->
-        <div class="glass-card mt-4">
-            <div class="card-header">
-                <i class="bi bi-list-ul"></i> Lịch đã đặt gần đây
-            </div>
-            <div class="card-body p-4">
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle">
-                        <thead>
-                        <tr>
-                            <th>Thời gian</th>
-                            <th>Người đặt</th>
-                            <th>Mục đích</th>
-                            <th>Trạng thái</th>
-                        </tr>
-                        </thead>
-                        <tbody>
-                        <tr th:each="r : ${reservations}">
-                            <td>
-                                        <span class="badge bg-light text-dark"
-                                              th:text="${#temporals.format(T(java.time.LocalDateTime).parse(r['startDatetime']), 'dd/MM HH:mm')}">
-                                        </span>
-                                →
-                                <span class="badge bg-light text-dark"
-                                      th:text="${#temporals.format(T(java.time.LocalDateTime).parse(r['endDatetime']), 'dd/MM HH:mm')}">
-                                        </span>
-                            </td>
-                            <td th:text="${r['user']?.fullName ?: 'User #' + r['userId']}"></td>
-                            <td th:text="${r['note'] ?: '-'}"></td>
-                            <td>
+            <div class="col-lg-6">
+                <div class="glass p-4 mb-4">
+                    <div class="h5 mb-3">Lịch đã đặt gần đây</div>
+                    <div class="table-responsive">
+                        <table class="table align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Thời gian</th>
+                                    <th>Người đặt</th>
+                                    <th>Mục đích</th>
+                                    <th>Trạng thái</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr th:each="r : ${reservations}">
+                                    <td>
+                                        <span class="badge badge-soft"
+                                            th:text="${#temporals.format(T(java.time.LocalDateTime).parse(r['startDatetime']), 'dd/MM HH:mm')}"></span>
+                                        <span class="mx-1">→</span>
+                                        <span class="badge badge-soft"
+                                            th:text="${#temporals.format(T(java.time.LocalDateTime).parse(r['endDatetime']), 'dd/MM HH:mm')}"></span>
+                                    </td>
+                                    <td th:text="${r['user']?.fullName ?: 'User #' + r['userId']}"></td>
+                                    <td th:text="${r['note'] ?: '-'}"></td>
+                                    <td>
                                         <span th:text="${r['status']}"
-                                              th:classappend="${r['status'] == 'CONFIRMED' ? 'badge bg-success' : (r['status'] == 'CANCELLED' ? 'badge bg-danger' : 'badge bg-warning')}">
-                                        </span>
-                            </td>
-                        </tr>
-                        <tr th:if="${reservations == null or reservations.isEmpty()}">
-                            <td colspan="4" class="text-center py-5 text-muted">
-                                <i class="bi bi-inbox display-1 d-block mb-3 opacity-25"></i>
-                                Chưa có lịch đặt
-                            </td>
-                        </tr>
-                        </tbody>
-                    </table>
+                                            th:classappend="${r['status'] == 'CONFIRMED' ? 'badge bg-success' : (r['status'] == 'CANCELLED' ? 'badge bg-danger' : 'badge bg-warning')}"
+                                            class="badge"></span>
+                                    </td>
+                                </tr>
+                                <tr th:if="${reservations == null or reservations.isEmpty()}">
+                                    <td colspan="4" class="text-center text-muted py-5">
+                                        <i class="bi bi-inbox display-6 d-block mb-2"></i>
+                                        Chưa có lịch đặt
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
+                <div class="text-center muted">Mẹo: Chọn xe trước để hiển thị lịch liên quan.</div>
             </div>
         </div>
     </div>
-</main>
 
-<!-- Scripts -->
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-<script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js'></script>
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-
-<script>
-    // Sidebar toggle
-    document.getElementById('sidebarToggle').addEventListener('click', () => {
-        document.getElementById('sidebar').classList.toggle('collapsed');
-    });
-
-    // Dark mode
-    function toggleDarkMode() {
-        document.body.classList.toggle('bg-dark');
-        document.body.style.background = document.body.classList.contains('bg-dark')
-            ? 'linear-gradient(135deg, #1a1a2e, #16213e)' : 'linear-gradient(135deg, #f0f4f8, #d9e2ec)';
-    }
-
-    // Calendar
-    let calendar;
-    function loadCalendar() {
-        const vehicleId = document.getElementById('vehicle').value;
-        const title = document.getElementById('vehicle').selectedOptions[0].text.split(' • ')[0];
-        document.getElementById('calTitle').textContent = title || 'Chọn xe';
-
-        if (calendar) calendar.destroy();
-
-        calendar = new FullCalendar.Calendar(document.getElementById('miniCalendar'), {
-            initialView: 'dayGridMonth',
-            headerToolbar: { left: 'prev,next', center: 'title', right: 'today' },
-            height: 380,
-            events: vehicleId ? `/api/reservations/events?vehicleId=${vehicleId}` : [],
-            eventDidMount: function(info) {
-                info.el.style.background = info.event.extendedProps.status === 'CONFIRMED' ? '#10b981' : '#f59e0b';
-            }
-        });
-        calendar.render();
-    }
-
-    // Check conflict
-    document.getElementById('endDate').addEventListener('change', checkConflict);
-    document.getElementById('startDate').addEventListener('change', () => {
-        const start = document.getElementById('startDate').value;
-        document.getElementById('endDate').min = start;
-        checkConflict();
-    });
-
-    function checkConflict() {
-        const vehicleId = document.getElementById('vehicle').value;
-        const start = document.getElementById('startDate').value;
-        const end = document.getElementById('endDate').value;
-        const alert = document.getElementById('conflictAlert');
-        const msg = document.getElementById('conflictMsg');
-
-        if (!vehicleId || !start || !end) return;
-
-        fetch(`/api/reservations/conflict?vehicleId=${vehicleId}&start=${start}&end=${end}`)
-            .then(r => r.json())
-            .then(data => {
-                if (data.conflict) {
-                    alert.style.display = 'block';
-                    msg.textContent = `Trùng với lịch của ${data.user} (${data.note || 'không ghi chú'})`;
-                } else {
-                    alert.style.display = 'none';
-                }
-            });
-    }
-
-    // Load owners
-    document.getElementById('vehicle').addEventListener('change', () => {
-        const selected = [...document.querySelectorAll('#vehicle option')].find(o => o.selected);
-        const owners = selected?.dataset.owners?.split(',') || [];
-        document.getElementById('ownerList').innerHTML = owners.length
-            ? `<i class="bi bi-people-fill"></i> Đồng sở hữu: <strong>${owners.join(', ')}</strong>`
-            : '';
-        loadCalendar();
-    });
-
-    // Auto fill owners in JS (nếu cần)
-    document.addEventListener('DOMContentLoaded', () => {
-        document.querySelectorAll('#vehicle option').forEach(opt => {
-            const vehicle = ${vehicles}.find(v => v.vehicleId == opt.value);
-            if (vehicle) opt.dataset.owners = vehicle.owners.join(',');
-        });
-    });
-</script>
 </body>
+
 </html>
