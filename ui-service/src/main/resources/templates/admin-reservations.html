@@ -306,12 +306,12 @@
                                 <td>
                                     <div class="fw-semibold"
                                         th:text="${r.user != null ? r.user.fullName : 'User #' + r.userId}"></div>
-                                    <small class="text-muted"
-                                        th:text="${r.user != null ? r.user.email : ''}"></small>
+                                    <small class="text-muted" th:text="${r.user != null ? r.user.email : ''}"></small>
                                 </td>
                                 <td>
                                     <div class="fw-semibold"
-                                        th:text="${r.vehicle != null ? r.vehicle.vehicleName : 'Vehicle #' + r.vehicleId}"></div>
+                                        th:text="${r.vehicle != null ? r.vehicle.vehicleName : 'Vehicle #' + r.vehicleId}">
+                                    </div>
                                     <small class="text-muted"
                                         th:text="${r.vehicle != null ? r.vehicle.licensePlate : ''}"></small>
                                 </td>
@@ -323,7 +323,8 @@
                                     </div>
                                 </td>
                                 <td>
-                                    <span th:text="${r.purpose != null and !r.purpose.isEmpty() ? r.purpose : '-'}"></span>
+                                    <span
+                                        th:text="${r.purpose != null and !r.purpose.isEmpty() ? r.purpose : '-'}"></span>
                                 </td>
                                 <td>
                                     <span th:if="${r.status != null and r.status.toString() == 'COMPLETED'}"
@@ -335,7 +336,7 @@
                                 </td>
                                 <td>
                                     <div class="action-buttons">
-                                        <button class="btn btn-sm btn-warning-gradient" 
+                                        <button class="btn btn-sm btn-warning-gradient"
                                             th:onclick="'openStatusModal(' + ${r.reservationId} + ', \'' + ${r.status} + '\')'">
                                             <i class="bi bi-arrow-repeat"></i>
                                         </button>
@@ -407,8 +408,7 @@
                         </div>
                         <div class="mb-3">
                             <label class="form-label">Ghi Chú</label>
-                            <input type="text" class="form-control" name="note"
-                                placeholder="Mô tả mục đích sử dụng...">
+                            <input type="text" class="form-control" name="note" placeholder="Mô tả mục đích sử dụng...">
                         </div>
                     </div>
                     <div class="modal-footer">
@@ -542,7 +542,7 @@
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script th:inline="javascript">
-        const reservations = /*[[${reservations}]]*/ [];
+        const reservations = /*[[${reservations}]]*/[];
 
         function openEditModal(id) {
             const reservation = reservations.find(r => r.reservationId == id);
@@ -579,4 +579,3 @@
 </body>
 
 </html>
-

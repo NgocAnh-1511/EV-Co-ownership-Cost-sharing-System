@@ -600,13 +600,13 @@
                 title: 'Tạo lịch đặt mới',
                 html:
                     '<label class="form-label text-start w-100">Người dùng:</label>' +
-                    '<input id="swal-userId" class="swal2-input" placeholder="User ID" type="number">' +
+                    '<input id="swal-userId" class="swal2-input" placeholder="User ID" type="number" required>' +
                     '<label class="form-label text-start w-100">Xe:</label>' +
-                    '<input id="swal-vehicleId" class="swal2-input" placeholder="Vehicle ID" type="number">' +
+                    '<input id="swal-vehicleId" class="swal2-input" placeholder="Vehicle ID" type="number" required>' +
                     '<label class="form-label text-start w-100">Ngày bắt đầu:</label>' +
-                    '<input id="swal-startDate" class="swal2-input" type="datetime-local">' +
+                    '<input id="swal-startDate" class="swal2-input" type="datetime-local" required>' +
                     '<label class="form-label text-start w-100">Ngày kết thúc:</label>' +
-                    '<input id="swal-endDate" class="swal2-input" type="datetime-local">' +
+                    '<input id="swal-endDate" class="swal2-input" type="datetime-local" required>' +
                     '<label class="form-label text-start w-100">Ghi chú:</label>' +
                     '<input id="swal-note" class="swal2-input" placeholder="Ghi chú">',
                 focusConfirm: false,
@@ -614,11 +614,26 @@
                 confirmButtonText: 'Tạo',
                 cancelButtonText: 'Hủy',
                 preConfirm: () => {
+                    const userId = document.getElementById('swal-userId').value;
+                    const vehicleId = document.getElementById('swal-vehicleId').value;
+                    const startDate = document.getElementById('swal-startDate').value;
+                    const endDate = document.getElementById('swal-endDate').value;
+
+                    if (!userId || !vehicleId || !startDate || !endDate) {
+                        Swal.showValidationMessage('Vui lòng điền đầy đủ thông tin bắt buộc');
+                        return false;
+                    }
+
+                    if (new Date(startDate) >= new Date(endDate)) {
+                        Swal.showValidationMessage('Ngày kết thúc phải sau ngày bắt đầu');
+                        return false;
+                    }
+
                     return {
-                        userId: document.getElementById('swal-userId').value,
-                        vehicleId: document.getElementById('swal-vehicleId').value,
-                        startDate: document.getElementById('swal-startDate').value,
-                        endDate: document.getElementById('swal-endDate').value,
+                        userId: userId,
+                        vehicleId: vehicleId,
+                        startDate: startDate,
+                        endDate: endDate,
                         note: document.getElementById('swal-note').value
                     }
                 }
@@ -632,28 +647,44 @@
         // Tạo lịch đặt
         async function createReservation(data) {
             try {
+                // Format datetime to ISO-8601 format that backend expects
+                const startDate = new Date(data.startDate).toISOString().slice(0, 19);
+                const endDate = new Date(data.endDate).toISOString().slice(0, 19);
+
+                const payload = {
+                    userId: parseInt(data.userId),
+                    vehicleId: parseInt(data.vehicleId),
+                    startDatetime: startDate,
+                    endDatetime: endDate,
+                    purpose: data.note || '',
+                    status: 'PENDING'
+                };
+
+                console.log('Creating reservation with payload:', payload);
+
                 const res = await fetch('http://localhost:8082/api/reservations', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'Authorization': 'Bearer ' + token
                     },
-                    body: JSON.stringify({
-                        userId: parseInt(data.userId),
-                        vehicleId: parseInt(data.vehicleId),
-                        startDatetime: data.startDate,
-                        endDatetime: data.endDate,
-                        purpose: data.note
-                    })
+                    body: JSON.stringify(payload)
                 });
+
+                console.log('Response status:', res.status);
+
                 if (res.ok) {
+                    const result = await res.json();
+                    console.log('Created reservation:', result);
                     Swal.fire('Thành công!', 'Đã tạo lịch đặt mới.', 'success');
                     loadSchedules();
                 } else {
                     const error = await res.text();
+                    console.error('Error response:', error);
                     Swal.fire('Lỗi!', error || 'Không thể tạo lịch', 'error');
                 }
             } catch (e) {
+                console.error('Exception:', e);
                 Swal.fire('Lỗi!', 'Không kết nối được máy chủ: ' + e.message, 'error');
             }
         }

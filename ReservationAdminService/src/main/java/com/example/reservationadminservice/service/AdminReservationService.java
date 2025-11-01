@@ -62,6 +62,19 @@ public class AdminReservationService {
         return repository.findById(id).map(this::convertToDTO);
     }
     
+    public ReservationDTO createReservation(ReservationDTO dto) {
+        ReservationAdmin reservation = new ReservationAdmin();
+        reservation.setVehicleId(dto.getVehicleId());
+        reservation.setUserId(dto.getUserId());
+        reservation.setStartDatetime(dto.getStartDatetime());
+        reservation.setEndDatetime(dto.getEndDatetime());
+        reservation.setPurpose(dto.getPurpose());
+        reservation.setStatus(dto.getStatus() != null ? dto.getStatus() : "PENDING");
+        
+        ReservationAdmin saved = repository.save(reservation);
+        return convertToDTO(saved);
+    }
+    
     public List<ReservationAdmin> getReservationsByStatus(String status) {
         return repository.findByStatus(status);
     }

@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="vi">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -361,6 +362,7 @@
         }
     </style>
 </head>
+
 <body>
     <!-- Sidebar Navigation -->
     <div class="sidebar">
@@ -515,7 +517,7 @@
             const displayName = username || "Admin";
             document.getElementById("adminName").textContent = displayName;
             document.getElementById("welcomeName").textContent = displayName;
-            
+
             // Set avatar initial
             const initial = displayName.charAt(0).toUpperCase();
             document.getElementById("userAvatar").textContent = initial;
@@ -547,4 +549,5 @@
         loadStats();
     </script>
 </body>
+
 </html>
