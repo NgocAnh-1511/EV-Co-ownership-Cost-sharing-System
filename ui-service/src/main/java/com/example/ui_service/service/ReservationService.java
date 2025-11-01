@@ -37,9 +37,13 @@ public class ReservationService {
             MultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
             formData.add("vehicleId", data.get("vehicleId").toString());
             formData.add("userId", data.get("userId").toString());
-            formData.add("startDate", data.get("startDate").toString());  // 👈 khớp backend
-            formData.add("endDate", data.get("endDate").toString());      // 👈 khớp backend
-            formData.add("purpose", data.get("note").toString());         // 👈 backend dùng "purpose"
+            formData.add("startDate", data.get("startDate").toString());
+            formData.add("endDate", data.get("endDate").toString());
+            // Gửi "purpose" như backend yêu cầu
+            String purposeValue = data.get("note") != null ? data.get("note").toString() : "";
+            if (!purposeValue.trim().isEmpty()) {
+                formData.add("purpose", purposeValue);
+            }
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);

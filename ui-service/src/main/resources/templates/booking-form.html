@@ -398,6 +398,11 @@
             color: #991b1b;
         }
 
+        .alert-success {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
         /* Empty State */
         .empty-state {
             text-align: center;
@@ -444,7 +449,7 @@
         </div>
         <nav class="sidebar-nav">
             <div class="nav-item">
-                <a href="/" class="nav-link">
+                <a href="/dashboard" class="nav-link">
                     <i class="bi bi-speedometer2"></i>
                     <span>Dashboard</span>
                 </a>
@@ -452,19 +457,13 @@
             <div class="nav-item">
                 <a href="/reservations/book" class="nav-link active">
                     <i class="bi bi-calendar-check"></i>
-                    <span>Lịch Sử</span>
+                    <span>Đặt Lịch</span>
                 </a>
             </div>
             <div class="nav-item">
-                <a href="/vehicles" class="nav-link">
-                    <i class="bi bi-car-front"></i>
-                    <span>Xe Của Tôi</span>
-                </a>
-            </div>
-            <div class="nav-item">
-                <a href="/reports" class="nav-link">
-                    <i class="bi bi-file-earmark-text"></i>
-                    <span>Báo Cáo</span>
+                <a href="/admin" class="nav-link">
+                    <i class="bi bi-shield-check"></i>
+                    <span>Admin Panel</span>
                 </a>
             </div>
         </nav>
@@ -502,13 +501,22 @@
                             <h3 class="card-title">Tạo Lịch Mới</h3>
                         </div>
                         <div class="card-body">
-                            <form th:action="@{/reservations/book}" method="post">
+                            <!-- Error Alert -->
+                            <div th:if="${error}" class="alert alert-danger mb-3" role="alert">
+                                <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                                <span th:text="${error}"></span>
+                            </div>
+                            
+                            <form th:action="@{/reservations/book}" method="post" id="bookingForm">
+                                <!-- Hidden field for userId from localStorage -->
+                                <input type="hidden" name="userId" id="userIdField">
+                                
                                 <div class="mb-3">
                                     <label class="form-label">Chọn Xe</label>
                                     <select class="form-select" name="vehicleId" id="vehicle" required>
                                         <option value="">-- Chọn xe để xem lịch --</option>
                                         <option th:each="v : ${vehicles}" th:value="${v['vehicleId']}"
-                                            th:text="|${v['vehicleName']} • ${v['groupName']}|"></option>
+                                            th:text="${v['vehicleName'] + ' • ' + v['groupName']}"></option>
                                     </select>
                                     <div class="form-text">Chọn xe từ nhóm đồng sở hữu của bạn</div>
                                 </div>
@@ -531,8 +539,6 @@
                                         placeholder="VD: Đi họp khách hàng, đi du lịch...">
                                     <div class="form-text">Mô tả mục đích sử dụng xe (không bắt buộc)</div>
                                 </div>
-
-                                <div th:if="${error}" class="alert alert-danger" role="alert" th:text="${error}"></div>
 
                                 <button class="btn btn-primary w-100" type="submit">
                                     <i class="bi bi-plus-circle me-2"></i>Đặt Lịch Ngay
@@ -572,41 +578,38 @@
                                                     </div>
                                                     <div>
                                                         <div class="fw-semibold"
-                                                            th:text="${r['vehicle']?.vehicleName ?: 'N/A'}"></div>
+                                                            th:text="${r.vehicle != null ? r.vehicle.vehicleName : 'N/A'}"></div>
                                                         <small class="text-muted"
-                                                            th:text="${r['vehicle']?.licensePlate ?: ''}"></small>
+                                                            th:text="${r.vehicle != null ? r.vehicle.licensePlate : ''}"></small>
                                                     </div>
                                                 </div>
                                             </td>
                                             <td>
-                                                <div>
-                                                    <div class="fw-semibold"
-                                                        th:text="${#temporals.format(T(java.time.LocalDateTime).parse(r['startDatetime']), 'dd/MM/yyyy')}">
-                                                    </div>
-                                                    <small class="text-muted">
-                                                        <span
-                                                            th:text="${#temporals.format(T(java.time.LocalDateTime).parse(r['startDatetime']), 'HH:mm')}"></span>
-                                                        -
-                                                        <span
-                                                            th:text="${#temporals.format(T(java.time.LocalDateTime).parse(r['endDatetime']), 'HH:mm')}"></span>
-                                                    </small>
+                                                <div th:if="${r.startDatetime != null}">
+                                                    <div class="fw-semibold" th:text="${r.startDatetime}"></div>
+                                                    <small class="text-muted" th:if="${r.endDatetime != null}"
+                                                        th:text="'→ ' + ${r.endDatetime}"></small>
+                                                </div>
+                                                <div th:unless="${r.startDatetime != null}">
+                                                    <span class="text-muted">N/A</span>
                                                 </div>
                                             </td>
                                             <td>
                                                 <div class="fw-semibold"
-                                                    th:text="${r['user']?.fullName ?: 'User #' + r['userId']}"></div>
+                                                    th:text="${r.user != null ? r.user.fullName : 'User #' + r.userId}"></div>
                                             </td>
                                             <td>
-                                                <span th:text="${r['note'] ?: '-'}"></span>
+                                                <span th:text="${r.purpose != null and !r.purpose.isEmpty() ? r.purpose : '-'}"></span>
                                             </td>
                                             <td>
-                                                <span th:if="${r['status'] == 'CONFIRMED'}"
-                                                    class="badge badge-green">Hoàn
-                                                    thành</span>
-                                                <span th:if="${r['status'] == 'CANCELLED'}" class="badge badge-red">Đã
-                                                    hủy</span>
-                                                <span th:if="${r['status'] == 'PENDING'}"
-                                                    class="badge badge-yellow">Đang xử lý</span>
+                                                <span th:if="${r.status != null and r.status.toString() == 'COMPLETED'}"
+                                                    class="badge badge-green">Hoàn thành</span>
+                                                <span th:if="${r.status != null and r.status.toString() == 'CANCELLED'}" 
+                                                    class="badge badge-red">Đã hủy</span>
+                                                <span th:if="${r.status != null and r.status.toString() == 'BOOKED'}"
+                                                    class="badge badge-yellow">Đã đặt</span>
+                                                <span th:if="${r.status == null}"
+                                                    class="badge badge-blue">N/A</span>
                                             </td>
                                         </tr>
                                         <tr th:if="${reservations == null or reservations.isEmpty()}">
@@ -628,13 +631,91 @@
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
+    <script th:inline="javascript">
         document.addEventListener('DOMContentLoaded', () => {
+            let isSubmitting = false;
+            
+            // Set userId from localStorage
+            const userStr = localStorage.getItem('user');
+            if (userStr) {
+                try {
+                    const user = JSON.parse(userStr);
+                    if (user.userId) {
+                        document.getElementById('userIdField').value = user.userId;
+                        console.log('✓ Set userId from localStorage:', user.userId);
+                    }
+                } catch (e) {
+                    console.error('Error parsing user from localStorage:', e);
+                }
+            }
+            
+            // Set selected vehicle from server
+            const selectedVehicleId = /*[[${selectedVehicleId}]]*/ null;
+            if (selectedVehicleId) {
+                const vehicleSelect = document.getElementById('vehicle');
+                vehicleSelect.value = selectedVehicleId;
+                console.log('✓ Selected vehicle:', selectedVehicleId);
+            }
+            
+            // Prevent redirect during form submission
+            const bookingForm = document.getElementById('bookingForm');
+            bookingForm.addEventListener('submit', (e) => {
+                isSubmitting = true;
+                console.log('🔥 Form submitting...');
+            });
+            
+            // Handle vehicle change - reload page with new vehicle (only if not submitting)
+            const vehicleSelect = document.getElementById('vehicle');
+            vehicleSelect.addEventListener('change', (e) => {
+                if (isSubmitting) {
+                    console.log('⚠️ Ignoring change event during form submission');
+                    return;
+                }
+                
+                const vehicleId = e.target.value;
+                if (vehicleId) {
+                    console.log('🔄 Redirecting to vehicle:', vehicleId);
+                    window.location.href = `/reservations/book/${vehicleId}`;
+                }
+            });
+            
+            // Set min end date based on start date
             const start = document.getElementById('startDate');
             const end = document.getElementById('endDate');
             start.addEventListener('change', () => {
                 end.min = start.value;
             });
+        });
+    </script>
+
+    <!-- Success Modal -->
+    <div class="modal fade" id="successModal" tabindex="-1" aria-labelledby="successModalLabel" aria-hidden="true"
+        th:if="${showSuccessModal}">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg">
+                <div class="modal-body text-center p-5">
+                    <div class="mb-4">
+                        <div class="success-icon-wrapper mx-auto mb-3"
+                            style="width: 80px; height: 80px; background: linear-gradient(135deg, #10b981 0%, #059669 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                            <i class="bi bi-check-lg" style="font-size: 48px; color: white;"></i>
+                        </div>
+                        <h3 class="fw-bold mb-2" style="color: #1a202c;">Thành công!</h3>
+                        <p class="text-muted mb-0" th:text="${successMessage}">Đặt lịch thành công!</p>
+                    </div>
+                    <button type="button" class="btn btn-primary btn-lg px-5" data-bs-dismiss="modal"
+                        style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none;">
+                        <i class="bi bi-check-circle me-2"></i>OK
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script th:if="${showSuccessModal}">
+        // Auto-show modal when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            const modal = new bootstrap.Modal(document.getElementById('successModal'));
+            modal.show();
         });
     </script>
 </body>

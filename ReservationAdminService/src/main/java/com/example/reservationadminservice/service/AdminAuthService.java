@@ -1,7 +1,7 @@
 package com.example.reservationadminservice.service;
 
 import com.example.reservationadminservice.model.User;
-import com.example.reservationadminservice.repository.UserRepository;
+import com.example.reservationadminservice.repository.admin.AdminUserRepository;
 import com.example.reservationadminservice.util.JwtUtil;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -13,10 +13,10 @@ import java.util.Optional;
 @Service
 public class AdminAuthService {
 
-    private final UserRepository userRepository;
+    private final AdminUserRepository userRepository;
     private final BCryptPasswordEncoder encoder;
 
-    public AdminAuthService(UserRepository repository, BCryptPasswordEncoder encoder) {
+    public AdminAuthService(AdminUserRepository repository, BCryptPasswordEncoder encoder) {
         this.userRepository = repository;
         this.encoder = encoder;
     }

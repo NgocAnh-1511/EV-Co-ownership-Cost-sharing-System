@@ -1,11 +1,11 @@
 package com.example.reservationadminservice.controller;
 
-import com.example.reservationadminservice.model.Reservation;
+import com.example.reservationadminservice.model.ReservationAdmin;
 import com.example.reservationadminservice.model.User;
-import com.example.reservationadminservice.model.Vehicle;
-import com.example.reservationadminservice.repository.ReservationRepository;
-import com.example.reservationadminservice.repository.UserRepository;
-import com.example.reservationadminservice.repository.VehicleRepository;
+import com.example.reservationadminservice.model.VehicleAdmin;
+import com.example.reservationadminservice.repository.admin.AdminReservationRepository;
+import com.example.reservationadminservice.repository.admin.AdminUserRepository;
+import com.example.reservationadminservice.repository.admin.AdminVehicleRepository;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.*;
@@ -19,13 +19,13 @@ import java.util.*;
 @CrossOrigin(origins = "http://localhost:8080") // Cho phép UI gọi API
 public class ReservationAdminController {
 
-    private final ReservationRepository reservationRepo;
-    private final VehicleRepository vehicleRepo;
-    private final UserRepository userRepo;
+    private final AdminReservationRepository reservationRepo;
+    private final AdminVehicleRepository vehicleRepo;
+    private final AdminUserRepository userRepo;
 
-    public ReservationAdminController(ReservationRepository reservationRepo,
-                                      VehicleRepository vehicleRepo,
-                                      UserRepository userRepo) {
+    public ReservationAdminController(AdminReservationRepository reservationRepo,
+                                      AdminVehicleRepository vehicleRepo,
+                                      AdminUserRepository userRepo) {
         this.reservationRepo = reservationRepo;
         this.vehicleRepo = vehicleRepo;
         this.userRepo = userRepo;
@@ -38,12 +38,12 @@ public class ReservationAdminController {
     public List<Map<String, Object>> getAllReservations() {
         List<Map<String, Object>> result = new ArrayList<>();
 
-        for (Reservation r : reservationRepo.findAll()) {
+        for (ReservationAdmin r : reservationRepo.findAll()) {
             Map<String, Object> map = new HashMap<>();
-            map.put("id", r.getReservationId());
+            map.put("id", r.getId());
 
             // Tên xe
-            Vehicle v = vehicleRepo.findById(r.getVehicleId()).orElse(null);
+            VehicleAdmin v = vehicleRepo.findById(r.getVehicleId()).orElse(null);
             map.put("vehicleName", v != null ? v.getVehicleName() : "N/A");
 
             // Người đặt
@@ -53,7 +53,6 @@ public class ReservationAdminController {
             // Chi tiết thời gian
             map.put("startDate", r.getStartDatetime());
             map.put("endDate", r.getEndDatetime());
-            map.put("purpose", r.getPurpose());
             map.put("status", r.getStatus());
 
             result.add(map);
@@ -66,22 +65,21 @@ public class ReservationAdminController {
     // 📍 2️⃣ Tạo mới một lịch đặt xe
     // =====================================================
     @PostMapping
-    public Map<String, Object> createReservation(@RequestBody Reservation r) {
-        Reservation saved = reservationRepo.save(r);
-        return Map.of("message", "Tạo lịch thành công", "id", saved.getReservationId());
+    public Map<String, Object> createReservation(@RequestBody ReservationAdmin r) {
+        ReservationAdmin saved = reservationRepo.save(r);
+        return Map.of("message", "Tạo lịch thành công", "id", saved.getId());
     }
 
     // =====================================================
     // 📍 3️⃣ Cập nhật trạng thái hoặc thông tin đặt xe
     // =====================================================
     @PutMapping("/{id}")
-    public Map<String, Object> updateReservation(@PathVariable Long id, @RequestBody Reservation req) {
-        Reservation r = reservationRepo.findById(id)
+    public Map<String, Object> updateReservation(@PathVariable Long id, @RequestBody ReservationAdmin req) {
+        ReservationAdmin r = reservationRepo.findById(id)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy lịch có ID: " + id));
 
         r.setStartDatetime(req.getStartDatetime());
         r.setEndDatetime(req.getEndDatetime());
-        r.setPurpose(req.getPurpose());
         r.setStatus(req.getStatus());
 
         reservationRepo.save(r);

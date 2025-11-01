@@ -10,13 +10,21 @@ import lombok.Setter;
 @Setter
 public class VehicleAdmin {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long vehicleId;
+    @Column(name = "id")
+    private Long id;
 
-    @Column(nullable = false)
+    @Column(name = "vehicle_name", nullable = false)
     private String vehicleName;
 
+    @Column(name = "vehicle_type")
     private String vehicleType;
+    
+    @Column(name = "license_plate")
     private String licensePlate;
+    
+    @Column(name = "group_id")
+    private Long groupId;
+    
+    @Column(name = "status")
     private String status;
 }

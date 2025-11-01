@@ -28,6 +28,34 @@ public class VehicleService {
             return List.of();
         }
     }
+    
+    // Get vehicles for logged-in user
+    @SuppressWarnings("unchecked")
+    public List<Map<String, Object>> getMyVehicles() {
+        try {
+            // Need to configure RestTemplate to include session cookies
+            HttpHeaders headers = new HttpHeaders();
+            headers.set("Cookie", "JSESSIONID=" + getCurrentSessionId());
+            HttpEntity<String> entity = new HttpEntity<>(headers);
+            
+            ResponseEntity<List> res = restTemplate.exchange(
+                API + "/my-vehicles",
+                HttpMethod.GET,
+                entity,
+                List.class
+            );
+            return res.getBody();
+        } catch (Exception e) {
+            System.err.println("⚠️ Không thể lấy danh sách xe của user: " + e.getMessage());
+            return List.of();
+        }
+    }
+    
+    // Helper method to get current session ID (will be set from controller)
+    private String getCurrentSessionId() {
+        // This is a placeholder - will be passed from controller
+        return "";
+    }
 
     @SuppressWarnings("unchecked")
     public List<Map<String, Object>> getReservations(Long vehicleId) {

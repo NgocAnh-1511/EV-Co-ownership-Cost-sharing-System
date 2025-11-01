@@ -21,8 +21,12 @@ public class Reservation {
     @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     private User user;
 
+    @Column(name = "start_datetime")
     private LocalDateTime startDatetime;
+    
+    @Column(name = "end_datetime")
     private LocalDateTime endDatetime;
+    
     private String purpose;
 
     @Enumerated(EnumType.STRING)

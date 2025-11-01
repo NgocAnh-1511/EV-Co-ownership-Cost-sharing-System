@@ -9,7 +9,8 @@ import lombok.*;
 public class GroupMemberAdmin {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long member_id;
+    @Column(name = "member_id")
+    private Long memberId;
 
     @ManyToOne
     @JoinColumn(name = "group_id")
@@ -19,5 +20,6 @@ public class GroupMemberAdmin {
     @JoinColumn(name = "user_id")
     private User user;
 
-    private Double ownership_percentage;
+    @Column(name = "ownership_percentage")
+    private Double ownershipPercentage;
 }

@@ -1,5 +1,6 @@
 package com.example.reservationservice.controller;
 
+import com.example.reservationservice.dto.ReservationRequest;
 import com.example.reservationservice.model.Reservation;
 import com.example.reservationservice.repository.ReservationRepository;
 import com.example.reservationservice.service.BookingService;
@@ -13,7 +14,7 @@ import java.util.List;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/api")
-@CrossOrigin(origins = {"http://localhost:8080"})
+@CrossOrigin(origins = {"http://localhost:8080"}, allowCredentials = "true")
 public class ReservationController {
 
     private final BookingService bookingService;
@@ -32,12 +33,76 @@ public class ReservationController {
     }
 
     @PostMapping("/reservations")
-    public Reservation create(@RequestParam Long vehicleId,
-                              @RequestParam Long userId,
-                              @RequestParam("startDate") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime start,
-                              @RequestParam("endDate") @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime end,
-                              @RequestParam(value = "note", required = false) String note) {
-        return bookingService.create(vehicleId, userId, start, end, note);
+    public Reservation create(@RequestBody ReservationRequest request) {
+        return bookingService.create(
+                request.getVehicleId(),
+                request.getUserId(),
+                request.getStartDatetime(),
+                request.getEndDatetime(),
+                request.getPurpose()
+        );
+    }
+
+    /**
+     * Get all reservations (for admin)
+     */
+    @GetMapping("/reservations")
+    public List<Reservation> getAllReservations() {
+        return reservationRepo.findAll();
+    }
+
+    /**
+     * Get reservation by ID
+     */
+    @GetMapping("/reservations/{id}")
+    public Reservation getReservation(@PathVariable Long id) {
+        return reservationRepo.findById(id)
+                .orElseThrow(() -> new RuntimeException("Reservation not found"));
+    }
+
+    /**
+     * Update reservation
+     */
+    @PutMapping("/reservations/{id}")
+    public Reservation updateReservation(
+            @PathVariable Long id,
+            @RequestBody ReservationRequest request) {
+        Reservation reservation = reservationRepo.findById(id)
+                .orElseThrow(() -> new RuntimeException("Reservation not found"));
+
+        reservation.setStartDatetime(request.getStartDatetime());
+        reservation.setEndDatetime(request.getEndDatetime());
+        reservation.setPurpose(request.getPurpose());
+        if (request.getStatus() != null) {
+            reservation.setStatus(Reservation.Status.valueOf(request.getStatus()));
+        }
+
+        return reservationRepo.save(reservation);
+    }
+
+    /**
+     * Update reservation status only
+     */
+    @PutMapping("/reservations/{id}/status")
+    public Reservation updateStatus(
+            @PathVariable Long id,
+            @RequestParam String status) {
+        Reservation reservation = reservationRepo.findById(id)
+                .orElseThrow(() -> new RuntimeException("Reservation not found"));
+
+        reservation.setStatus(Reservation.Status.valueOf(status));
+        return reservationRepo.save(reservation);
+    }
+
+    /**
+     * Delete reservation
+     */
+    @DeleteMapping("/reservations/{id}")
+    public void deleteReservation(@PathVariable Long id) {
+        if (!reservationRepo.existsById(id)) {
+            throw new RuntimeException("Reservation not found");
+        }
+        reservationRepo.deleteById(id);
     }
 
 }

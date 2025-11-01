@@ -10,26 +10,27 @@ import lombok.Setter;
 @Setter
 public class ReservationAdmin {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long reservationId;
+    @Column(name = "id")
+    private Long id;
 
-    @Column(nullable = false)
+    @Column(name = "vehicle_id", nullable = false)
     private Long vehicleId;
 
-    @Column(nullable = false)
+    @Column(name = "user_id", nullable = false)
     private Long userId;
 
-    @Column(nullable = false)
+    @Column(name = "start_datetime", nullable = false)
     private java.time.LocalDateTime startDatetime;
 
-    @Column(nullable = false)
+    @Column(name = "end_datetime", nullable = false)
     private java.time.LocalDateTime endDatetime;
 
+    @Column(name = "purpose")
     private String purpose;
 
-    @Column(nullable = false)
+    @Column(name = "status", nullable = false)
     private String status;
 
-    @Column(nullable = false, updatable = false, insertable = false)
+    @Column(name = "created_at", nullable = false, updatable = false, insertable = false)
     private java.sql.Timestamp createdAt;
 }

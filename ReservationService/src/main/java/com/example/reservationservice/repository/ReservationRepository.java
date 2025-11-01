@@ -20,5 +20,12 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
                       @Param("start") LocalDateTime start,
                       @Param("end") LocalDateTime end);
 
-    List<Reservation> findByVehicle_VehicleIdOrderByStartDatetimeAsc(Long vehicleId);
+    @Query("""
+        SELECT r FROM Reservation r
+        LEFT JOIN FETCH r.vehicle
+        LEFT JOIN FETCH r.user
+        WHERE r.vehicle.vehicleId = :vehicleId
+        ORDER BY r.startDatetime DESC
+    """)
+    List<Reservation> findByVehicle_VehicleIdOrderByStartDatetimeAsc(@Param("vehicleId") Long vehicleId);
 }

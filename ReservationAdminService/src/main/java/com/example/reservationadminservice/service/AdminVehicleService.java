@@ -1,7 +1,7 @@
 package com.example.reservationadminservice.service;
 
 import com.example.reservationadminservice.model.VehicleAdmin;
-import com.example.reservationadminservice.repository.AdminVehicleRepository;
+import com.example.reservationadminservice.repository.admin.AdminVehicleRepository;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -17,5 +17,13 @@ public class AdminVehicleService {
 
     public List<VehicleAdmin> getAllVehicles() {
         return repository.findAll();
+    }
+    
+    public VehicleAdmin getVehicleById(Long id) {
+        return repository.findById(id).orElse(null);
+    }
+    
+    public List<VehicleAdmin> getVehiclesByGroupId(Long groupId) {
+        return repository.findByGroupId(groupId);
     }
 }

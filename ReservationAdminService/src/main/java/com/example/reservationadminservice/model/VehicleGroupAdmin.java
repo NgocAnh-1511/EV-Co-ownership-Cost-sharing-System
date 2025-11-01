@@ -9,8 +9,12 @@ import lombok.*;
 public class VehicleGroupAdmin {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long group_id;
+    @Column(name = "group_id")
+    private Long groupId;
 
-    private String group_name;
+    @Column(name = "group_name")
+    private String groupName;
+    
+    @Column(name = "description")
     private String description;
 }
