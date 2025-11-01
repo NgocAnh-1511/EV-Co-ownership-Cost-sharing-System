@@ -1,24 +1,21 @@
 package com.example.user_account_service.entity;
 
 import jakarta.persistence.*;
-// THÊM CÁC IMPORT CỦA LOMBOK
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
-
-import java.time.LocalDate;
+import lombok.*;
 import java.sql.Timestamp;
+import java.time.Instant;
+import java.time.LocalDate;
 
 @Entity
 @Table(name = "Users")
-@Getter // <-- PHẢI CÓ
-@Setter // <-- PHẢI CÓ
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder // Thêm Builder để dễ dàng tạo đối tượng trong UserService
 public class User {
-    // (Toàn bộ code của class User mà tôi đã gửi ở tin nhắn trước)
 
+    // Thông tin cơ bản & Xác thực
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "user_id")
@@ -30,7 +27,6 @@ public class User {
     @Column(name = "password_hash", nullable = false)
     private String passwordHash;
 
-    // ... (và tất cả các trường khác) ...
     @Column(name = "full_name")
     private String fullName;
 
@@ -40,15 +36,21 @@ public class User {
     @Column(name = "is_verified")
     private boolean isVerified = false;
 
-    @Column(name = "created_at", updatable = false, columnDefinition = "TIMESTAMP DEFAULT CURRENT_TIMESTAMP")
+    @Column(name = "created_at", updatable = false)
     private Timestamp createdAt;
 
     @Column(name = "role", nullable = false)
-    private String role = "ROLE_USER";
+    private String role;
 
+    // THÊM TRƯỜNG MỚI ĐỂ THEO DÕI TRẠNG THÁI
+    @Column(name = "profile_status")
+    private String profileStatus; // Ví dụ: PENDING, APPROVED, REJECTED
+
+    // Thông tin cá nhân
     @Column(name = "date_of_birth")
     private LocalDate dateOfBirth;
 
+    // Thông tin CMND/CCCD
     @Column(name = "id_card_number", unique = true)
     private String idCardNumber;
 
@@ -58,6 +60,7 @@ public class User {
     @Column(name = "id_card_issue_place")
     private String idCardIssuePlace;
 
+    // Thông tin Giấy phép lái xe
     @Column(name = "license_number", unique = true)
     private String licenseNumber;
 
@@ -70,6 +73,7 @@ public class User {
     @Column(name = "license_expiry_date")
     private LocalDate licenseExpiryDate;
 
+    // URL Hình ảnh
     @Column(name = "id_card_front_url", length = 512)
     private String idCardFrontUrl;
 
@@ -81,4 +85,15 @@ public class User {
 
     @Column(name = "portrait_image_url", length = 512)
     private String portraitImageUrl;
+
+    // CẬP NHẬT: Thêm @PrePersist để đặt giá trị mặc định khi tạo mới
+    @PrePersist
+    protected void onCreate() {
+        if (this.createdAt == null) {
+            this.createdAt = Timestamp.from(Instant.now());
+        }
+        if (this.profileStatus == null) {
+            this.profileStatus = "PENDING"; // Mặc định là "Đang chờ"
+        }
+    }
 }

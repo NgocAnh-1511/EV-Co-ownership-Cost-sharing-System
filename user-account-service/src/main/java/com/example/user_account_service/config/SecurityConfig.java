@@ -1,5 +1,6 @@
 package com.example.user_account_service.config;
 
+import com.example.user_account_service.config.jwt.JwtAuthenticationFilter;
 import com.example.user_account_service.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
@@ -10,14 +11,17 @@ import org.springframework.security.authentication.dao.DaoAuthenticationProvider
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.core.authority.SimpleGrantedAuthority; // <-- THÊM IMPORT NÀY
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 
-import java.util.List;
+import java.util.List; // <-- THÊM IMPORT NÀY
 
 @Configuration
 @EnableWebSecurity
@@ -26,30 +30,17 @@ public class SecurityConfig {
     @Autowired
     private UserRepository userRepository;
 
+    // (Bean PasswordEncoder, AuthenticationProvider, AuthenticationManager giữ nguyên)
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
 
-    /**
-     * "Dạy" Spring Security cách tìm user từ database
-     */
     @Bean
-    public UserDetailsService userDetailsService() {
-        return email -> userRepository.findByEmail(email)
-                .map(user -> new org.springframework.security.core.userdetails.User(
-                        user.getEmail(),
-                        user.getPasswordHash(),
-                        // Thêm quyền (authorities) nếu bạn cần, ví dụ:
-                        // List.of(new SimpleGrantedAuthority(user.getRole()))
-                        List.of()
-                ))
-                .orElseThrow(() -> new UsernameNotFoundException("Không tìm thấy user với email: " + email));
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
+        return config.getAuthenticationManager();
     }
 
-    /**
-     * Bộ xác thực: kết nối UserDetailsService và PasswordEncoder
-     */
     @Bean
     public AuthenticationProvider authenticationProvider() {
         DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
@@ -59,22 +50,28 @@ public class SecurityConfig {
     }
 
     /**
-     * Trình quản lý xác thực (sẽ được dùng trong Service)
+     * CẬP NHẬT: "Dạy" Spring Security cách tìm user VÀ VAI TRÒ (ROLE)
      */
     @Bean
-    public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
-        return config.getAuthenticationManager();
+    public UserDetailsService userDetailsService() {
+        return email -> userRepository.findByEmail(email)
+                .map(user -> new org.springframework.security.core.userdetails.User(
+                        user.getEmail(),
+                        user.getPasswordHash(),
+                        // Thêm vai trò (role) của user vào (Rất quan trọng)
+                        List.of(new SimpleGrantedAuthority(user.getRole()))
+                ))
+                .orElseThrow(() -> new UsernameNotFoundException("Không tìm thấy user với email: " + email));
     }
 
     /**
-     * Cấu hình chuỗi lọc bảo mật HTTP
+     * CẬP NHẬT: Chuỗi lọc bảo mật (Thêm bảo vệ cho API Admin)
      */
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtAuthenticationFilter jwtAuthFilter) throws Exception {
         http
-                .csrf(csrf -> csrf.disable()) // Tắt CSRF
+                .csrf(csrf -> csrf.disable())
                 .cors(cors -> cors.configurationSource(request -> {
-                    // Cấu hình CORS để cho phép localhost:8080 (UI) gọi
                     CorsConfiguration conf = new CorsConfiguration();
                     conf.setAllowedOrigins(List.of("http://localhost:8080"));
                     conf.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
@@ -83,13 +80,20 @@ public class SecurityConfig {
                     return conf;
                 }))
                 .authorizeHttpRequests(auth -> auth
-                                // Cho phép API đăng ký và đăng nhập
-                                .requestMatchers("/api/users/register", "/api/users/login").permitAll()
-                                // Tất cả các API khác đều yêu cầu xác thực (sẽ làm sau)
-                                .anyRequest().permitAll() // Tạm thời cho phép tất cả
-                        // .anyRequest().authenticated() // Sau này sẽ đổi thành dòng này
+                        // API Public
+                        .requestMatchers("/api/users/register", "/api/users/login").permitAll()
+
+                        // API User (Yêu cầu đăng nhập, cả USER và ADMIN đều có thể gọi)
+                        .requestMatchers("/api/users/profile", "/api/users/profile/**").hasAnyRole("USER", "ADMIN")
+
+                        // API ADMIN (CHỈ ROLE_ADMIN MỚI ĐƯỢC VÀO)
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
+
+                        .anyRequest().authenticated() // Tất cả các API khác đều yêu cầu đăng nhập
                 )
-                .authenticationProvider(authenticationProvider());
+                .sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authenticationProvider(authenticationProvider())
+                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }

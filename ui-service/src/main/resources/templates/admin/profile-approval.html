@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Duyệt Hồ Sơ</title>
+
+    <link rel="stylesheet" th:href="@{/css/admin-layout.css}">
+
+    <link rel="stylesheet" th:href="@{/css/admin/profile-approval.css}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+<div class="admin-layout-container">
+
+    <div th:insert="~{fragments/sidebar :: sidebar}"></div>
+
+    <main class="main-content">
+        <div th:insert="~{fragments/header :: header(pageTitle='Duyệt Hồ Sơ Người Dùng')}"></div>
+
+        <div class="table-container">
+            <table class="profile-table">
+                <thead>
+                <tr>
+                    <th>Họ và Tên</th>
+                    <th>Email</th>
+                    <th>Số điện thoại</th>
+                    <th>Số CCCD</th>
+                    <th>Trạng thái</th>
+                    <th>Hành động</th>
+                </tr>
+                </thead>
+                <tbody id="user-list-body">
+                </tbody>
+            </table>
+        </div>
+
+    </main>
+</div>
+
+<script th:src="@{/js/auth-utils.js}"></script>
+<script th:src="@{/js/admin/profile-approval.js}"></script>
+</body>
+</html>
