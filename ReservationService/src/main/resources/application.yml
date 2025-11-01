@@ -1,0 +1,35 @@
+spring:
+  application:
+    name: reservation-service
+  
+  datasource:
+    url: jdbc:mysql://localhost:3306/co_ownership_booking?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+    username: root
+    password: 123456
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    defer-datasource-initialization: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect
+        format_sql: true
+  
+  sql:
+    init:
+      mode: always
+  
+  devtools:
+    restart:
+      enabled: false
+
+server:
+  port: 8081
+  error:
+    whitelabel:
+      enabled: false
+
+
