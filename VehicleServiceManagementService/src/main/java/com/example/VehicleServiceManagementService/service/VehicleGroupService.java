@@ -7,6 +7,7 @@ import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Service
 public class VehicleGroupService {
@@ -14,10 +15,29 @@ public class VehicleGroupService {
     @Autowired
     private VehicleGroupRepository vehicleGroupRepository;
 
-    // Lấy tất cả nhóm xe
+    /**
+     * Lấy tất cả các nhóm xe
+     * @return Danh sách tất cả nhóm xe
+     */
     public List<Vehiclegroup> getAllVehicleGroups() {
+        // Trả về danh sách tất cả các nhóm xe từ repository
         return vehicleGroupRepository.findAll();
+    }
 
+    /**
+     * Lọc nhóm xe theo tên và trạng thái
+     * @param searchQuery Tìm kiếm theo tên nhóm
+     * @param statusFilter Lọc theo trạng thái nhóm
+     * @return Danh sách nhóm xe đã lọc
+     */
+    public List<Vehiclegroup> filterVehicleGroups(String searchQuery, String statusFilter) {
+        List<Vehiclegroup> allGroups = vehicleGroupRepository.findAll();  // Lấy tất cả các nhóm xe
+
+        // Lọc nhóm xe theo tên và trạng thái
+        return allGroups.stream()
+                .filter(group -> (searchQuery == null || group.getName().toLowerCase().contains(searchQuery.toLowerCase())) &&  // Lọc theo tên
+                        (statusFilter == null || "Tất cả".equals(statusFilter) || group.getActive().equals(statusFilter)))  // Lọc theo trạng thái
+                .collect(Collectors.toList());  // Trả về danh sách nhóm xe đã lọc
     }
 
     // Thêm nhóm xe mới

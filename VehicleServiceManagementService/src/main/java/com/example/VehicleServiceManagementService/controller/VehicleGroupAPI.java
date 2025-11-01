@@ -1,7 +1,7 @@
 package com.example.VehicleServiceManagementService.controller;
 
-import com.example.VehicleServiceManagementService.service.VehicleGroupService;
 import com.example.VehicleServiceManagementService.model.Vehiclegroup;
+import com.example.VehicleServiceManagementService.service.VehicleGroupService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -14,9 +14,11 @@ public class VehicleGroupAPI {
     @Autowired
     private VehicleGroupService vehicleGroupService;
 
-    // Lấy danh sách nhóm xe
+    // Lấy danh sách tất cả nhóm xe
+
     @GetMapping
     public List<Vehiclegroup> getAllVehicleGroups() {
+        // Gọi phương thức getAllVehicleGroups() trong service
         return vehicleGroupService.getAllVehicleGroups();
     }
 
@@ -36,5 +38,13 @@ public class VehicleGroupAPI {
     @DeleteMapping("/{id}")
     public void deleteVehicleGroup(@PathVariable Long id) {
         vehicleGroupService.deleteVehicleGroup(id);
+    }
+
+    // Lọc nhóm xe theo tên và trạng thái
+    @GetMapping("/filter")
+    public List<Vehiclegroup> filterVehicleGroups(
+            @RequestParam(value = "searchQuery", required = false, defaultValue = "") String searchQuery,
+            @RequestParam(value = "statusFilter", required = false, defaultValue = "Tất cả") String statusFilter) {
+        return vehicleGroupService.filterVehicleGroups(searchQuery, statusFilter);
     }
 }

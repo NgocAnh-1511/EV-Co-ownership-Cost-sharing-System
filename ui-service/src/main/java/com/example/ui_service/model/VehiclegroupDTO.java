@@ -3,7 +3,7 @@ package com.example.ui_service.model;
 public class VehiclegroupDTO {
 
     private String groupId;
-    private String groupName;
+    private String name;
     private String description;
     private Integer vehicleCount = 0;  // Giá trị mặc định 0
     private String active = "active";
@@ -11,9 +11,9 @@ public class VehiclegroupDTO {
     // Constructors
     public VehiclegroupDTO() {}
 
-    public VehiclegroupDTO(String groupId, String groupName, String description, Integer vehicleCount, String active) {
+    public VehiclegroupDTO(String groupId, String name, String description, Integer vehicleCount, String active) {
         this.groupId = groupId;
-        this.groupName = groupName;
+        this.name = name;
         this.description = description;
         this.vehicleCount = vehicleCount;
         this.active = active;
@@ -28,12 +28,12 @@ public class VehiclegroupDTO {
         this.groupId = groupId;
     }
 
-    public String getGroupName() {
-        return groupName;
+    public String getName() {
+        return name;
     }
 
-    public void setGroupName(String groupName) {
-        this.groupName = groupName;
+    public void setName(String groupName) {
+        this.name = groupName;
     }
     public String getActive() {
         return active;

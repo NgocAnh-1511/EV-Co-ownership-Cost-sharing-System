@@ -15,7 +15,7 @@ public class Vehiclegroup {
     private String groupId;
 
     @Column(name = "group_name", length = 100)
-    private String groupName;
+    private String name;
 
     @Column(name = "description", length = 255)
     private String description;
@@ -44,11 +44,11 @@ public class Vehiclegroup {
 
     // Getter và Setter cho groupName
     public String getName() {
-        return groupName;
+        return name;
     }
 
     public void setName(String groupName) {
-        this.groupName = groupName;
+        this.name = groupName;
     }
 
     // Getter và Setter cho description

@@ -39,62 +39,83 @@
             </div>
         </div>
 
-        <div class="filter-section">
-            <div class="filter-card">
-                <div class="filter-row">
-                    <!-- Tìm nhóm theo tên -->
-                    <div class="filter-group">
-                        <label>Tìm nhóm...</label>
-                        <input type="text" th:value="${searchQuery}" placeholder="Nhập tên nhóm...">
-                    </div>
+        <!-- Filter Section -->
+        <form action="/admin/staff-management" method="get">
+            <div class="filter-section">
+                <div class="filter-card">
+                    <div class="filter-row">
+                        <!-- Tìm nhóm theo tên -->
+                        <div class="filter-group">
+                            <label>Tìm nhóm...</label>
+                            <input type="text" th:value="${searchQuery}" name="searchQuery" placeholder="Nhập tên nhóm...">
+                        </div>
 
-                    <!-- Trạng thái -->
-                    <div class="filter-group">
-                        <label>Trạng thái</label>
-                        <select th:value="${statusFilter}">
-                            <option value="Tất cả">Tất cả</option>
-                            <option value="Hoạt động">Hoạt động</option>
-                            <option value="Tạm dừng">Tạm dừng</option>
-                        </select>
-                    </div>
+                        <!-- Trạng thái -->
+                        <div class="filter-group">
+                            <label>Trạng thái</label>
+                            <select name="statusFilter" th:value="${statusFilter}">
+                                <option value="Tất cả" th:selected="${statusFilter == 'Tất cả'}">Tất cả</option>
+                                <option value="active" th:selected="${statusFilter == 'active'}">Hoạt động</option>
+                                <option value="inactive" th:selected="${statusFilter == 'inactive'}">Tạm dừng</option>
+                            </select>
+                        </div>
 
-                    <!-- Nút lọc -->
-                    <button class="btn-filter" th:onclick="filterGroups()">
-                        <i class="fas fa-filter"></i> Lọc
-                    </button>
+                        <!-- Nút lọc -->
+                        <button class="btn-filter" type="submit">
+                            <i class="fas fa-filter"></i> Lọc
+                        </button>
+                    </div>
                 </div>
             </div>
+        </form>
+
+        <!-- Hiển thị thông báo khi không có dữ liệu -->
+        <div th:if="${filteredGroups.isEmpty()}">
+            <p th:text="${noDataMessage}">Không tìm thấy nhóm xe phù hợp.</p>
         </div>
 
         <!-- Hiển thị nhóm xe -->
         <div class="staff-list">
-            <div class="staff-card" th:each="group : ${filteredGroups}">
-                <div class="staff-header">
-                    <!-- Trạng thái hoạt động -->
-                    <div class="staff-status" th:class="${group.active} == 'active' ? 'active' : 'inactive'"
-                         th:text="${group.active} == 'active' ? 'Hoạt động' : 'Tạm dừng'">Hoạt động</div>
-                </div>
+            <table class="table">
+                <thead>
+                <tr>
+                    <th>Trạng Thái</th>
+                    <th>Tên Nhóm</th>
+                    <th>Số Lượng Xe</th>
+                    <th>Hành Động</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr th:each="group : ${filteredGroups}">
+                    <!-- Trạng thái -->
+                    <td>
+                            <span
+                                  th:text="${group.active} == 'active' ? 'Hoạt động' : 'Tạm dừng'">Hoạt động</span>
+                    </td>
 
-                <!-- Tên nhóm xe -->
-                <div class="staff-name" th:text="${group.groupName}">Nhóm Nguyễn Gia Định</div>
+                    <!-- Tên nhóm xe -->
+                    <td th:text="${group.name}">Nhóm Nguyễn Gia Định</td>
 
-                <div class="staff-info">
-                    <div class="info-item">
-                        <i class="fas fa-car"></i>
-                        <span th:text="'Xe đang dùng: ' + ${group.vehicleCount}">3 xe</span>
-                    </div>
-                </div>
-            </div>
+                    <!-- Số lượng xe -->
+                    <td th:text="${group.vehicleCount}">100</td>
+
+                    <!-- Hành động -->
+                    <td>
+                        <a href="#" class="btn btn-info btn-sm">
+                            <i class="fas fa-eye"></i> Xem
+                        </a>
+                        <a href="#" class="btn btn-warning btn-sm">
+                            <i class="fas fa-edit"></i> Sửa
+                        </a>
+                        <a href="#" class="btn btn-danger btn-sm" onclick="return confirm('Bạn có chắc chắn muốn xóa nhóm này?')">
+                            <i class="fas fa-trash"></i> Xóa
+                        </a>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
         </div>
-
-
-
-        <!-- Nếu không có kết quả -->
-            <div th:if="${filteredGroups.isEmpty()}">
-                <p>Không tìm thấy nhóm phù hợp.</p>
-            </div>
-
-
+        <!-- Phân trang -->
 
     </main>
 </div>
