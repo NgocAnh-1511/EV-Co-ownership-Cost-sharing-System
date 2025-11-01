@@ -81,6 +81,7 @@ public class SecurityConfig {
                 }))
                 .authorizeHttpRequests(auth -> auth
                         // API Public
+<<<<<<< HEAD
                         .requestMatchers("/api/auth/users/register", "/api/auth/users/login").permitAll()
 
                         // Endpoint trung gian để nhận JWT và set cookie (public)
@@ -94,6 +95,15 @@ public class SecurityConfig {
 
                         // API ADMIN (CHỈ ROLE_ADMIN MỚI ĐƯỢC VÀO)
                         .requestMatchers("/api/auth/admin/**").hasRole("ADMIN")
+=======
+                        .requestMatchers("/api/users/register", "/api/users/login").permitAll()
+
+                        // API User (Yêu cầu đăng nhập, cả USER và ADMIN đều có thể gọi)
+                        .requestMatchers("/api/users/profile", "/api/users/profile/**").hasAnyRole("USER", "ADMIN")
+
+                        // API ADMIN (CHỈ ROLE_ADMIN MỚI ĐƯỢC VÀO)
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
+>>>>>>> d7941ba (update chức nằng dăng ký chủ xe)
 
                         .anyRequest().authenticated() // Tất cả các API khác đều yêu cầu đăng nhập
                 )

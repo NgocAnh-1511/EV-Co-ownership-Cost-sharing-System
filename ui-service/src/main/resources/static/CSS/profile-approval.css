@@ -1,0 +1,61 @@
+/* profile-approval.css */
+.table-container {
+    background-color: white;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+    overflow: hidden; /* Giúp bo góc cho table */
+}
+
+.profile-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.profile-table th, .profile-table td {
+    padding: 16px;
+    text-align: left;
+    border-bottom: 1px solid #E5E7EB; /* Đường kẻ mờ */
+}
+
+.profile-table th {
+    background-color: #F9FAFB;
+    font-size: 0.9rem;
+    color: #6B7280;
+    font-weight: 600;
+}
+
+.profile-table td {
+    color: #374151;
+    font-size: 0.95rem;
+}
+
+.action-buttons {
+    display: flex;
+    gap: 10px;
+}
+
+.btn-approve {
+    background-color: #10B981;
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 500;
+}
+.btn-approve:hover {
+    background-color: #059669;
+}
+
+.btn-reject {
+    background-color: #EF4444;
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 500;
+}
+.btn-reject:hover {
+    background-color: #DC2626;
+}

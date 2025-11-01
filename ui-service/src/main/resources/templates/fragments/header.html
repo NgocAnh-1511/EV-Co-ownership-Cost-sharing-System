@@ -1,8 +1,15 @@
+<<<<<<< HEAD
 <!-- templates/fragments/header.html -->
 <header th:fragment="header" class="admin-header">
     <div class="header-left">
         <h1 th:text="${pageTitle != null ? pageTitle : 'Quản Lý Check-in/Check-out'}"></h1>
         <p th:text="${pageDescription != null ? pageDescription : 'Thực hiện thủ tục nhận và trả xe'}"></p>
+=======
+<header th:fragment="header" class="admin-header" xmlns:th="http://www.thymeleaf.org">
+    <div class="header-left">
+        <h1 th:text="${pageTitle != null ? pageTitle : 'Quản Lý Check-in/Check-out'}"></h1>
+        <p>Thực hiện thủ tục nhận và trả xe</p>
+>>>>>>> d7941ba (update chức nằng dăng ký chủ xe)
     </div>
     <div class="header-right">
         <div class="notification">
@@ -10,6 +17,7 @@
             <span class="badge">3</span>
         </div>
         <div class="user-profile">
+<<<<<<< HEAD
             <div class="admin-avatar">
                 <i class="fas fa-user-shield"></i>
             </div>
@@ -17,3 +25,13 @@
         </div>
     </div>
 </header>
+=======
+            <img src="https://via.placeholder.com/40x40/4F46E5/FFFFFF?text=AD" alt="Admin">
+            <span th:text="${adminName != null ? adminName : 'Admin'}">Admin</span>
+            <button onclick="logout()" class="btn-logout" style="margin-left: 10px;">
+                <i class="fas fa-sign-out-alt"></i> Đăng Xuất
+            </button>
+        </div>
+    </div>
+</header>
+>>>>>>> d7941ba (update chức nằng dăng ký chủ xe)
