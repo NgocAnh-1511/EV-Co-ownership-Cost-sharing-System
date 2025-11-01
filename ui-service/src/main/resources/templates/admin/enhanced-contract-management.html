@@ -5,7 +5,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CarRental - Quản Lý Hợp Đồng Điện Tử</title>
-    <link rel="stylesheet" href="/css/enhanced-contract.css">
+    <link rel="stylesheet" th:href="@{/css/enhanced-contract.css}">
+    <link rel="stylesheet" th:href="@{/css/sidebar.css}">
+    <link rel="stylesheet" th:href="@{/css/header.css}">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
 </head>
@@ -18,17 +20,7 @@
     <!-- Main Content -->
     <main class="main-content">
         <!-- Header -->
-        <header class="admin-header">
-            <div class="header-left">
-                <h1>Quản Lý Hợp Đồng Điện Tử</h1>
-                <p>Quản lý hợp đồng pháp lý cho nhóm đồng sở hữu</p>
-            </div>
-            <div class="header-right">
-                <button class="btn-create" id="createContractBtn">
-                    <i class="fas fa-plus"></i> Tạo Hợp Đồng Mới
-                </button>
-            </div>
-        </header>
+        <div th:replace="fragments/header :: header" th:with="pageTitle='Quản Lý Hợp Đồng Điện Tử', pageDescription='Quản lý hợp đồng pháp lý cho nhóm đồng sở hữu'"></div>
 
         <!-- Main Section -->
         <div class="main-section" style="grid-template-columns: 1fr 1fr;">
