@@ -14,7 +14,10 @@ public class HomeController {
         return "admin/staff-management";
     }
     @GetMapping ("/admin/vehicle-manager")
-    public String VehicleManager() {return "vehicle-manager";}
+    public String VehicleManager(Model model) {
+        model.addAttribute("pageTitle", "Quản Lý Các Dịch Vụ Xe");
+        model.addAttribute("pageDescription", "Quản Lý Danh Sách xe theo trạng thái");
+        return "admin/vehicle-manager";}
 
     
     @GetMapping("/admin/vehicle-group")

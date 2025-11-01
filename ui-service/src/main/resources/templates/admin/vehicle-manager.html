@@ -13,63 +13,14 @@
 <body>
 <div class="admin-container">
     <!-- Sidebar -->
-    <aside class="sidebar">
-        <div class="sidebar-header">
-            <div class="logo">
-                <i class="fas fa-car"></i>
-                <span>VehicleManager</span>
-            </div>
-            <span class="admin-panel">Admin Panel</span>
-        </div>
+    <div th:replace="fragments/sidebar :: sidebar"></div>
 
-        <nav class="sidebar-nav">
-            <a href="#" class="nav-item">
-                <i class="fas fa-tachometer-alt"></i>
-                <span>Dashboard</span>
-            </a>
-            <a href="#" class="nav-item active">
-                <i class="fas fa-car"></i>
-                <span>Quản Lý Xe</span>
-            </a>
-            <a href="#" class="nav-item">
-                <i class="fas fa-calendar-check"></i>
-                <span>Đặt Lịch</span>
-            </a>
-            <a href="#" class="nav-item">
-                <i class="fas fa-users"></i>
-                <span>Khách Hàng</span>
-            </a>
-            <a href="#" class="nav-item">
-                <i class="fas fa-building"></i>
-                <span>Lịch Hẹn</span>
-            </a>
-            <a href="#" class="nav-item">
-                <i class="fas fa-cog"></i>
-                <span>Cài Đặt</span>
-            </a>
-        </nav>
-    </aside>
 
     <!-- Main Content -->
     <main class="main-content">
         <!-- Header -->
-        <header class="admin-header">
-            <div class="header-left">
-                <h1>Quản Lý Xe</h1>
-                <p>Quản lý danh sách xe theo trạng thái</p>
-            </div>
-            <div class="header-right">
-                <div class="notification">
-                    <i class="fas fa-bell"></i>
-                    <span class="badge" th:text="${notificationCount}">3</span>
-                </div>
-                <div class="user-profile">
-                    <img th:src="${adminAvatar}" alt="Admin User">
-                    <span th:text="${adminName}">Admin User</span>
-                    <small>Quản trị viên</small>
-                </div>
-            </div>
-        </header>
+        <div th:replace="fragments/header :: header" th:with="pageTitle='Quản Lý Các Dịch Vụ Xe', pageDescription='Quản Lý Danh Sách xe theo trạng thái'"></div>
+
 
         <!-- Stats Cards -->
         <div class="stats-grid">
