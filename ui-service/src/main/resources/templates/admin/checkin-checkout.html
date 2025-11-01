@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản Lý Check-in/Check-out</title>
+
+    <link rel="stylesheet" th:href="@{/css/checkin-checkout.css}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+
+<body>
+<div class="admin-container">
+
+    <!-- Sidebar -->
+    <div th:replace="fragments/sidebar :: sidebar"></div>
+
+    <!-- Main Content -->
+    <main class="main-content">
+
+        <!-- Header -->
+        <div th:replace="fragments/header :: header"></div>
+
+        <!-- Main Section -->
+        <section class="main-section">
+
+            <!-- Left Panel -->
+            <div class="form-panel">
+                <div class="form-header">
+                    <div class="mode-toggle">
+                        <button class="mode-btn active" data-mode="checkin" onclick="toggleForm('checkin')">
+                            <i class="fas fa-sign-in-alt"></i> Check-in
+                        </button>
+                        <button class="mode-btn inactive" data-mode="checkout" onclick="toggleForm('checkout')">
+                            <i class="fas fa-sign-out-alt"></i> Check-out
+                        </button>
+                    </div>
+                    <h3>Thông Tin Check-in/Check-out</h3>
+                </div>
+
+                <form th:action="@{/admin/checkinout/save}" method="post" th:object="${checkinout}">
+                    <div class="form-content">
+                        <div class="form-group">
+                            <label>Chọn Xe</label>
+                            <div class="select-group">
+                                <select th:field="*{vehicleId}">
+                                    <option value="">-- Chọn xe --</option>
+                                    <option th:each="v : ${vehicleList}"
+                                            th:value="${v.vehicleId}"
+                                            th:text="${v.vehicleId}"></option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Hợp Đồng</label>
+                            <div class="select-group">
+                                <select th:field="*{contractId}">
+                                    <option value="">-- Chọn hợp đồng --</option>
+                                    <option th:each="c : ${contractList}"
+                                            th:value="${c.contractId}"
+                                            th:text="${c.contractId}"></option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Ngày Check-in -->
+                        <div id="checkin-section" class="form-row">
+                            <div class="form-group">
+                                <label>Ngày Check-in</label>
+                                <input type="datetime-local" th:field="*{checkinTime}">
+                            </div>
+                        </div>
+
+                        <!-- Ngày Check-out -->
+                        <div id="checkout-section" class="form-row" style="display: none;">
+                            <div class="form-group">
+                                <label>Ngày Check-out</label>
+                                <input type="datetime-local" th:field="*{checkoutTime}">
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Ghi chú</label>
+                            <textarea th:field="*{notes}" placeholder="Ghi chú về tình trạng xe, khách hàng..."></textarea>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Trạng thái</label>
+                            <select th:field="*{status}">
+                                <option value="checkin">Check-in</option>
+                                <option value="checkout">Check-out</option>
+                            </select>
+                        </div>
+
+                        <div class="form-actions">
+                            <button type="reset" class="btn-cancel">Hủy</button>
+                            <button type="submit" class="btn-confirm">Xác nhận</button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <br>
+            <!-- Right Panel -->
+            <div class="activities-panel">
+                <div class="activities-header">
+                    <h1>Danh Sách Check-in/Check-out</h1>
+                </div>
+
+                <div class="table-wrapper">
+                    <table class="checkin-table">
+                        <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Xe</th>
+                            <th>Hợp Đồng</th>
+                            <th>Thời Gian Nhận</th>
+                            <th>Thời Gian Trả</th>
+                            <th>Trạng Thái</th>
+                            <th>Ghi chú</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="log : ${checkinoutList}">
+                            <td th:text="${log.checkinoutId}"></td>
+                            <td th:text="${log.vehicleId}"></td>
+                            <td th:text="${log.contractId}"></td>
+                            <td th:text="${#temporals.format(log.checkinTime, 'dd/MM/yyyy HH:mm')}"></td>
+                            <td th:text="${#temporals.format(log.checkoutTime, 'dd/MM/yyyy HH:mm')}"></td>
+                            <td>
+                                <span th:if="${log.status == 'checkin'}" class="badge status-checkin">Check-in</span>
+                                <span th:if="${log.status == 'checkout'}" class="badge status-checkout">Check-out</span>
+                            </td>
+                            <td th:text="${log.notes}"></td>
+                        </tr>
+                        <tr th:if="${#lists.isEmpty(checkinoutList)}">
+                            <td colspan="7" class="no-data">Không có dữ liệu</td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+        </section>
+    </main>
+</div>
+
+<script>
+    // Hàm thay đổi form hiển thị
+    function toggleForm(mode) {
+        const checkinSection = document.getElementById('checkin-section');
+        const checkoutSection = document.getElementById('checkout-section');
+        const checkinBtn = document.querySelector('[data-mode="checkin"]');
+        const checkoutBtn = document.querySelector('[data-mode="checkout"]');
+
+        if (mode === 'checkin') {
+            checkinSection.style.display = 'block';
+            checkoutSection.style.display = 'none';
+            checkinBtn.classList.add('active');
+            checkinBtn.classList.remove('inactive');
+            checkoutBtn.classList.add('inactive');
+            checkoutBtn.classList.remove('active');
+        } else if (mode === 'checkout') {
+            checkinSection.style.display = 'none';
+            checkoutSection.style.display = 'block';
+            checkoutBtn.classList.add('active');
+            checkoutBtn.classList.remove('inactive');
+            checkinBtn.classList.add('inactive');
+            checkinBtn.classList.remove('active');
+        }
+    }
+</script>
+
+</body>
+</html>

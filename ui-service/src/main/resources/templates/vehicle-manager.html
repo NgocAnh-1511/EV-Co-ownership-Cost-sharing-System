@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VehicleManager - Quản Lý Xe</title>
+    <link rel="stylesheet" th:href="@{/css/vehicle-manager.css}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+
+<body>
+<div class="admin-container">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <div class="logo">
+                <i class="fas fa-car"></i>
+                <span>VehicleManager</span>
+            </div>
+            <span class="admin-panel">Admin Panel</span>
+        </div>
+
+        <nav class="sidebar-nav">
+            <a href="#" class="nav-item">
+                <i class="fas fa-tachometer-alt"></i>
+                <span>Dashboard</span>
+            </a>
+            <a href="#" class="nav-item active">
+                <i class="fas fa-car"></i>
+                <span>Quản Lý Xe</span>
+            </a>
+            <a href="#" class="nav-item">
+                <i class="fas fa-calendar-check"></i>
+                <span>Đặt Lịch</span>
+            </a>
+            <a href="#" class="nav-item">
+                <i class="fas fa-users"></i>
+                <span>Khách Hàng</span>
+            </a>
+            <a href="#" class="nav-item">
+                <i class="fas fa-building"></i>
+                <span>Lịch Hẹn</span>
+            </a>
+            <a href="#" class="nav-item">
+                <i class="fas fa-cog"></i>
+                <span>Cài Đặt</span>
+            </a>
+        </nav>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Header -->
+        <header class="admin-header">
+            <div class="header-left">
+                <h1>Quản Lý Xe</h1>
+                <p>Quản lý danh sách xe theo trạng thái</p>
+            </div>
+            <div class="header-right">
+                <div class="notification">
+                    <i class="fas fa-bell"></i>
+                    <span class="badge" th:text="${notificationCount}">3</span>
+                </div>
+                <div class="user-profile">
+                    <img th:src="${adminAvatar}" alt="Admin User">
+                    <span th:text="${adminName}">Admin User</span>
+                    <small>Quản trị viên</small>
+                </div>
+            </div>
+        </header>
+
+        <!-- Stats Cards -->
+        <div class="stats-grid">
+            <div class="stat-card total">
+                <div class="stat-icon"><i class="fas fa-car"></i></div>
+                <div class="stat-info">
+                    <h3>Tổng số xe</h3>
+                    <span class="stat-number" th:text="${totalVehicles}">24</span>
+                </div>
+            </div>
+            <div class="stat-card available">
+                <div class="stat-icon"><i class="fas fa-check-circle"></i></div>
+                <div class="stat-info">
+                    <h3>Sẵn sàng</h3>
+                    <span class="stat-number" th:text="${availableVehicles}">18</span>
+                </div>
+            </div>
+            <div class="stat-card maintenance">
+                <div class="stat-icon"><i class="fas fa-tools"></i></div>
+                <div class="stat-info">
+                    <h3>Bảo dưỡng</h3>
+                    <span class="stat-number" th:text="${maintenanceVehicles}">6</span>
+                </div>
+            </div>
+            <div class="stat-card broken">
+                <div class="stat-icon"><i class="fas fa-exclamation-triangle"></i></div>
+                <div class="stat-info">
+                    <h3>Sửa chữa</h3>
+                    <span class="stat-number" th:text="${brokenVehicles}">2</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filter Section -->
+        <div class="filter-section">
+            <div class="filter-card">
+                <div class="filter-row">
+                    <div class="filter-group">
+                        <label>Tìm kiếm xe...</label>
+                        <input type="text" th:value="${searchQuery}" placeholder="Tìm kiếm xe...">
+                    </div>
+                    <div class="filter-group">
+                        <label>Tất cả trạng thái</label>
+                        <select th:value="${statusFilter}">
+                            <option>Tất cả trạng thái</option>
+                            <option>Sẵn sàng</option>
+                            <option>Bảo dưỡng</option>
+                            <option>Sửa chữa</option>
+                        </select>
+                    </div>
+                    <button class="btn-add-vehicle">
+                        <i class="fas fa-plus"></i> Thêm Xe Mới
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Table Section -->
+        <div class="table-section">
+            <div class="table-header">
+                <h3>Danh Sách Xe</h3>
+                <div class="table-actions">
+                    <button class="btn-export">
+                        <i class="fas fa-file-excel"></i> Xuất Excel
+                    </button>
+                </div>
+            </div>
+
+            <div class="table-container">
+                <table class="vehicle-table">
+                    <thead>
+                    <tr>
+                        <th>TÊN XE</th>
+                        <th>BIỂN SỐ</th>
+                        <th>LOẠI XE</th>
+                        <th>TRẠNG THÁI</th>
+                        <th>NGÀY CẬP NHẬT</th>
+                        <th>HÀNH ĐỘNG</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="vehicle : ${vehicles}">
+                        <td>
+                            <div class="vehicle-info">
+                                <div class="vehicle-icon" th:class="${vehicle.iconClass}"></div>
+                                <div>
+                                    <div class="vehicle-name" th:text="${vehicle.name}">Toyota Camry 2023</div>
+                                    <div class="vehicle-type" th:text="${vehicle.typeDetail}">Sedan Camry 2023</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td th:text="${vehicle.plateNumber}">30A-12345</td>
+                        <td th:text="${vehicle.category}">Sedan</td>
+                        <td>
+                            <span class="status" th:class="'status-' + ${vehicle.statusClass}"
+                                  th:text="${vehicle.status}">Sẵn sàng</span>
+                        </td>
+                        <td th:text="${vehicle.updateDate}">22/10/2024</td>
+                        <td>
+                            <div class="action-buttons">
+                                <button class="btn-edit" title="Sửa"><i class="fas fa-edit"></i></button>
+                                <button class="btn-delete" title="Xóa"><i class="fas fa-trash"></i></button>
+                            </div>
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination -->
+            <div class="pagination">
+                <span th:text="'Hiển thị ' + ${startIndex} + '-' + ${endIndex} + ' trong tổng số ' + ${totalVehicles} + ' xe'">
+                    Hiển thị 1-4 trong tổng số 24 xe
+                </span>
+                <div class="pagination-buttons">
+                    <button class="prev" th:disabled="${currentPage == 1}">
+                        <i class="fas fa-chevron-left"></i>
+                    </button>
+                    <button class="next" th:disabled="${currentPage == totalPages}">
+                        <i class="fas fa-chevron-right"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<script th:src="@{/js/vehicle-manager.js}"></script>
+</body>
+</html>

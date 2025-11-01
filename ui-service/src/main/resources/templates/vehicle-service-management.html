@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CarRental - Quản Lý Dịch Vụ Xe</title>
+    <link rel="stylesheet" href="/css/vehicle-service-management.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+
+<body>
+<div class="admin-container">
+    <!-- Sidebar -->
+    <aside th:replace="fragments/sidebar :: sidebar"></aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Header -->
+        <header th:replace="fragments/header :: header">
+            <h1>Quản lý Dịch Vụ Xe</h1>
+            <p>Quản lý dịch vụ bảo dưỡng, sửa chữa cho xe</p>
+        </header>
+
+        <!-- Main Section -->
+        <div class="main-section">
+            <!-- Left Panel - Service Form -->
+            <div class="form-panel">
+                <div class="form-header">
+                    <div class="mode-toggle">
+                        <button class="mode-btn active" data-mode="request">
+                            <i class="fas fa-plus-circle"></i>
+                            Đặt Dịch Vụ Mới
+                        </button>
+                        <button class="mode-btn" data-mode="update">
+                            <i class="fas fa-edit"></i>
+                            Cập Nhật
+                        </button>
+                    </div>
+                    <h3>Thông Tin Dịch Vụ</h3>
+                </div>
+
+                <div class="form-content">
+                    <!-- Vehicle Selection -->
+                    <div class="form-group">
+                        <label><i class="fas fa-car"></i> Chọn Xe</label>
+                        <div class="select-group">
+                            <select id="vehicle-select" name="vehicleId">
+                                <option value="">Chọn xe</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Service Type -->
+                    <div class="form-group">
+                        <label><i class="fas fa-wrench"></i> Loại Dịch Vụ</label>
+                        <div class="select-group">
+                            <select id="service-type" name="serviceType">
+                                <option value="maintenance">Bảo dưỡng</option>
+                                <option value="repair">Sửa chữa</option>
+                                <option value="cleaning">Vệ sinh</option>
+                                <option value="inspection">Kiểm tra</option>
+                                <option value="other">Khác</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Service Name -->
+                    <div class="form-group">
+                        <label><i class="fas fa-tag"></i> Tên Dịch Vụ</label>
+                        <input type="text" id="service-name" placeholder="Ví dụ: Bảo dưỡng định kỳ 10,000km">
+                    </div>
+
+                    <!-- Service Description -->
+                    <div class="form-group">
+                        <label><i class="fas fa-file-alt"></i> Mô Tả Chi Tiết</label>
+                        <textarea id="service-description" rows="4" placeholder="Mô tả chi tiết dịch vụ cần thực hiện..."></textarea>
+                    </div>
+
+                    <!-- Status -->
+                    <div class="form-group" id="status-group" style="display: none;">
+                        <label><i class="fas fa-flag"></i> Trạng Thái</label>
+                        <div class="select-group">
+                            <select id="status-select" name="status">
+                                <option value="pending">Chờ xử lý</option>
+                                <option value="in_progress">Đang thực hiện</option>
+                                <option value="completed">Hoàn thành</option>
+                                <option value="cancelled">Hủy</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Date Information -->
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Ngày Yêu Cầu</label>
+                            <input type="date" id="request-date" th:value="${currentDate}">
+                        </div>
+                        <div class="form-group" id="completion-date-group" style="display: none;">
+                            <label>Ngày Hoàn Thành</label>
+                            <input type="date" id="completion-date">
+                        </div>
+                    </div>
+
+                    <!-- Notes -->
+                    <div class="form-group">
+                        <label><i class="fas fa-sticky-note"></i> Ghi Chú</label>
+                        <textarea id="notes" placeholder="Thêm ghi chú (nếu có)..." rows="3"></textarea>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="form-actions">
+                        <button type="button" class="btn-cancel" id="cancelBtn">Hủy</button>
+                        <button type="button" class="btn-confirm" id="confirmBtn">Tạo Dịch Vụ</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Panel - Services List -->
+            <div class="activities-panel">
+                <!-- Filter Tabs -->
+                <div class="activities-header">
+                    <div class="filter-tabs">
+                        <button class="filter-tab active" data-filter="all">
+                            <i class="fas fa-list"></i> Tất Cả
+                        </button>
+                        <button class="filter-tab" data-filter="pending">
+                            <i class="fas fa-clock"></i> Chờ Xử Lý
+                        </button>
+                        <button class="filter-tab" data-filter="in_progress">
+                            <i class="fas fa-spinner"></i> Đang Thực Hiện
+                        </button>
+                        <button class="filter-tab" data-filter="completed">
+                            <i class="fas fa-check-circle"></i> Hoàn Thành
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Stats -->
+                <div class="stats-row">
+                    <div class="stat-item">
+                        <i class="fas fa-clipboard-list"></i>
+                        <span>Tổng dịch vụ</span>
+                        <strong id="total-services">0</strong>
+                    </div>
+                    <div class="stat-item">
+                        <i class="fas fa-clock"></i>
+                        <span>Chờ xử lý</span>
+                        <strong id="pending-services">0</strong>
+                    </div>
+                    <div class="stat-item">
+                        <i class="fas fa-tools"></i>
+                        <span>Đang thực hiện</span>
+                        <strong id="active-services">0</strong>
+                    </div>
+                    <div class="stat-item">
+                        <i class="fas fa-check"></i>
+                        <span>Hoàn thành</span>
+                        <strong id="completed-services">0</strong>
+                    </div>
+                </div>
+
+                <!-- Services List -->
+                <div class="schedule">
+                    <h4>Danh Sách Dịch Vụ</h4>
+                    <div id="services-list" class="services-list">
+                        <!-- Services will be loaded here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<!-- Service Item Template -->
+<template id="service-item-template">
+    <div class="schedule-item service-item">
+        <div class="service-info">
+            <div class="service-icon">
+                <i class="fas fa-wrench"></i>
+            </div>
+            <div>
+                <div class="service-name"></div>
+                <div class="service-vehicle"></div>
+                <div class="service-date"></div>
+            </div>
+        </div>
+        <div class="service-status">
+            <span class="status-badge"></span>
+            <div class="service-actions">
+                <button class="btn-action btn-edit-service" title="Sửa"><i class="fas fa-edit"></i></button>
+                <button class="btn-action btn-delete-service" title="Xóa"><i class="fas fa-trash"></i></button>
+            </div>
+        </div>
+    </div>
+</template>
+
+<script src="/js/vehicle-service-management.js"></script>
+</body>
+
+</html>
+

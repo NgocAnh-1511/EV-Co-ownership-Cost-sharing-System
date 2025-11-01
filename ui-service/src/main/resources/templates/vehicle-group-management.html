@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CarRental - Quản Lý Nhóm Xe Đồng Sở Hữu</title>
+    <link rel="stylesheet" href="/css/vehicle-service-management.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+
+<body>
+<div class="admin-container">
+    <!-- Sidebar -->
+    <aside th:replace="fragments/sidebar :: sidebar"></aside>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Header -->
+        <header class="admin-header">
+            <div class="header-left">
+                <h1>Quản Lý Nhóm Xe Đồng Sở Hữu</h1>
+                <p>Quản lý các nhóm đồng sở hữu và lịch sử sử dụng</p>
+            </div>
+        </header>
+
+        <!-- Main Section -->
+        <div class="main-section" style="grid-template-columns: 2fr 1fr;">
+            <!-- Left Panel - Group Form -->
+            <div class="form-panel">
+                <div class="form-header">
+                    <h3>Thông Tin Nhóm Đồng Sở Hữu</h3>
+                </div>
+
+                <div class="form-content">
+                    <!-- Group Name -->
+                    <div class="form-group">
+                        <label><i class="fas fa-users"></i> Tên Nhóm</label>
+                        <input type="text" id="group-name" placeholder="Ví dụ: Nhóm Tesla Model 3">
+                    </div>
+
+                    <!-- Description -->
+                    <div class="form-group">
+                        <label><i class="fas fa-info-circle"></i> Mô Tả</label>
+                        <textarea id="group-description" rows="4" placeholder="Mô tả về nhóm đồng sở hữu, thành viên, mục đích sử dụng..."></textarea>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div class="form-actions">
+                        <button type="button" class="btn-cancel" id="cancelBtn">Hủy</button>
+                        <button type="button" class="btn-confirm" id="confirmBtn">Lưu Nhóm</button>
+                    </div>
+                </div>
+
+                <!-- Usage History Section -->
+                <div class="form-header" style="margin-top: 24px;">
+                    <h3><i class="fas fa-history"></i> Lịch Sử Sử Dụng</h3>
+                </div>
+                <div class="form-content">
+                    <div id="usage-history" class="usage-history">
+                        <!-- History will be loaded here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Panel - Groups List -->
+            <div class="activities-panel">
+                <!-- Filter Tabs -->
+                <div class="activities-header">
+                    <div class="filter-tabs" style="grid-template-columns: repeat(2, 1fr);">
+                        <button class="filter-tab active" data-filter="all">
+                            <i class="fas fa-list"></i> Tất Cả
+                        </button>
+                        <button class="filter-tab" data-filter="active">
+                            <i class="fas fa-check-circle"></i> Đang Hoạt Động
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Groups List -->
+                <div class="schedule" style="flex: 1;">
+                    <h4>Danh Sách Nhóm</h4>
+                    <div id="groups-list" class="services-list">
+                        <!-- Groups will be loaded here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<!-- Group Item Template -->
+<template id="group-item-template">
+    <div class="schedule-item service-item">
+        <div class="service-info">
+            <div class="service-icon">
+                <i class="fas fa-users"></i>
+            </div>
+            <div>
+                <div class="service-name"></div>
+                <div class="service-vehicle"></div>
+                <div class="service-date"></div>
+            </div>
+        </div>
+        <div class="service-status">
+            <div class="service-actions">
+                <button class="btn-action btn-view-history" title="Xem lịch sử"><i class="fas fa-history"></i></button>
+                <button class="btn-action btn-edit-group" title="Sửa"><i class="fas fa-edit"></i></button>
+                <button class="btn-action btn-delete-group" title="Xóa"><i class="fas fa-trash"></i></button>
+            </div>
+        </div>
+    </div>
+</template>
+
+<script src="/js/vehicle-group-management.js"></script>
+</body>
+
+</html>
+
+
+
+
