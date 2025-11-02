@@ -21,4 +21,35 @@ public class AdminPageController {
         model.addAttribute("message", "Chào mừng đến bảng điều khiển admin!");
         return "admin-dashboard"; // Trả về template admin-dashboard.html
     }
+
+    @GetMapping("/ai-recommendations")
+    public String aiRecommendations(Model model) {
+        model.addAttribute("message", "AI Recommendations - Gợi ý thông minh từ AI");
+        return "admin-ai-recommendations"; // Trả về template admin-ai-recommendations.html
+    }
+
+    @GetMapping("/schedule")
+    public String adminSchedule(Model model) {
+        return "admin-schedule";
+    }
+
+    @GetMapping("/vehicles")
+    public String adminVehicles(Model model) {
+        return "admin-vehicles";
+    }
+
+    @GetMapping("/users")
+    public String adminUsers(Model model) {
+        return "admin-users";
+    }
+
+    @GetMapping("/reports")
+    public String adminReports(Model model) {
+        return "admin-reports";
+    }
+
+    @GetMapping("/settings")
+    public String adminSettings(Model model) {
+        return "admin-settings";
+    }
 }

@@ -101,6 +101,64 @@
             color: #666;
         }
         
+        .ai-insights-card {
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            margin-bottom: 30px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+        }
+        
+        .ai-insights-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        
+        .ai-icon-badge {
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 24px;
+        }
+        
+        .ai-insights-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #1e293b;
+        }
+        
+        .ai-recommendation {
+            background: #f8fafc;
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 12px;
+        }
+        
+        .ai-recommendation.high-priority {
+            border-left-color: #ef4444;
+            background: #fef2f2;
+        }
+        
+        .ai-recommendation-title {
+            font-weight: 600;
+            color: #1e293b;
+            margin-bottom: 8px;
+        }
+        
+        .ai-recommendation-text {
+            color: #64748b;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+        
         .empty-state {
             text-align: center;
             padding: 60px 20px;
@@ -140,6 +198,22 @@
             <p class="mb-0">Đây là danh sách các xe mà bạn đang đồng sở hữu</p>
         </div>
 
+        <!-- AI Insights Card -->
+        <div class="ai-insights-card" id="aiInsightsCard" style="display: none;">
+            <div class="ai-insights-header">
+                <div class="ai-icon-badge">
+                    <i class="fas fa-robot"></i>
+                </div>
+                <div>
+                    <div class="ai-insights-title">AI Insights</div>
+                    <p class="text-muted mb-0">Gợi ý thông minh dành cho bạn</p>
+                </div>
+            </div>
+            <div id="aiRecommendationsContainer">
+                <!-- AI recommendations will be loaded here -->
+            </div>
+        </div>
+
         <!-- Vehicles Grid -->
         <div class="row" id="vehiclesContainer">
             <!-- Vehicles will be loaded here dynamically -->
@@ -164,6 +238,7 @@
             document.getElementById('userFullName').textContent = user.fullName;
             document.getElementById('welcomeName').textContent = user.fullName;
             loadMyVehicles();
+            loadAIRecommendations();
         }
         
         async function loadMyVehicles() {
@@ -237,6 +312,50 @@
                 `;
                 container.innerHTML += vehicleCard;
             });
+        }
+        
+        async function loadAIRecommendations() {
+            try {
+                const response = await fetch(`http://localhost:8083/api/ai/recommendations/user/${user.id}`);
+                
+                if (!response.ok) {
+                    console.log('No AI recommendations available');
+                    return;
+                }
+                
+                const recommendations = await response.json();
+                
+                if (recommendations && recommendations.length > 0) {
+                    displayAIRecommendations(recommendations);
+                }
+            } catch (error) {
+                console.error('Error loading AI recommendations:', error);
+            }
+        }
+        
+        function displayAIRecommendations(recommendations) {
+            const container = document.getElementById('aiRecommendationsContainer');
+            const card = document.getElementById('aiInsightsCard');
+            
+            // Show only top 3 recommendations
+            const topRecommendations = recommendations.slice(0, 3);
+            
+            container.innerHTML = topRecommendations.map(rec => {
+                const priorityClass = rec.priority === 'HIGH' ? 'high-priority' : '';
+                return `
+                    <div class="ai-recommendation ${priorityClass}">
+                        <div class="ai-recommendation-title">
+                            <i class="fas fa-lightbulb me-2"></i>
+                            ${rec.title || 'Gợi ý từ AI'}
+                        </div>
+                        <div class="ai-recommendation-text">
+                            ${rec.description || rec.message || 'Không có mô tả'}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            
+            card.style.display = 'block';
         }
         
         async function logout() {
