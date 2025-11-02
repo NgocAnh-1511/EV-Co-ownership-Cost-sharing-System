@@ -1,5 +1,6 @@
 package com.example.groupmanagement.controller;
 
+import com.example.groupmanagement.dto.GroupResponseDto;
 import com.example.groupmanagement.entity.Group;
 import com.example.groupmanagement.entity.GroupMember;
 import com.example.groupmanagement.entity.Voting;
@@ -18,6 +19,7 @@ import org.springframework.web.client.RestTemplate;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/groups")
@@ -60,7 +62,17 @@ public class GroupManagementController {
     public ResponseEntity<?> getAllGroups() {
         try {
             List<Group> groups = groupRepository.findAll();
-            return ResponseEntity.ok(groups);
+            
+            // Convert to DTO with member count and vote count
+            List<GroupResponseDto> groupDtos = groups.stream()
+                .map(group -> {
+                    Integer memberCount = groupMemberRepository.countByGroup_GroupId(group.getGroupId());
+                    Integer voteCount = votingRepository.countByGroup_GroupId(group.getGroupId());
+                    return GroupResponseDto.fromEntity(group, memberCount, voteCount);
+                })
+                .collect(Collectors.toList());
+            
+            return ResponseEntity.ok(groupDtos);
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.status(500).body("Error: " + e.getMessage() + " - Cause: " + (e.getCause() != null ? e.getCause().getMessage() : "null"));
@@ -137,6 +149,31 @@ public class GroupManagementController {
             return groupMemberRepository.save(groupMember);
         }
         return null;
+    }
+
+    @PutMapping("/{groupId}/members/{memberId}")
+    public ResponseEntity<GroupMember> updateGroupMember(
+            @PathVariable Integer groupId,
+            @PathVariable Integer memberId,
+            @RequestBody GroupMember memberDetails) {
+        Optional<GroupMember> member = groupMemberRepository.findById(memberId);
+        if (member.isPresent()) {
+            GroupMember existingMember = member.get();
+            existingMember.setUserId(memberDetails.getUserId());
+            existingMember.setRole(memberDetails.getRole());
+            existingMember.setOwnershipPercent(memberDetails.getOwnershipPercent());
+            return ResponseEntity.ok(groupMemberRepository.save(existingMember));
+        }
+        return ResponseEntity.notFound().build();
+    }
+
+    @DeleteMapping("/{groupId}/members/{memberId}")
+    public ResponseEntity<Void> deleteGroupMember(@PathVariable Integer groupId, @PathVariable Integer memberId) {
+        if (groupMemberRepository.existsById(memberId)) {
+            groupMemberRepository.deleteById(memberId);
+            return ResponseEntity.ok().build();
+        }
+        return ResponseEntity.notFound().build();
     }
 
     // Voting endpoints

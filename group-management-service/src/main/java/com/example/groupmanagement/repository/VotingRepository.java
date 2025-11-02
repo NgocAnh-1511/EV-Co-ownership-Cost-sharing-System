@@ -9,4 +9,5 @@ import java.util.List;
 @Repository
 public interface VotingRepository extends JpaRepository<Voting, Integer> {
     List<Voting> findByGroup_GroupId(Integer groupId);
+    Integer countByGroup_GroupId(Integer groupId);
 }

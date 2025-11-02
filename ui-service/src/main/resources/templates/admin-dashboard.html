@@ -399,6 +399,102 @@
         </div>
     </div>
 
+    <!-- Group Create/Edit Modal -->
+    <div id="group-modal" class="modal">
+        <div class="modal-header">
+            <h3 id="group-modal-title">Tạo nhóm mới</h3>
+            <button class="modal-close" onclick="closeGroupModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="group-form">
+                <input type="hidden" id="group-id">
+                
+                <div class="form-group">
+                    <label for="group-name">Tên nhóm <span style="color: red;">*</span></label>
+                    <input type="text" id="group-name" class="form-control" required placeholder="Nhập tên nhóm">
+                </div>
+
+                <div class="form-group">
+                    <label for="group-admin">Admin ID <span style="color: red;">*</span></label>
+                    <input type="number" id="group-admin" class="form-control" required placeholder="Nhập ID người quản lý">
+                </div>
+
+                <div class="form-group">
+                    <label for="group-vehicle">Vehicle ID</label>
+                    <input type="number" id="group-vehicle" class="form-control" placeholder="Nhập ID xe (tùy chọn)">
+                </div>
+
+                <div class="form-group">
+                    <label for="group-status">Trạng thái</label>
+                    <select id="group-status" class="form-control">
+                        <option value="Active">Hoạt động</option>
+                        <option value="Inactive">Không hoạt động</option>
+                    </select>
+                </div>
+
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeGroupModal()">Hủy</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> Lưu
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Group Detail Modal -->
+    <div id="group-detail-modal" class="modal" style="max-width: 900px;">
+        <div class="modal-header">
+            <h3 id="group-detail-title">Chi tiết nhóm</h3>
+            <button class="modal-close" onclick="closeGroupDetailModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div id="group-detail-content">
+                <!-- Content loaded dynamically -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Member Management Modal -->
+    <div id="member-modal" class="modal">
+        <div class="modal-header">
+            <h3 id="member-modal-title">Thêm thành viên</h3>
+            <button class="modal-close" onclick="closeMemberModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <form id="member-form">
+                <input type="hidden" id="member-group-id">
+                <input type="hidden" id="member-id">
+                
+                <div class="form-group">
+                    <label for="member-user-id">User ID <span style="color: red;">*</span></label>
+                    <input type="number" id="member-user-id" class="form-control" required placeholder="Nhập ID người dùng">
+                </div>
+
+                <div class="form-group">
+                    <label for="member-role">Vai trò</label>
+                    <select id="member-role" class="form-control">
+                        <option value="Member">Thành viên</option>
+                        <option value="Admin">Quản trị viên</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="member-ownership">Tỷ lệ sở hữu (%)</label>
+                    <input type="number" id="member-ownership" class="form-control" min="0" max="100" step="0.01" value="0" placeholder="Nhập % sở hữu">
+                    <small style="color: var(--text-light);">Dùng cho phương thức chia theo sở hữu</small>
+                </div>
+
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeMemberModal()">Hủy</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> Lưu
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script th:src="@{/js/admin-dashboard.js}"></script>

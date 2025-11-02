@@ -113,4 +113,86 @@ public class GroupManagementClient {
             System.err.println("Error deleting group: " + e.getMessage());
         }
     }
+
+    public Map<String, Object> createGroupAsMap(Map<String, Object> groupData) {
+        try {
+            return restTemplate.postForObject(groupManagementUrl + "/api/groups", groupData, Map.class);
+        } catch (Exception e) {
+            System.err.println("Error creating group: " + e.getMessage());
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    public Map<String, Object> updateGroupAsMap(Integer groupId, Map<String, Object> groupData) {
+        try {
+            restTemplate.put(groupManagementUrl + "/api/groups/" + groupId, groupData);
+            return getGroupByIdAsMap(groupId);
+        } catch (Exception e) {
+            System.err.println("Error updating group: " + e.getMessage());
+            return null;
+        }
+    }
+
+    public List<Map<String, Object>> getGroupMembersAsMap(Integer groupId) {
+        try {
+            ResponseEntity<List<Map<String, Object>>> response = restTemplate.exchange(
+                groupManagementUrl + "/api/groups/" + groupId + "/members",
+                HttpMethod.GET,
+                null,
+                new ParameterizedTypeReference<List<Map<String, Object>>>() {}
+            );
+            return response.getBody() != null ? response.getBody() : List.of();
+        } catch (Exception e) {
+            System.err.println("Error fetching group members: " + e.getMessage());
+            return List.of();
+        }
+    }
+
+    public Map<String, Object> addGroupMemberAsMap(Integer groupId, Map<String, Object> memberData) {
+        try {
+            return restTemplate.postForObject(groupManagementUrl + "/api/groups/" + groupId + "/members", memberData, Map.class);
+        } catch (Exception e) {
+            System.err.println("Error adding group member: " + e.getMessage());
+            return null;
+        }
+    }
+
+    public Map<String, Object> updateGroupMemberAsMap(Integer groupId, Integer memberId, Map<String, Object> memberData) {
+        try {
+            restTemplate.put(groupManagementUrl + "/api/groups/" + groupId + "/members/" + memberId, memberData);
+            // Return the updated member by fetching all members and finding the one
+            List<Map<String, Object>> members = getGroupMembersAsMap(groupId);
+            return members.stream()
+                .filter(m -> m.get("memberId").equals(memberId))
+                .findFirst()
+                .orElse(null);
+        } catch (Exception e) {
+            System.err.println("Error updating group member: " + e.getMessage());
+            return null;
+        }
+    }
+
+    public void deleteGroupMember(Integer groupId, Integer memberId) {
+        try {
+            restTemplate.delete(groupManagementUrl + "/api/groups/" + groupId + "/members/" + memberId);
+        } catch (Exception e) {
+            System.err.println("Error deleting group member: " + e.getMessage());
+        }
+    }
+
+    public List<Map<String, Object>> getGroupVotesAsMap(Integer groupId) {
+        try {
+            ResponseEntity<List<Map<String, Object>>> response = restTemplate.exchange(
+                groupManagementUrl + "/api/groups/" + groupId + "/votes",
+                HttpMethod.GET,
+                null,
+                new ParameterizedTypeReference<List<Map<String, Object>>>() {}
+            );
+            return response.getBody() != null ? response.getBody() : List.of();
+        } catch (Exception e) {
+            System.err.println("Error fetching group votes: " + e.getMessage());
+            return List.of();
+        }
+    }
 }

@@ -2,7 +2,10 @@
 
 // API Endpoints
 const API = {
-    GROUPS: '/groups/api/all',  // Updated to use UI service proxy
+    GROUPS: '/api/groups',           // GET all, POST create
+    GROUP_DETAIL: '/api/groups',     // /api/groups/{id}
+    GROUP_MEMBERS: '/api/groups',    // /api/groups/{groupId}/members
+    GROUP_VOTES: '/api/groups',      // /api/groups/{groupId}/votes
     COSTS: '/api/costs',
     AUTO_SPLIT: '/api/auto-split',
     USAGE: '/api/usage-tracking',
@@ -14,12 +17,14 @@ let currentSection = 'overview';
 let chartsInitialized = false;
 let monthlyChart = null;
 let categoryChart = null;
+let currentGroupId = null;  // For group management
 
 // Initialize on DOM load
 document.addEventListener('DOMContentLoaded', function() {
     initNavigation();
     initSplitMethodToggle();
     initAutoSplitForm();
+    initGroupManagement();
     loadOverviewData();
     initCharts();
 });
@@ -458,6 +463,26 @@ async function loadPayments() {
 }
 
 // ============ GROUP MANAGEMENT ============
+function initGroupManagement() {
+    // Create Group button
+    const btnCreateGroup = document.getElementById('btn-create-group');
+    if (btnCreateGroup) {
+        btnCreateGroup.addEventListener('click', openCreateGroupModal);
+    }
+
+    // Group Form submit
+    const groupForm = document.getElementById('group-form');
+    if (groupForm) {
+        groupForm.addEventListener('submit', handleGroupFormSubmit);
+    }
+
+    // Member Form submit
+    const memberForm = document.getElementById('member-form');
+    if (memberForm) {
+        memberForm.addEventListener('submit', handleMemberFormSubmit);
+    }
+}
+
 async function loadGroups() {
     try {
         const response = await fetch(API.GROUPS);
@@ -467,17 +492,17 @@ async function loadGroups() {
         grid.innerHTML = groups.map(group => `
             <div class="group-card">
                 <h4>${group.groupName}</h4>
-                <p>Admin: User #${group.adminId} | Xe ID: ${group.vehicleId}</p>
+                <p>Admin: User #${group.adminId} | Xe ID: ${group.vehicleId || 'N/A'}</p>
                 <div style="display: flex; gap: 1rem; margin-top: 1rem;">
                     <div style="flex: 1; padding: 0.75rem; background: var(--light); border-radius: 8px; text-align: center;">
                         <div style="font-size: 1.5rem; font-weight: 700; color: var(--primary);">
-                            ${group.members ? group.members.length : 0}
+                            ${group.memberCount || 0}
                         </div>
                         <div style="font-size: 0.75rem; color: var(--text-light);">Thành viên</div>
                     </div>
                     <div style="flex: 1; padding: 0.75rem; background: var(--light); border-radius: 8px; text-align: center;">
                         <div style="font-size: 1.5rem; font-weight: 700; color: var(--success);">
-                            ${group.status === 'ACTIVE' ? 'Hoạt động' : 'Không hoạt động'}
+                            ${group.status === 'Active' ? 'Hoạt động' : 'Không hoạt động'}
                         </div>
                         <div style="font-size: 0.75rem; color: var(--text-light);">Trạng thái</div>
                     </div>
@@ -489,22 +514,383 @@ async function loadGroups() {
                     <button class="btn btn-secondary" style="flex: 1;" onclick="editGroup(${group.groupId})">
                         <i class="fas fa-edit"></i> Sửa
                     </button>
+                    <button class="btn" style="flex: 1; background: var(--danger); color: white;" onclick="deleteGroup(${group.groupId}, '${group.groupName}')">
+                        <i class="fas fa-trash"></i> Xóa
+                    </button>
                 </div>
             </div>
         `).join('');
         
     } catch (error) {
         console.error('Error loading groups:', error);
+        showNotification('Lỗi khi tải danh sách nhóm', 'error');
     }
 }
 
-function viewGroupDetail(groupId) {
-    alert('Chi tiết nhóm #' + groupId);
+// ========== CREATE GROUP ==========
+function openCreateGroupModal() {
+    document.getElementById('group-modal-title').textContent = 'Tạo nhóm mới';
+    document.getElementById('group-form').reset();
+    document.getElementById('group-id').value = '';
+    document.getElementById('group-status').value = 'Active';
+    openModal('group-modal');
 }
 
-function editGroup(groupId) {
-    alert('Chỉnh sửa nhóm #' + groupId);
+async function handleGroupFormSubmit(e) {
+    e.preventDefault();
+    
+    const groupId = document.getElementById('group-id').value;
+    const groupData = {
+        groupName: document.getElementById('group-name').value,
+        adminId: parseInt(document.getElementById('group-admin').value),
+        vehicleId: document.getElementById('group-vehicle').value ? parseInt(document.getElementById('group-vehicle').value) : null,
+        status: document.getElementById('group-status').value
+    };
+
+    try {
+        let response;
+        if (groupId) {
+            // Update existing group
+            response = await fetch(`${API.GROUP_DETAIL}/${groupId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(groupData)
+            });
+        } else {
+            // Create new group
+            response = await fetch(API.GROUPS, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(groupData)
+            });
+        }
+
+        if (response.ok) {
+            showNotification(groupId ? 'Cập nhật nhóm thành công!' : 'Tạo nhóm thành công!', 'success');
+            closeGroupModal();
+            loadGroups();
+        } else {
+            const error = await response.text();
+            showNotification('Lỗi: ' + error, 'error');
+        }
+    } catch (error) {
+        console.error('Error saving group:', error);
+        showNotification('Lỗi khi lưu nhóm', 'error');
+    }
 }
+
+// ========== VIEW GROUP DETAIL ==========
+async function viewGroupDetail(groupId) {
+    try {
+        // Fetch group info
+        const groupResponse = await fetch(`${API.GROUP_DETAIL}/${groupId}`);
+        const group = await groupResponse.json();
+
+        // Fetch members
+        const membersResponse = await fetch(`${API.GROUP_MEMBERS}/${groupId}/members`);
+        const members = await membersResponse.json();
+
+        // Fetch votes
+        const votesResponse = await fetch(`${API.GROUP_VOTES}/${groupId}/votes`);
+        const votes = await votesResponse.json();
+
+        // Display in modal
+        document.getElementById('group-detail-title').textContent = `Chi tiết nhóm: ${group.groupName}`;
+        
+        const content = document.getElementById('group-detail-content');
+        content.innerHTML = `
+            <div style="margin-bottom: 2rem;">
+                <h4 style="margin-bottom: 1rem; color: var(--primary);">
+                    <i class="fas fa-info-circle"></i> Thông tin nhóm
+                </h4>
+                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem;">
+                    <div class="info-item">
+                        <strong>Tên nhóm:</strong> ${group.groupName}
+                    </div>
+                    <div class="info-item">
+                        <strong>Admin ID:</strong> ${group.adminId}
+                    </div>
+                    <div class="info-item">
+                        <strong>Vehicle ID:</strong> ${group.vehicleId || 'N/A'}
+                    </div>
+                    <div class="info-item">
+                        <strong>Trạng thái:</strong> 
+                        <span class="badge ${group.status === 'Active' ? 'badge-success' : 'badge-secondary'}">
+                            ${group.status === 'Active' ? 'Hoạt động' : 'Không hoạt động'}
+                        </span>
+                    </div>
+                    <div class="info-item">
+                        <strong>Ngày tạo:</strong> ${formatDate(group.createdAt)}
+                    </div>
+                </div>
+            </div>
+
+            <div style="margin-bottom: 2rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                    <h4 style="color: var(--primary);">
+                        <i class="fas fa-users"></i> Thành viên (${members.length})
+                    </h4>
+                    <button class="btn btn-primary btn-sm" onclick="openAddMemberModal(${groupId})">
+                        <i class="fas fa-plus"></i> Thêm thành viên
+                    </button>
+                </div>
+                ${members.length > 0 ? `
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>User ID</th>
+                                <th>Vai trò</th>
+                                <th>Sở hữu (%)</th>
+                                <th>Ngày tham gia</th>
+                                <th>Thao tác</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${members.map(member => `
+                                <tr>
+                                    <td>${member.userId}</td>
+                                    <td>
+                                        <span class="badge ${member.role === 'Admin' ? 'badge-primary' : 'badge-secondary'}">
+                                            ${member.role === 'Admin' ? 'Quản trị' : 'Thành viên'}
+                                        </span>
+                                    </td>
+                                    <td>${member.ownershipPercent || 0}%</td>
+                                    <td>${formatDate(member.joinedAt)}</td>
+                                    <td>
+                                        <button class="btn btn-sm btn-secondary" onclick="editMember(${groupId}, ${member.memberId})">
+                                            <i class="fas fa-edit"></i>
+                                        </button>
+                                        <button class="btn btn-sm" style="background: var(--danger); color: white;" onclick="deleteMember(${groupId}, ${member.memberId})">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                ` : '<p style="color: var(--text-light); text-align: center; padding: 2rem;">Chưa có thành viên nào</p>'}
+            </div>
+
+            <div>
+                <h4 style="margin-bottom: 1rem; color: var(--primary);">
+                    <i class="fas fa-vote-yea"></i> Lịch sử bỏ phiếu (${votes.length})
+                </h4>
+                ${votes.length > 0 ? `
+                    <div style="display: grid; gap: 1rem;">
+                        ${votes.map(vote => `
+                            <div class="vote-card" style="padding: 1rem; background: var(--light); border-radius: 8px;">
+                                <h5 style="margin-bottom: 0.5rem;">${vote.topic}</h5>
+                                <div style="display: flex; gap: 1rem; margin-top: 0.5rem;">
+                                    <div><strong>Lựa chọn A:</strong> ${vote.optionA}</div>
+                                    <div><strong>Lựa chọn B:</strong> ${vote.optionB}</div>
+                                </div>
+                                <div style="margin-top: 0.5rem;">
+                                    <strong>Kết quả:</strong> 
+                                    <span class="badge badge-success">${vote.finalResult || 'Đang bỏ phiếu'}</span>
+                                    <span style="margin-left: 1rem; color: var(--text-light);">
+                                        Tổng số phiếu: ${vote.totalVotes}
+                                    </span>
+                                </div>
+                                <div style="margin-top: 0.5rem; color: var(--text-light); font-size: 0.875rem;">
+                                    ${formatDate(vote.createdAt)}
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                ` : '<p style="color: var(--text-light); text-align: center; padding: 2rem;">Chưa có cuộc bỏ phiếu nào</p>'}
+            </div>
+        `;
+
+        openModal('group-detail-modal');
+        
+    } catch (error) {
+        console.error('Error loading group detail:', error);
+        showNotification('Lỗi khi tải chi tiết nhóm', 'error');
+    }
+}
+
+// ========== EDIT GROUP ==========
+async function editGroup(groupId) {
+    try {
+        const response = await fetch(`${API.GROUP_DETAIL}/${groupId}`);
+        const group = await response.json();
+
+        document.getElementById('group-modal-title').textContent = 'Chỉnh sửa nhóm';
+        document.getElementById('group-id').value = group.groupId;
+        document.getElementById('group-name').value = group.groupName;
+        document.getElementById('group-admin').value = group.adminId;
+        document.getElementById('group-vehicle').value = group.vehicleId || '';
+        document.getElementById('group-status').value = group.status;
+
+        openModal('group-modal');
+    } catch (error) {
+        console.error('Error loading group for edit:', error);
+        showNotification('Lỗi khi tải thông tin nhóm', 'error');
+    }
+}
+
+// ========== DELETE GROUP ==========
+async function deleteGroup(groupId, groupName) {
+    if (!confirm(`Bạn có chắc chắn muốn xóa nhóm "${groupName}"?\n\nLưu ý: Tất cả thành viên và dữ liệu liên quan sẽ bị xóa!`)) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API.GROUP_DETAIL}/${groupId}`, {
+            method: 'DELETE'
+        });
+
+        if (response.ok) {
+            showNotification('Xóa nhóm thành công!', 'success');
+            loadGroups();
+        } else {
+            showNotification('Lỗi khi xóa nhóm', 'error');
+        }
+    } catch (error) {
+        console.error('Error deleting group:', error);
+        showNotification('Lỗi khi xóa nhóm', 'error');
+    }
+}
+
+// ========== MEMBER MANAGEMENT ==========
+function openAddMemberModal(groupId) {
+    currentGroupId = groupId;
+    document.getElementById('member-modal-title').textContent = 'Thêm thành viên';
+    document.getElementById('member-form').reset();
+    document.getElementById('member-group-id').value = groupId;
+    document.getElementById('member-id').value = '';
+    document.getElementById('member-role').value = 'Member';
+    document.getElementById('member-ownership').value = '0';
+    
+    closeGroupDetailModal();
+    openModal('member-modal');
+}
+
+async function editMember(groupId, memberId) {
+    try {
+        const response = await fetch(`${API.GROUP_MEMBERS}/${groupId}/members`);
+        const members = await response.json();
+        const member = members.find(m => m.memberId === memberId);
+
+        if (member) {
+            currentGroupId = groupId;
+            document.getElementById('member-modal-title').textContent = 'Chỉnh sửa thành viên';
+            document.getElementById('member-group-id').value = groupId;
+            document.getElementById('member-id').value = member.memberId;
+            document.getElementById('member-user-id').value = member.userId;
+            document.getElementById('member-role').value = member.role;
+            document.getElementById('member-ownership').value = member.ownershipPercent || 0;
+
+            closeGroupDetailModal();
+            openModal('member-modal');
+        }
+    } catch (error) {
+        console.error('Error loading member for edit:', error);
+        showNotification('Lỗi khi tải thông tin thành viên', 'error');
+    }
+}
+
+async function handleMemberFormSubmit(e) {
+    e.preventDefault();
+    
+    const groupId = document.getElementById('member-group-id').value;
+    const memberId = document.getElementById('member-id').value;
+    
+    const memberData = {
+        userId: parseInt(document.getElementById('member-user-id').value),
+        role: document.getElementById('member-role').value,
+        ownershipPercent: parseFloat(document.getElementById('member-ownership').value) || 0
+    };
+
+    try {
+        let response;
+        if (memberId) {
+            // Update member - need to implement PUT endpoint
+            response = await fetch(`${API.GROUP_MEMBERS}/${groupId}/members/${memberId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(memberData)
+            });
+        } else {
+            // Add new member
+            response = await fetch(`${API.GROUP_MEMBERS}/${groupId}/members`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(memberData)
+            });
+        }
+
+        if (response.ok) {
+            showNotification(memberId ? 'Cập nhật thành viên thành công!' : 'Thêm thành viên thành công!', 'success');
+            closeMemberModal();
+            viewGroupDetail(groupId);
+        } else {
+            const error = await response.text();
+            showNotification('Lỗi: ' + error, 'error');
+        }
+    } catch (error) {
+        console.error('Error saving member:', error);
+        showNotification('Lỗi khi lưu thành viên', 'error');
+    }
+}
+
+async function deleteMember(groupId, memberId) {
+    if (!confirm('Bạn có chắc chắn muốn xóa thành viên này khỏi nhóm?')) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`${API.GROUP_MEMBERS}/${groupId}/members/${memberId}`, {
+            method: 'DELETE'
+        });
+
+        if (response.ok) {
+            showNotification('Xóa thành viên thành công!', 'success');
+            viewGroupDetail(groupId);
+        } else {
+            showNotification('Lỗi khi xóa thành viên', 'error');
+        }
+    } catch (error) {
+        console.error('Error deleting member:', error);
+        showNotification('Lỗi khi xóa thành viên', 'error');
+    }
+}
+
+// ========== MODAL CONTROLS ==========
+function openModal(modalId) {
+    document.getElementById('modal-overlay').classList.add('active');
+    document.getElementById(modalId).classList.add('active');
+}
+
+function closeModal(modalId) {
+    document.getElementById('modal-overlay').classList.remove('active');
+    document.getElementById(modalId).classList.remove('active');
+}
+
+function closeGroupModal() {
+    closeModal('group-modal');
+}
+
+function closeGroupDetailModal() {
+    closeModal('group-detail-modal');
+}
+
+function closeMemberModal() {
+    closeModal('member-modal');
+}
+
+// Close modal when clicking overlay
+document.addEventListener('DOMContentLoaded', function() {
+    const overlay = document.getElementById('modal-overlay');
+    if (overlay) {
+        overlay.addEventListener('click', function() {
+            document.querySelectorAll('.modal.active').forEach(modal => {
+                modal.classList.remove('active');
+            });
+            this.classList.remove('active');
+        });
+    }
+});
 
 // ============ UTILITY FUNCTIONS ============
 function formatCurrency(amount) {
