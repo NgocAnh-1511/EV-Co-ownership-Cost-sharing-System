@@ -79,7 +79,7 @@ class ReportsManager {
             // Load overview statistics
             const [costsResponse, groupsResponse, votingsResponse, fundResponse] = await Promise.all([
                 fetch('/api/costs'),
-                fetch('/api/groups'),
+                fetch('/groups/api/all'),
                 fetch('/api/votings'),
                 fetch('/api/fund/balances')
             ]);
@@ -221,7 +221,7 @@ class ReportsManager {
 
     async loadGroupsData() {
         try {
-            const response = await fetch('/api/groups');
+            const response = await fetch('/groups/api/all');
             const groups = await response.json();
             
             const content = document.getElementById('groupReportContent');

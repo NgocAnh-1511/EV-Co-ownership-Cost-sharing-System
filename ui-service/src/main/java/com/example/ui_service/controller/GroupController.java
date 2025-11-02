@@ -89,13 +89,46 @@ public class GroupController {
         return List.of();
     }
     
+    /**
+     * API endpoint for frontend JavaScript to fetch all groups
+     */
+    @GetMapping("/api/all")
+    @ResponseBody
+    public List<GroupDto> getGroupsApi() {
+        return groupManagementClient.getAllGroups();
+    }
+    
+    /**
+     * Delete a group
+     */
+    @PostMapping("/{id}/delete")
+    public String deleteGroup(@PathVariable Integer id) {
+        groupManagementClient.deleteGroup(id);
+        return "redirect:/groups";
+    }
+    
     @GetMapping("/voting")
     public String voting(Model model) {
         return "groups/voting";
     }
     
+    /**
+     * Quỹ chung - Giao diện User
+     */
     @GetMapping("/fund")
     public String fund(Model model) {
+        // TODO: Check if user is admin from session
+        // For now, redirect to user page by default
         return "groups/fund";
+    }
+    
+    /**
+     * Quỹ chung - Giao diện Admin
+     */
+    @GetMapping("/fund-admin")
+    public String fundAdmin(Model model) {
+        // TODO: Check if user is admin from session
+        // If not admin, redirect to user page
+        return "groups/fund-admin";
     }
 }

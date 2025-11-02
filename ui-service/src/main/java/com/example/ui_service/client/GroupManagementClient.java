@@ -105,4 +105,12 @@ public class GroupManagementClient {
             return null;
         }
     }
+    
+    public void deleteGroup(Integer groupId) {
+        try {
+            restTemplate.delete(groupManagementUrl + "/api/groups/" + groupId);
+        } catch (Exception e) {
+            System.err.println("Error deleting group: " + e.getMessage());
+        }
+    }
 }

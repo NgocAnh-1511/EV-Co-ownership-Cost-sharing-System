@@ -19,7 +19,7 @@ class CostSharingManager {
 
     async loadGroups() {
         try {
-            const response = await fetch('/api/groups');
+            const response = await fetch('/groups/api/all');
             this.groups = await response.json();
             this.populateGroupSelect();
         } catch (error) {

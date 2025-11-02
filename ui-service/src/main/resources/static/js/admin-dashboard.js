@@ -2,7 +2,7 @@
 
 // API Endpoints
 const API = {
-    GROUPS: '/api/groups',
+    GROUPS: '/groups/api/all',  // Updated to use UI service proxy
     COSTS: '/api/costs',
     AUTO_SPLIT: '/api/auto-split',
     USAGE: '/api/usage-tracking',

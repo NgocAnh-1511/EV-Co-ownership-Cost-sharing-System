@@ -1,7 +1,11 @@
 -- ===============================
--- DATABASE: Group_Management_DB
--- Version ĐƠN GIẢN - Đủ làm chức năng
+-- DATABASE: Group_Management_DB + Cost_Management_DB
+-- Version ĐẦY ĐỦ - Bao gồm Quỹ chung
 -- ===============================
+
+-- ==========================================
+-- PART 1: GROUP MANAGEMENT DATABASE
+-- ==========================================
 
 DROP DATABASE IF EXISTS Group_Management_DB;
 CREATE DATABASE Group_Management_DB;
@@ -102,4 +106,157 @@ SELECT
     IF(SUM(ownershipPercent)=100, '✅ OK', '❌ Sai') as 'Status'
 FROM GroupMember GROUP BY groupId;
 
-SELECT '✅ HOÀN TẤT!' as '';
+SELECT '✅ GROUP_MANAGEMENT_DB HOÀN TẤT!' as '';
+
+-- ==========================================
+-- PART 2: COST MANAGEMENT DATABASE
+-- ==========================================
+
+DROP DATABASE IF EXISTS Cost_Management_DB;
+CREATE DATABASE Cost_Management_DB;
+USE Cost_Management_DB;
+
+-- ==========================================
+-- BẢNG QUỸ CHUNG
+-- ==========================================
+
+-- 1. Quỹ nhóm
+CREATE TABLE GroupFund (
+    fundId INT AUTO_INCREMENT PRIMARY KEY,
+    groupId INT NOT NULL UNIQUE COMMENT 'ID nhóm từ Group_Management_DB',
+    totalContributed DOUBLE DEFAULT 0 COMMENT 'Tổng tiền đã đóng góp',
+    currentBalance DOUBLE DEFAULT 0 COMMENT 'Số dư hiện tại',
+    updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    note TEXT COMMENT 'Ghi chú'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 2. Giao dịch quỹ (CÓ HỆ THỐNG PHÊ DUYỆT)
+CREATE TABLE FundTransaction (
+    transactionId INT AUTO_INCREMENT PRIMARY KEY,
+    fundId INT NOT NULL,
+    userId INT NOT NULL COMMENT 'ID người thực hiện',
+    transactionType ENUM('Deposit','Withdraw') NOT NULL COMMENT 'Loại: Nạp/Rút',
+    amount DOUBLE NOT NULL COMMENT 'Số tiền',
+    purpose TEXT COMMENT 'Mục đích',
+    date DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT 'Thời gian tạo',
+    
+    -- HỆ THỐNG PHÊ DUYỆT (Phương án C)
+    status ENUM('Pending','Approved','Rejected','Completed') 
+        DEFAULT 'Completed' 
+        COMMENT 'Pending=Chờ vote, Approved=Đã duyệt, Rejected=Từ chối, Completed=Hoàn tất',
+    approvedBy INT 
+        COMMENT 'UserId của Admin phê duyệt',
+    approvedAt DATETIME 
+        COMMENT 'Thời gian phê duyệt',
+    voteId INT 
+        COMMENT 'ID của vote liên quan',
+    receiptUrl VARCHAR(500) 
+        COMMENT 'Link hóa đơn/chứng từ',
+    
+    FOREIGN KEY (fundId) REFERENCES GroupFund(fundId) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Tạo Foreign Key nối với Voting (cross-database)
+ALTER TABLE FundTransaction
+ADD CONSTRAINT fk_fundtransaction_vote
+FOREIGN KEY (`voteId`) REFERENCES Group_Management_DB.Voting(`voteId`) 
+ON DELETE SET NULL;
+
+-- 3. View tiện lợi: Giao dịch kèm thông tin vote
+CREATE OR REPLACE VIEW FundTransactionWithVote AS
+SELECT 
+    ft.transactionId,
+    ft.fundId,
+    ft.userId,
+    ft.transactionType,
+    ft.amount,
+    ft.purpose,
+    ft.date,
+    ft.status,
+    ft.approvedBy,
+    ft.approvedAt,
+    ft.voteId,
+    ft.receiptUrl,
+    v.topic as voteTopic,
+    v.finalResult as voteResult,
+    v.totalVotes
+FROM FundTransaction ft
+LEFT JOIN Group_Management_DB.Voting v ON ft.voteId = v.voteId;
+
+-- ==========================================
+-- DỮ LIỆU MẪU - QUỸ CHUNG
+-- ==========================================
+
+-- Tạo quỹ cho các nhóm
+INSERT INTO GroupFund (groupId, totalContributed, currentBalance, note) VALUES 
+(1, 5000000, 3500000, 'Quỹ chung EV Group Tesla Model 3'),
+(2, 3000000, 2800000, 'Quỹ chung EV Group BMW i3');
+
+-- Giao dịch mẫu
+INSERT INTO FundTransaction (fundId, userId, transactionType, amount, purpose, status, approvedAt) VALUES 
+-- Group 1
+(1, 1, 'Deposit', 2000000, 'Nạp quỹ ban đầu', 'Completed', '2025-10-01 10:00:00'),
+(1, 2, 'Deposit', 1500000, 'Đóng góp tháng 10', 'Completed', '2025-10-05 14:30:00'),
+(1, 3, 'Deposit', 1500000, 'Đóng góp tháng 10', 'Completed', '2025-10-05 15:00:00'),
+(1, 1, 'Withdraw', 1000000, 'Mua bảo hiểm xe', 'Completed', '2025-10-15 09:00:00'),
+(1, 2, 'Withdraw', 500000, 'Bảo dưỡng định kỳ', 'Completed', '2025-10-20 11:30:00'),
+
+-- Group 2
+(2, 2, 'Deposit', 1800000, 'Nạp quỹ ban đầu', 'Completed', '2025-10-01 11:00:00'),
+(2, 4, 'Deposit', 1200000, 'Đóng góp tháng 10', 'Completed', '2025-10-05 16:00:00'),
+(2, 2, 'Withdraw', 200000, 'Đổ xăng', 'Completed', '2025-10-10 08:00:00');
+
+-- Yêu cầu rút tiền đang chờ duyệt (Pending)
+INSERT INTO FundTransaction (fundId, userId, transactionType, amount, purpose, status, receiptUrl) VALUES 
+(1, 3, 'Withdraw', 800000, 'Sửa chữa đột xuất', 'Pending', 'https://example.com/receipt1.pdf');
+
+-- ==========================================
+-- XEM DỮ LIỆU COST MANAGEMENT
+-- ==========================================
+
+SELECT '=== TỔNG QUAN QUỸ ===' as '';
+SELECT 
+    gf.fundId,
+    gf.groupId,
+    CONCAT(FORMAT(gf.totalContributed, 0), ' VND') as 'Tổng đóng góp',
+    CONCAT(FORMAT(gf.currentBalance, 0), ' VND') as 'Số dư hiện tại',
+    gf.note
+FROM GroupFund gf;
+
+SELECT '=== LỊCH SỬ GIAO DỊCH ===' as '';
+SELECT 
+    transactionId,
+    fundId,
+    userId,
+    transactionType as 'Loại',
+    CONCAT(FORMAT(amount, 0), ' VND') as 'Số tiền',
+    purpose as 'Mục đích',
+    status as 'Trạng thái',
+    DATE_FORMAT(date, '%Y-%m-%d %H:%i') as 'Thời gian'
+FROM FundTransaction
+ORDER BY date DESC;
+
+SELECT '=== YÊU CẦU CHỜ DUYỆT ===' as '';
+SELECT 
+    transactionId,
+    fundId,
+    userId,
+    CONCAT(FORMAT(amount, 0), ' VND') as 'Số tiền',
+    purpose as 'Mục đích',
+    DATE_FORMAT(date, '%Y-%m-%d %H:%i') as 'Thời gian'
+FROM FundTransaction
+WHERE status = 'Pending';
+
+SELECT '=== THỐNG KÊ THEO NHÓM ===' as '';
+SELECT 
+    fundId,
+    transactionType as 'Loại',
+    COUNT(*) as 'Số giao dịch',
+    CONCAT(FORMAT(SUM(amount), 0), ' VND') as 'Tổng tiền'
+FROM FundTransaction
+WHERE status = 'Completed'
+GROUP BY fundId, transactionType
+ORDER BY fundId, transactionType;
+
+SELECT '✅ COST_MANAGEMENT_DB HOÀN TẤT!' as '';
+

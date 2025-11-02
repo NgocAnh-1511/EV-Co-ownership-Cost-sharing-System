@@ -3,7 +3,9 @@
 // Global variables
 let fundStats = {};
 let transactions = [];
+let pendingTransactions = [];
 let groups = [];
+let isAdmin = true; // TODO: Get from session/auth
 
 // Initialize page
 document.addEventListener('DOMContentLoaded', function() {
@@ -11,8 +13,18 @@ document.addEventListener('DOMContentLoaded', function() {
     loadFundStats();
     loadGroups();
     loadTransactions();
+    loadPendingApprovals();
     setupEventListeners();
+    checkAdminRole();
 });
+
+// Check admin role
+function checkAdminRole() {
+    const pendingCard = document.getElementById('pendingApprovalsCard');
+    if (pendingCard) {
+        pendingCard.style.display = isAdmin ? 'block' : 'none';
+    }
+}
 
 // Initialize page elements
 function initializePage() {
@@ -21,6 +33,17 @@ function initializePage() {
     const fundDateInput = document.getElementById('fundDate');
     if (fundDateInput) {
         fundDateInput.value = today;
+    }
+    
+    // Setup transaction type change listener
+    const transactionType = document.getElementById('transactionType');
+    if (transactionType) {
+        transactionType.addEventListener('change', function() {
+            const receiptGroup = document.getElementById('receiptGroup');
+            if (receiptGroup) {
+                receiptGroup.style.display = this.value === 'Withdraw' ? 'block' : 'none';
+            }
+        });
     }
 }
 
@@ -46,7 +69,7 @@ function updateFundStatsDisplay() {
         statCards[0].textContent = formatCurrency(fundStats.totalBalance || 0);
         statCards[1].textContent = formatCurrency(fundStats.totalIncome || 0);
         statCards[2].textContent = formatCurrency(fundStats.totalExpense || 0);
-        statCards[3].textContent = (fundStats.transactionCount || 0).toString();
+        statCards[3].textContent = (fundStats.pendingCount || 0).toString();
     }
     
     // Update fund summary
@@ -62,7 +85,7 @@ function updateFundStatsDisplay() {
 // Load groups
 async function loadGroups() {
     try {
-        const response = await fetch('/api/groups');
+        const response = await fetch('/groups/api/all');
         if (response.ok) {
             groups = await response.json();
             updateGroupSelects();
@@ -74,21 +97,104 @@ async function loadGroups() {
 
 // Update group select elements
 function updateGroupSelects() {
-    const groupSelects = document.querySelectorAll('#filterGroup, #fundGroup');
+    const groupSelects = document.querySelectorAll('#filterGroup, #depositGroup, #withdrawGroup');
     groupSelects.forEach(select => {
+        if (!select) return;
+        
         // Clear existing options except the first one
         while (select.children.length > 1) {
             select.removeChild(select.lastChild);
         }
         
+        // Update the first option text
+        if (select.children.length > 0) {
+            select.children[0].textContent = 'Chọn nhóm';
+        }
+        
         // Add group options
         groups.forEach(group => {
             const option = document.createElement('option');
-            option.value = group.id;
-            option.textContent = group.name;
+            option.value = group.groupId;
+            option.textContent = group.groupName;
             select.appendChild(option);
         });
     });
+}
+
+// Load pending approvals (Admin only)
+async function loadPendingApprovals() {
+    if (!isAdmin) return;
+    
+    try {
+        const response = await fetch('/api/fund/transactions?status=Pending');
+        if (response.ok) {
+            pendingTransactions = await response.json();
+            updatePendingApprovalsDisplay();
+            
+            // Update badge
+            const badge = document.getElementById('pendingBadge');
+            if (badge) {
+                badge.textContent = pendingTransactions.length;
+            }
+        }
+    } catch (error) {
+        console.error('Error loading pending approvals:', error);
+    }
+}
+
+// Update pending approvals display
+function updatePendingApprovalsDisplay() {
+    const tbody = document.getElementById('pendingApprovalsBody');
+    if (!tbody) return;
+    
+    if (pendingTransactions.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="7" class="empty-table">
+                    <div class="empty-state">
+                        <i class="fas fa-check-circle"></i>
+                        <p>Không có yêu cầu chờ duyệt</p>
+                    </div>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+    
+    tbody.innerHTML = pendingTransactions.map(tx => `
+        <tr>
+            <td>${formatDate(tx.date)}</td>
+            <td>User ${tx.userId}</td>
+            <td>
+                <span class="status-badge status-${tx.transactionType.toLowerCase()}">
+                    ${tx.transactionType === 'Deposit' ? 'Nạp tiền' : 'Rút tiền'}
+                </span>
+            </td>
+            <td class="negative">${formatCurrency(tx.amount)}</td>
+            <td>${tx.purpose || '-'}</td>
+            <td>
+                ${tx.receiptUrl ? 
+                    `<a href="${tx.receiptUrl}" target="_blank" class="receipt-link">
+                        <i class="fas fa-file-invoice"></i> Xem hóa đơn
+                    </a>` : 
+                    '<span style="color: #9ca3af;">Không có</span>'
+                }
+            </td>
+            <td>
+                <div class="action-buttons">
+                    <button class="btn btn-sm btn-success" onclick="approveTransaction(${tx.transactionId})" title="Phê duyệt">
+                        <i class="fas fa-check"></i>
+                    </button>
+                    <button class="btn btn-sm btn-danger" onclick="rejectTransaction(${tx.transactionId})" title="Từ chối">
+                        <i class="fas fa-times"></i>
+                    </button>
+                    <button class="btn btn-sm btn-info" onclick="viewTransactionDetails(${tx.transactionId})" title="Chi tiết">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                </div>
+            </td>
+        </tr>
+    `).join('');
 }
 
 // Load transactions
@@ -127,26 +233,35 @@ function updateTransactionsDisplay() {
     
     tbody.innerHTML = transactions.map(transaction => `
         <tr>
-            <td>${formatDate(transaction.transactionDate)}</td>
+            <td>${formatDate(transaction.date)}</td>
             <td>
-                <span class="type-badge ${transaction.type.toLowerCase()}">
-                    ${transaction.type === 'INCOME' ? 'Thu nhập' : 'Chi phí'}
+                <span class="status-badge status-${transaction.transactionType.toLowerCase()}">
+                    ${transaction.transactionType === 'Deposit' ? 'Nạp tiền' : 'Rút tiền'}
                 </span>
             </td>
-            <td>${transaction.description || '-'}</td>
-            <td>${getGroupName(transaction.groupId)}</td>
-            <td class="${transaction.type === 'INCOME' ? 'positive' : 'negative'}">
-                ${transaction.type === 'INCOME' ? '+' : '-'}${formatCurrency(transaction.amount)}
+            <td>${transaction.purpose || '-'}</td>
+            <td class="${transaction.transactionType === 'Deposit' ? 'positive' : 'negative'}">
+                ${transaction.transactionType === 'Deposit' ? '+' : '-'}${formatCurrency(transaction.amount)}
             </td>
-            <td>${transaction.createdBy || '-'}</td>
             <td>
-                <div class="cost-actions">
-                    <button class="btn btn-sm btn-outline" onclick="editTransaction(${transaction.id})">
-                        <i class="fas fa-edit"></i>
-                    </button>
-                    <button class="btn btn-sm btn-outline" onclick="deleteTransaction(${transaction.id})">
-                        <i class="fas fa-trash"></i>
-                    </button>
+                <span class="status-badge status-${transaction.status.toLowerCase()}">
+                    <i class="fas fa-${getStatusIcon(transaction.status)}"></i>
+                    ${getStatusText(transaction.status)}
+                </span>
+            </td>
+            <td>User ${transaction.userId}</td>
+            <td>
+                <div class="action-buttons">
+                    ${transaction.receiptUrl ? 
+                        `<a href="${transaction.receiptUrl}" target="_blank" class="btn btn-sm btn-info" title="Hóa đơn">
+                            <i class="fas fa-file-invoice"></i>
+                        </a>` : ''
+                    }
+                    ${transaction.status === 'Completed' ? 
+                        `<button class="btn btn-sm btn-outline" onclick="viewTransactionDetails(${transaction.transactionId})" title="Chi tiết">
+                            <i class="fas fa-eye"></i>
+                        </button>` : ''
+                    }
                 </div>
             </td>
         </tr>
@@ -194,8 +309,13 @@ function updateRecentTransactions() {
 // Setup event listeners
 function setupEventListeners() {
     // Filter change events
+    const filterStatus = document.getElementById('filterStatus');
     const filterType = document.getElementById('filterType');
     const filterGroup = document.getElementById('filterGroup');
+    
+    if (filterStatus) {
+        filterStatus.addEventListener('change', filterTransactions);
+    }
     
     if (filterType) {
         filterType.addEventListener('change', filterTransactions);
@@ -214,17 +334,22 @@ function setupEventListeners() {
 
 // Filter transactions
 function filterTransactions() {
+    const statusFilter = document.getElementById('filterStatus')?.value;
     const typeFilter = document.getElementById('filterType')?.value;
     const groupFilter = document.getElementById('filterGroup')?.value;
     
     let filteredTransactions = transactions;
     
+    if (statusFilter) {
+        filteredTransactions = filteredTransactions.filter(t => t.status === statusFilter);
+    }
+    
     if (typeFilter) {
-        filteredTransactions = filteredTransactions.filter(t => t.type === typeFilter);
+        filteredTransactions = filteredTransactions.filter(t => t.transactionType === typeFilter);
     }
     
     if (groupFilter) {
-        filteredTransactions = filteredTransactions.filter(t => t.groupId == groupFilter);
+        filteredTransactions = filteredTransactions.filter(t => t.fundId == groupFilter);
     }
     
     // Update display with filtered transactions
@@ -252,26 +377,35 @@ function updateTransactionsDisplayWithData(transactionData) {
     
     tbody.innerHTML = transactionData.map(transaction => `
         <tr>
-            <td>${formatDate(transaction.transactionDate)}</td>
+            <td>${formatDate(transaction.date)}</td>
             <td>
-                <span class="type-badge ${transaction.type.toLowerCase()}">
-                    ${transaction.type === 'INCOME' ? 'Thu nhập' : 'Chi phí'}
+                <span class="status-badge status-${transaction.transactionType.toLowerCase()}">
+                    ${transaction.transactionType === 'Deposit' ? 'Nạp tiền' : 'Rút tiền'}
                 </span>
             </td>
-            <td>${transaction.description || '-'}</td>
-            <td>${getGroupName(transaction.groupId)}</td>
-            <td class="${transaction.type === 'INCOME' ? 'positive' : 'negative'}">
-                ${transaction.type === 'INCOME' ? '+' : '-'}${formatCurrency(transaction.amount)}
+            <td>${transaction.purpose || '-'}</td>
+            <td class="${transaction.transactionType === 'Deposit' ? 'positive' : 'negative'}">
+                ${transaction.transactionType === 'Deposit' ? '+' : '-'}${formatCurrency(transaction.amount)}
             </td>
-            <td>${transaction.createdBy || '-'}</td>
             <td>
-                <div class="cost-actions">
-                    <button class="btn btn-sm btn-outline" onclick="editTransaction(${transaction.id})">
-                        <i class="fas fa-edit"></i>
-                    </button>
-                    <button class="btn btn-sm btn-outline" onclick="deleteTransaction(${transaction.id})">
-                        <i class="fas fa-trash"></i>
-                    </button>
+                <span class="status-badge status-${transaction.status.toLowerCase()}">
+                    <i class="fas fa-${getStatusIcon(transaction.status)}"></i>
+                    ${getStatusText(transaction.status)}
+                </span>
+            </td>
+            <td>User ${transaction.userId}</td>
+            <td>
+                <div class="action-buttons">
+                    ${transaction.receiptUrl ? 
+                        `<a href="${transaction.receiptUrl}" target="_blank" class="btn btn-sm btn-info" title="Hóa đơn">
+                            <i class="fas fa-file-invoice"></i>
+                        </a>` : ''
+                    }
+                    ${transaction.status === 'Completed' ? 
+                        `<button class="btn btn-sm btn-outline" onclick="viewTransactionDetails(${transaction.transactionId})" title="Chi tiết">
+                            <i class="fas fa-eye"></i>
+                        </button>` : ''
+                    }
                 </div>
             </td>
         </tr>
@@ -430,6 +564,122 @@ async function deleteTransaction(transactionId) {
         console.error('Error deleting transaction:', error);
         showNotification('Lỗi khi xóa giao dịch', 'error');
     }
+}
+
+// Approve transaction (Admin only)
+async function approveTransaction(transactionId) {
+    if (!confirm('Xác nhận phê duyệt yêu cầu rút tiền này?')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/fund/transactions/${transactionId}/approve`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        });
+        
+        if (response.ok) {
+            showNotification('Phê duyệt thành công!', 'success');
+            loadFundStats();
+            loadTransactions();
+            loadPendingApprovals();
+        } else {
+            const error = await response.json();
+            showNotification(error.message || 'Lỗi khi phê duyệt', 'error');
+        }
+    } catch (error) {
+        console.error('Error approving transaction:', error);
+        showNotification('Lỗi khi phê duyệt', 'error');
+    }
+}
+
+// Reject transaction (Admin only)
+async function rejectTransaction(transactionId) {
+    const reason = prompt('Lý do từ chối:');
+    if (!reason) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/fund/transactions/${transactionId}/reject`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ reason })
+        });
+        
+        if (response.ok) {
+            showNotification('Đã từ chối yêu cầu', 'warning');
+            loadFundStats();
+            loadTransactions();
+            loadPendingApprovals();
+        } else {
+            const error = await response.json();
+            showNotification(error.message || 'Lỗi khi từ chối', 'error');
+        }
+    } catch (error) {
+        console.error('Error rejecting transaction:', error);
+        showNotification('Lỗi khi từ chối', 'error');
+    }
+}
+
+// View transaction details
+function viewTransactionDetails(transactionId) {
+    const transaction = transactions.find(t => t.transactionId === transactionId) || 
+                       pendingTransactions.find(t => t.transactionId === transactionId);
+    if (!transaction) return;
+    
+    let detailsHtml = `
+        <div style="padding: 1rem;">
+            <h4 style="margin-bottom: 1rem;">Chi tiết giao dịch</h4>
+            <div style="display: grid; gap: 0.75rem;">
+                <div><strong>Mã giao dịch:</strong> #${transaction.transactionId}</div>
+                <div><strong>Loại:</strong> ${transaction.transactionType === 'Deposit' ? 'Nạp tiền' : 'Rút tiền'}</div>
+                <div><strong>Số tiền:</strong> ${formatCurrency(transaction.amount)}</div>
+                <div><strong>Mục đích:</strong> ${transaction.purpose || '-'}</div>
+                <div><strong>Trạng thái:</strong> ${getStatusText(transaction.status)}</div>
+                <div><strong>Ngày tạo:</strong> ${formatDate(transaction.date)}</div>
+                <div><strong>Người thực hiện:</strong> User ${transaction.userId}</div>
+                ${transaction.receiptUrl ? 
+                    `<div><strong>Hóa đơn:</strong> <a href="${transaction.receiptUrl}" target="_blank">Xem hóa đơn</a></div>` : ''
+                }
+                ${transaction.approvedBy ? 
+                    `<div><strong>Người duyệt:</strong> Admin ${transaction.approvedBy}</div>` : ''
+                }
+                ${transaction.approvedAt ? 
+                    `<div><strong>Ngày duyệt:</strong> ${formatDate(transaction.approvedAt)}</div>` : ''
+                }
+            </div>
+        </div>
+    `;
+    
+    // Create and show modal (simplified)
+    alert(detailsHtml.replace(/<[^>]*>/g, '\n')); // For demo, replace with proper modal
+}
+
+// Helper: Get status text
+function getStatusText(status) {
+    const statusMap = {
+        'Pending': 'Chờ duyệt',
+        'Approved': 'Đã duyệt',
+        'Rejected': 'Từ chối',
+        'Completed': 'Hoàn tất'
+    };
+    return statusMap[status] || status;
+}
+
+// Helper: Get status icon
+function getStatusIcon(status) {
+    const iconMap = {
+        'Pending': 'clock',
+        'Approved': 'check-circle',
+        'Rejected': 'times-circle',
+        'Completed': 'check-double'
+    };
+    return iconMap[status] || 'circle';
 }
 
 // Utility functions

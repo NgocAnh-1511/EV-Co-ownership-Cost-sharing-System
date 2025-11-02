@@ -101,7 +101,7 @@ function setupGroupActionButtons() {
     });
 }
 
-function handleDeleteGroup(groupName, groupId, groupCard) {
+async function handleDeleteGroup(groupName, groupId, groupCard) {
     if (confirm(`Bạn có chắc chắn muốn xóa nhóm "${groupName}"?`)) {
         console.log('Delete group:', groupName, groupId);
         
@@ -109,12 +109,25 @@ function handleDeleteGroup(groupName, groupId, groupCard) {
         groupCard.style.opacity = '0.5';
         groupCard.style.pointerEvents = 'none';
         
-        // Simulate API call
-        setTimeout(() => {
-            groupCard.remove();
-            updateSearchResults();
-            showNotification('Nhóm đã được xóa thành công!', 'success');
-        }, 1000);
+        try {
+            // Call delete API
+            const response = await fetch(`/groups/${groupId}/delete`, {
+                method: 'POST'
+            });
+            
+            if (response.ok) {
+                groupCard.remove();
+                updateSearchResults();
+                showNotification('Nhóm đã được xóa thành công!', 'success');
+            } else {
+                throw new Error('Delete failed');
+            }
+        } catch (error) {
+            console.error('Error deleting group:', error);
+            groupCard.style.opacity = '1';
+            groupCard.style.pointerEvents = 'auto';
+            showNotification('Không thể xóa nhóm. Vui lòng thử lại!', 'error');
+        }
     }
 }
 
@@ -125,30 +138,98 @@ function updateSearchResults() {
     console.log(`Hiển thị ${visibleCards.length} trong tổng số ${totalCards.length} nhóm`);
 }
 
-function loadGroupData() {
+async function loadGroupData() {
     console.log('Loading group data...');
     
     // Show loading state
     showLoadingState();
     
-    // Simulate API call
-    setTimeout(() => {
+    try {
+        // Call real API
+        const response = await fetch('/groups/api/all');
+        if (!response.ok) {
+            throw new Error('Failed to load groups');
+        }
+        
+        const groups = await response.json();
+        console.log('Loaded groups:', groups);
+        
+        // Update UI with real data
+        updateGroupCards(groups);
+        updateSummaryCards(groups);
+        
         hideLoadingState();
-        updateSummaryCards();
-    }, 1000);
+    } catch (error) {
+        console.error('Error loading groups:', error);
+        hideLoadingState();
+        showNotification('Không thể tải dữ liệu nhóm', 'error');
+    }
 }
 
-function updateSummaryCards() {
+function updateGroupCards(groups) {
+    const groupCardsContainer = document.querySelector('.group-cards');
+    if (!groupCardsContainer) return;
+    
+    // If there are already cards in HTML (from Thymeleaf), we're done
+    const existingCards = groupCardsContainer.querySelectorAll('.group-card');
+    if (existingCards.length > 0) {
+        console.log('Group cards already rendered by Thymeleaf');
+        return;
+    }
+    
+    // Otherwise, render cards dynamically (for pages without Thymeleaf)
+    groupCardsContainer.innerHTML = groups.map(group => `
+        <div class="group-card" data-group-id="${group.groupId}" data-group-status="${group.status}">
+            <div class="group-header">
+                <div class="group-info">
+                    <h3 class="group-name">${group.groupName}</h3>
+                    <small class="group-id">ID: <span>${group.groupId}</span></small>
+                </div>
+                <span class="status-badge ${group.status === 'Active' ? 'active' : 'inactive'}">
+                    ${group.status === 'Active' ? 'Hoạt động' : 'Không hoạt động'}
+                </span>
+            </div>
+            <div class="group-body">
+                <p><strong>Admin:</strong> User #${group.adminId}</p>
+                <p><strong>Xe:</strong> Vehicle #${group.vehicleId || 'N/A'}</p>
+                <p><strong>Thành viên:</strong> ${group.memberCount || 0}</p>
+            </div>
+            <div class="group-actions">
+                <a href="/groups/${group.groupId}/edit" class="action-btn edit" title="Chỉnh sửa">
+                    <i class="fas fa-edit"></i>
+                </a>
+                <a href="/groups/${group.groupId}/members" class="action-btn members" title="Thành viên">
+                    <i class="fas fa-users"></i>
+                </a>
+                <button class="action-btn delete" onclick="deleteGroup(${group.groupId})" title="Xóa">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        </div>
+    `).join('');
+    
+    // Re-setup event listeners for new cards
+    setupGroupActionButtons();
+}
+
+function updateSummaryCards(groups) {
     // Update summary cards with actual data
     const cards = document.querySelectorAll('.summary-card .card-number');
     
-    if (cards.length >= 4) {
+    if (cards.length >= 4 && groups) {
+        const totalGroups = groups.length;
+        const activeGroups = groups.filter(g => g.status === 'Active').length;
+        
+        cards[0].textContent = totalGroups;
+        cards[1].textContent = activeGroups;
+        // Other cards would be updated with real data from API
+    } else if (cards.length >= 4) {
+        // Fallback to counting from DOM
         const totalGroups = document.querySelectorAll('.group-card').length;
         const activeGroups = document.querySelectorAll('.group-card[data-group-status="Active"]').length;
         
         cards[0].textContent = totalGroups;
         cards[1].textContent = activeGroups;
-        // Other cards would be updated with real data from API
     }
 }
 

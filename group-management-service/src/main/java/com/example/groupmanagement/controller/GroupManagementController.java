@@ -8,9 +8,13 @@ import com.example.groupmanagement.repository.GroupRepository;
 import com.example.groupmanagement.repository.GroupMemberRepository;
 import com.example.groupmanagement.repository.VotingRepository;
 import com.example.groupmanagement.repository.VotingResultRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.client.RestTemplate;
 
 import java.util.List;
 import java.util.Optional;
@@ -19,6 +23,8 @@ import java.util.Optional;
 @RequestMapping("/api/groups")
 @CrossOrigin(origins = "*")
 public class GroupManagementController {
+
+    private static final Logger logger = LoggerFactory.getLogger(GroupManagementController.class);
 
     @Autowired
     private GroupRepository groupRepository;
@@ -31,6 +37,12 @@ public class GroupManagementController {
 
     @Autowired
     private VotingResultRepository votingResultRepository;
+
+    @Autowired
+    private RestTemplate restTemplate;
+
+    @Value("${cost-payment.service.url:http://localhost:8081}")
+    private String costPaymentServiceUrl;
 
     // Health check endpoint
     @GetMapping("/health")
@@ -63,7 +75,29 @@ public class GroupManagementController {
 
     @PostMapping
     public Group createGroup(@RequestBody Group group) {
-        return groupRepository.save(group);
+        // Bước 1: Tạo Group trong database Group_Management_DB
+        Group savedGroup = groupRepository.save(group);
+        logger.info("✅ Created group: groupId={}, groupName={}", savedGroup.getGroupId(), savedGroup.getGroupName());
+
+        // Bước 2: TỰ ĐỘNG tạo Fund trong database Cost_Payment_DB
+        try {
+            String fundCreateUrl = costPaymentServiceUrl + "/api/funds/group/" + savedGroup.getGroupId();
+            logger.info("🔄 Auto-creating fund for groupId={} at URL: {}", savedGroup.getGroupId(), fundCreateUrl);
+            
+            ResponseEntity<String> response = restTemplate.postForEntity(fundCreateUrl, null, String.class);
+            
+            if (response.getStatusCode().is2xxSuccessful()) {
+                logger.info("✅ Fund auto-created successfully for groupId={}", savedGroup.getGroupId());
+            } else {
+                logger.warn("⚠️ Fund creation returned status: {} for groupId={}", response.getStatusCode(), savedGroup.getGroupId());
+            }
+        } catch (Exception e) {
+            // Log lỗi nhưng vẫn trả về Group (không làm fail toàn bộ transaction)
+            logger.error("❌ Failed to auto-create fund for groupId={}: {}", savedGroup.getGroupId(), e.getMessage());
+            logger.error("Note: Group was created successfully, but fund creation failed. Admin should create fund manually.");
+        }
+
+        return savedGroup;
     }
 
     @PutMapping("/{id}")
