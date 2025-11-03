@@ -214,5 +214,319 @@ public class PaymentController {
             ));
         }
     }
+
+    /**
+     * Get payments with filters for admin tracking
+     * GET /api/payments/admin/tracking
+     * Params: status, startDate, endDate, search
+     */
+    @GetMapping("/admin/tracking")
+    public ResponseEntity<Map<String, Object>> getPaymentsForTracking(
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate,
+            @RequestParam(required = false) String search) {
+        try {
+            List<Map<String, Object>> payments = paymentService.getPaymentsWithFilters(status, startDate, endDate, search);
+            
+            // Calculate statistics
+            double totalAmount = payments.stream()
+                .mapToDouble(p -> ((Number) p.get("amount")).doubleValue())
+                .sum();
+            
+            long paidCount = payments.stream()
+                .filter(p -> "PAID".equals(p.get("status")))
+                .count();
+            
+            long pendingCount = payments.stream()
+                .filter(p -> "PENDING".equals(p.get("status")))
+                .count();
+            
+            return ResponseEntity.ok(Map.of(
+                "payments", payments,
+                "statistics", Map.of(
+                    "total", payments.size(),
+                    "totalAmount", totalAmount,
+                    "paidCount", paidCount,
+                    "pendingCount", pendingCount
+                )
+            ));
+        } catch (Exception e) {
+            System.err.println("Error fetching payments for tracking: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(
+                "payments", List.of(),
+                "statistics", Map.of("total", 0, "totalAmount", 0.0, "paidCount", 0, "pendingCount", 0),
+                "error", e.getMessage()
+            ));
+        }
+    }
+
+    /**
+     * Get payment details with related information
+     * GET /api/payments/{id}/details
+     */
+    @GetMapping("/{id}/details")
+    public ResponseEntity<Map<String, Object>> getPaymentDetails(@PathVariable Integer id) {
+        try {
+            Map<String, Object> details = paymentService.getPaymentDetails(id);
+            
+            if (details != null) {
+                return ResponseEntity.ok(details);
+            } else {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of(
+                    "error", "Không tìm thấy thanh toán"
+                ));
+            }
+        } catch (Exception e) {
+            System.err.println("Error fetching payment details: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(
+                "error", "Lỗi khi lấy chi tiết thanh toán: " + e.getMessage()
+            ));
+        }
+    }
+
+    /**
+     * Admin confirm payment manually
+     * POST /api/payments/{id}/admin-confirm
+     */
+    @PostMapping("/{id}/admin-confirm")
+    public ResponseEntity<Map<String, Object>> adminConfirmPayment(
+            @PathVariable Integer id,
+            @RequestBody(required = false) Map<String, String> request) {
+        try {
+            Optional<Payment> paymentOpt = paymentService.getPaymentById(id);
+            
+            if (!paymentOpt.isPresent()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of(
+                    "success", false,
+                    "message", "Không tìm thấy thanh toán"
+                ));
+            }
+            
+            Payment payment = paymentOpt.get();
+            
+            // Add note if provided
+            String note = request != null ? request.get("note") : null;
+            
+            // Mark as PAID
+            payment.setStatus(PaymentStatus.PAID);
+            payment.setPaymentDate(java.time.LocalDateTime.now());
+            
+            // Save payment
+            Payment updatedPayment = paymentService.createPayment(payment);
+            
+            return ResponseEntity.ok(Map.of(
+                "success", true,
+                "message", "Đã xác nhận thanh toán thành công",
+                "payment", updatedPayment
+            ));
+            
+        } catch (Exception e) {
+            System.err.println("Error in admin confirm payment: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(
+                "success", false,
+                "message", "Lỗi khi xác nhận thanh toán: " + e.getMessage()
+            ));
+        }
+    }
+
+    /**
+     * Send payment reminder to user
+     * POST /api/payments/{id}/remind
+     */
+    @PostMapping("/{id}/remind")
+    public ResponseEntity<Map<String, Object>> sendPaymentReminder(@PathVariable Integer id) {
+        try {
+            Optional<Payment> paymentOpt = paymentService.getPaymentById(id);
+            
+            if (!paymentOpt.isPresent()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of(
+                    "success", false,
+                    "message", "Không tìm thấy thanh toán"
+                ));
+            }
+            
+            Payment payment = paymentOpt.get();
+            
+            // TODO: Implement actual notification/email sending
+            // For now, just return success
+            
+            return ResponseEntity.ok(Map.of(
+                "success", true,
+                "message", "Đã gửi nhắc nhở thanh toán tới user ID: " + payment.getUserId()
+            ));
+            
+        } catch (Exception e) {
+            System.err.println("Error sending reminder: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(Map.of(
+                "success", false,
+                "message", "Lỗi khi gửi nhắc nhở: " + e.getMessage()
+            ));
+        }
+    }
+
+    /**
+     * Update payment information
+     * PUT /api/payments/{id}
+     */
+    @PutMapping("/{id}")
+    public ResponseEntity<?> updatePayment(
+            @PathVariable Integer id,
+            @RequestBody Map<String, Object> paymentDataMap) {
+        try {
+            // Convert Map to Payment object with proper enum handling
+            Payment paymentData = new Payment();
+            
+            if (paymentDataMap.containsKey("userId")) {
+                paymentData.setUserId(((Number) paymentDataMap.get("userId")).intValue());
+            }
+            
+            if (paymentDataMap.containsKey("costId")) {
+                Object costIdObj = paymentDataMap.get("costId");
+                if (costIdObj != null) {
+                    paymentData.setCostId(((Number) costIdObj).intValue());
+                }
+            }
+            
+            if (paymentDataMap.containsKey("amount")) {
+                Object amountObj = paymentDataMap.get("amount");
+                if (amountObj != null) {
+                    paymentData.setAmount(((Number) amountObj).doubleValue());
+                }
+            }
+            
+            // Handle payment method with mapping
+            if (paymentDataMap.containsKey("method")) {
+                String methodStr = (String) paymentDataMap.get("method");
+                if (methodStr != null && !methodStr.isEmpty()) {
+                    try {
+                        // Map common variations to correct enum values
+                        String normalizedMethod = methodStr.toUpperCase()
+                            .replace("_", "")
+                            .replace("-", "");
+                        
+                        // Handle specific mappings for common variations
+                        if (normalizedMethod.equals("BANKTRANSFER") || normalizedMethod.equals("BANKING")) {
+                            paymentData.setMethod(Payment.Method.BANKING);
+                        } else if (normalizedMethod.equals("EWALLET") || normalizedMethod.equals("EWALLET")) {
+                            paymentData.setMethod(Payment.Method.EWALLET);
+                        } else if (normalizedMethod.equals("CASH")) {
+                            paymentData.setMethod(Payment.Method.CASH);
+                        } else {
+                            // Try direct enum value (should be one of: BANKING, EWALLET, CASH)
+                            paymentData.setMethod(Payment.Method.valueOf(normalizedMethod));
+                        }
+                    } catch (IllegalArgumentException e) {
+                        System.err.println("Invalid payment method: " + methodStr + ", using default EWALLET");
+                        paymentData.setMethod(Payment.Method.EWALLET);
+                    }
+                }
+            }
+            
+            if (paymentDataMap.containsKey("transactionCode")) {
+                paymentData.setTransactionCode((String) paymentDataMap.get("transactionCode"));
+            }
+            
+            if (paymentDataMap.containsKey("status")) {
+                String statusStr = (String) paymentDataMap.get("status");
+                if (statusStr != null && !statusStr.isEmpty()) {
+                    paymentData.setStatus(parsePaymentStatus(statusStr));
+                }
+            }
+            
+            if (paymentDataMap.containsKey("paymentDate")) {
+                String dateStr = (String) paymentDataMap.get("paymentDate");
+                if (dateStr != null && !dateStr.isEmpty()) {
+                    try {
+                        paymentData.setPaymentDate(java.time.LocalDateTime.parse(dateStr));
+                    } catch (Exception e) {
+                        // Try parsing as LocalDate and convert
+                        try {
+                            java.time.LocalDate date = java.time.LocalDate.parse(dateStr);
+                            paymentData.setPaymentDate(date.atStartOfDay());
+                        } catch (Exception e2) {
+                            System.err.println("Invalid payment date format: " + dateStr);
+                        }
+                    }
+                }
+            }
+            
+            Optional<Payment> updatedPayment = paymentService.updatePayment(id, paymentData);
+            
+            if (updatedPayment.isPresent()) {
+                return ResponseEntity.ok(updatedPayment.get());
+            } else {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body("Không tìm thấy thanh toán với ID: " + id);
+            }
+        } catch (Exception e) {
+            System.err.println("Error updating payment: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body("Lỗi khi cập nhật thanh toán: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Delete payment
+     * DELETE /api/payments/{id}
+     */
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> deletePayment(@PathVariable Integer id) {
+        try {
+            boolean deleted = paymentService.deletePayment(id);
+            
+            if (deleted) {
+                return ResponseEntity.ok()
+                    .body(Map.of(
+                        "success", true,
+                        "message", "Xóa thanh toán thành công"
+                    ));
+            } else {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body("Không tìm thấy thanh toán với ID: " + id);
+            }
+        } catch (Exception e) {
+            System.err.println("Error deleting payment: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body("Lỗi khi xóa thanh toán: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * Parse payment status string to enum safely
+     */
+    private PaymentStatus parsePaymentStatus(String statusStr) {
+        if (statusStr == null || statusStr.isEmpty()) {
+            return PaymentStatus.PENDING;
+        }
+        
+        String normalized = statusStr.trim();
+        
+        // Handle common database formats and variations
+        if (normalized.equalsIgnoreCase("Pending") || normalized.equalsIgnoreCase("PENDING")) {
+            return PaymentStatus.PENDING;
+        } else if (normalized.equalsIgnoreCase("Paid") || normalized.equalsIgnoreCase("PAID") ||
+                   normalized.equalsIgnoreCase("Completed") || normalized.equalsIgnoreCase("COMPLETED")) {
+            return PaymentStatus.PAID;
+        } else if (normalized.equalsIgnoreCase("Overdue") || normalized.equalsIgnoreCase("OVERDUE")) {
+            return PaymentStatus.OVERDUE;
+        } else if (normalized.equalsIgnoreCase("Cancelled") || normalized.equalsIgnoreCase("CANCELLED") ||
+                   normalized.equalsIgnoreCase("Canceled") || normalized.equalsIgnoreCase("CANCELED")) {
+            return PaymentStatus.CANCELLED;
+        }
+        
+        // Try direct enum value match
+        try {
+            return PaymentStatus.valueOf(normalized.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            return PaymentStatus.PENDING; // Default fallback
+        }
+    }
 }
 

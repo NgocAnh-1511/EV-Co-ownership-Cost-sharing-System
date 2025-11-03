@@ -4,7 +4,7 @@ import jakarta.persistence.*;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "Payment", catalog = "Cost_Payment_DB")
+@Table(name = "payment", catalog = "Cost_Payment_DB")
 public class Payment {
 
     @Id
@@ -24,18 +24,18 @@ public class Payment {
     @Column(name = "transactionCode")
     private String transactionCode;
 
-    @Enumerated(EnumType.STRING)
+    @Convert(converter = com.example.costpayment.converter.PaymentMethodConverter.class)
     @Column(name = "method")
-    private Method method = Method.EWallet;
+    private Method method = Method.EWALLET;
 
-    @Enumerated(EnumType.STRING)
+    @Convert(converter = com.example.costpayment.converter.PaymentStatusConverter.class)
     @Column(name = "status")
     private PaymentStatus status = PaymentStatus.PENDING;
 
     @Column(name = "paymentDate")
     private LocalDateTime paymentDate = LocalDateTime.now();
 
-    public enum Method { EWallet, Banking, Cash }
+    public enum Method { EWALLET, BANKING, CASH }
 
     // Constructors
     public Payment() {}

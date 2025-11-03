@@ -8,7 +8,7 @@ import java.time.LocalDateTime;
  * Entity lưu mức độ sử dụng xe (km đã chạy)
  */
 @Entity
-@Table(name = "UsageTracking")
+@Table(name = "usagetracking")
 @Data
 public class UsageTracking {
 

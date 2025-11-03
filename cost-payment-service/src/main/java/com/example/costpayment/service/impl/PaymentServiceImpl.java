@@ -11,7 +11,9 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -61,7 +63,7 @@ public class PaymentServiceImpl implements PaymentService {
             Payment payment = paymentOpt.get();
             
             try {
-                PaymentStatus newStatus = PaymentStatus.valueOf(status.toUpperCase());
+                PaymentStatus newStatus = parsePaymentStatus(status);
                 payment.setStatus(newStatus);
                 
                 // Update payment date if status changed to PAID
@@ -107,23 +109,11 @@ public class PaymentServiceImpl implements PaymentService {
                     payment.setTransactionCode((String) row[4]);
                 }
                 if (row[5] != null) {
-                    try {
-                        payment.setMethod(Payment.Method.valueOf((String) row[5]));
-                    } catch (Exception ex) {
-                        payment.setMethod(Payment.Method.EWallet);
-                    }
+                    payment.setMethod(parsePaymentMethod((String) row[5]));
                 }
-                // Handle status - convert "Completed" to "PAID"
+                // Handle status - convert "Completed" to "PAID" and handle various formats
                 if (row[6] != null) {
-                    String statusStr = (String) row[6];
-                    if ("Completed".equalsIgnoreCase(statusStr)) {
-                        statusStr = "PAID";
-                    }
-                    try {
-                        payment.setStatus(PaymentStatus.valueOf(statusStr));
-                    } catch (Exception ex) {
-                        payment.setStatus(PaymentStatus.PENDING);
-                    }
+                    payment.setStatus(parsePaymentStatus((String) row[6]));
                 } else {
                     payment.setStatus(PaymentStatus.PENDING);
                 }
@@ -169,6 +159,294 @@ public class PaymentServiceImpl implements PaymentService {
      */
     private String generateTransactionCode() {
         return "TXN" + System.currentTimeMillis() + "-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+    }
+    
+    /**
+     * Get payments with filters for admin tracking
+     */
+    @Override
+    public List<Map<String, Object>> getPaymentsWithFilters(String status, String startDate, String endDate, String search) {
+        try {
+            StringBuilder sql = new StringBuilder(
+                "SELECT p.paymentId, p.userId, p.costId, p.amount, p.transactionCode, " +
+                "p.method, CASE WHEN p.status = 'Completed' THEN 'PAID' ELSE p.status END as status, " +
+                "p.paymentDate, c.costType, c.description as costDescription " +
+                "FROM Payment p " +
+                "LEFT JOIN Cost c ON p.costId = c.costId " +
+                "WHERE 1=1 "
+            );
+            
+            // Add status filter
+            if (status != null && !status.isEmpty() && !"ALL".equalsIgnoreCase(status)) {
+                if ("PAID".equalsIgnoreCase(status)) {
+                    sql.append("AND (p.status = 'PAID' OR p.status = 'Completed') ");
+                } else {
+                    sql.append("AND p.status = '").append(status).append("' ");
+                }
+            }
+            
+            // Add date range filter
+            if (startDate != null && !startDate.isEmpty()) {
+                sql.append("AND p.paymentDate >= '").append(startDate).append(" 00:00:00' ");
+            }
+            if (endDate != null && !endDate.isEmpty()) {
+                sql.append("AND p.paymentDate <= '").append(endDate).append(" 23:59:59' ");
+            }
+            
+            // Add search filter (search by userId or transactionCode)
+            if (search != null && !search.isEmpty()) {
+                sql.append("AND (p.userId LIKE '%").append(search).append("%' ")
+                   .append("OR p.transactionCode LIKE '%").append(search).append("%' ")
+                   .append("OR c.costType LIKE '%").append(search).append("%') ");
+            }
+            
+            sql.append("ORDER BY p.paymentDate DESC");
+            
+            Query query = entityManager.createNativeQuery(sql.toString());
+            
+            @SuppressWarnings("unchecked")
+            List<Object[]> results = query.getResultList();
+            
+            List<Map<String, Object>> payments = new ArrayList<>();
+            for (Object[] row : results) {
+                Map<String, Object> payment = new java.util.HashMap<>();
+                payment.put("paymentId", row[0]);
+                payment.put("userId", row[1]);
+                payment.put("costId", row[2]);
+                payment.put("amount", row[3]);
+                payment.put("transactionCode", row[4]);
+                payment.put("method", row[5]);
+                payment.put("status", row[6]);
+                
+                // Handle payment date
+                if (row[7] != null) {
+                    if (row[7] instanceof java.sql.Timestamp) {
+                        payment.put("paymentDate", ((java.sql.Timestamp) row[7]).toLocalDateTime());
+                    } else if (row[7] instanceof LocalDateTime) {
+                        payment.put("paymentDate", row[7]);
+                    }
+                }
+                
+                payment.put("costType", row[8]);
+                payment.put("costDescription", row[9]);
+                
+                payments.add(payment);
+            }
+            
+            return payments;
+        } catch (Exception e) {
+            System.err.println("Error getting payments with filters: " + e.getMessage());
+            e.printStackTrace();
+            return new ArrayList<>();
+        }
+    }
+    
+    /**
+     * Get payment details with related information
+     */
+    @Override
+    public Map<String, Object> getPaymentDetails(Integer paymentId) {
+        try {
+            String sql = 
+                "SELECT p.paymentId, p.userId, p.costId, p.amount, p.transactionCode, " +
+                "p.method, CASE WHEN p.status = 'Completed' THEN 'PAID' ELSE p.status END as status, " +
+                "p.paymentDate, " +
+                "c.costType, c.description as costDescription, c.amount as costAmount, c.createdAt as costDate " +
+                "FROM Payment p " +
+                "LEFT JOIN Cost c ON p.costId = c.costId " +
+                "WHERE p.paymentId = :paymentId";
+            
+            Query query = entityManager.createNativeQuery(sql);
+            query.setParameter("paymentId", paymentId);
+            
+            @SuppressWarnings("unchecked")
+            List<Object[]> results = query.getResultList();
+            
+            if (results.isEmpty()) {
+                return null;
+            }
+            
+            Object[] row = results.get(0);
+            Map<String, Object> details = new java.util.HashMap<>();
+            
+            // Payment info
+            details.put("paymentId", row[0]);
+            details.put("userId", row[1]);
+            details.put("costId", row[2]);
+            details.put("amount", row[3]);
+            details.put("transactionCode", row[4]);
+            details.put("method", row[5]);
+            details.put("status", row[6]);
+            
+            // Handle payment date
+            if (row[7] != null) {
+                if (row[7] instanceof java.sql.Timestamp) {
+                    details.put("paymentDate", ((java.sql.Timestamp) row[7]).toLocalDateTime());
+                } else if (row[7] instanceof LocalDateTime) {
+                    details.put("paymentDate", row[7]);
+                }
+            }
+            
+            // Cost info
+            Map<String, Object> costInfo = new java.util.HashMap<>();
+            costInfo.put("costType", row[8]);
+            costInfo.put("description", row[9]);
+            costInfo.put("amount", row[10]);
+            if (row[11] != null) {
+                if (row[11] instanceof java.sql.Timestamp) {
+                    costInfo.put("date", ((java.sql.Timestamp) row[11]).toLocalDateTime());
+                } else if (row[11] instanceof LocalDateTime) {
+                    costInfo.put("date", row[11]);
+                }
+            }
+            details.put("cost", costInfo);
+            
+            // User info (no User table available, set to null)
+            Map<String, Object> userInfo = new java.util.HashMap<>();
+            userInfo.put("name", null);
+            userInfo.put("email", null);
+            details.put("user", userInfo);
+            
+            return details;
+        } catch (Exception e) {
+            System.err.println("Error getting payment details: " + e.getMessage());
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    @Override
+    public Optional<Payment> updatePayment(Integer paymentId, Payment paymentData) {
+        try {
+            Optional<Payment> existingPaymentOpt = paymentRepository.findById(paymentId);
+            
+            if (!existingPaymentOpt.isPresent()) {
+                return Optional.empty();
+            }
+            
+            Payment existingPayment = existingPaymentOpt.get();
+            
+            // Update fields
+            if (paymentData.getUserId() != null) {
+                existingPayment.setUserId(paymentData.getUserId());
+            }
+            
+            if (paymentData.getCostId() != null) {
+                existingPayment.setCostId(paymentData.getCostId());
+            }
+            
+            if (paymentData.getAmount() != null) {
+                existingPayment.setAmount(paymentData.getAmount());
+            }
+            
+            if (paymentData.getMethod() != null) {
+                existingPayment.setMethod(paymentData.getMethod());
+            }
+            
+            if (paymentData.getTransactionCode() != null) {
+                existingPayment.setTransactionCode(paymentData.getTransactionCode());
+            }
+            
+            if (paymentData.getPaymentDate() != null) {
+                existingPayment.setPaymentDate(paymentData.getPaymentDate());
+            }
+            
+            if (paymentData.getStatus() != null) {
+                existingPayment.setStatus(paymentData.getStatus());
+                
+                // If status is changed to PAID and payment date is not set, set it now
+                if (paymentData.getStatus() == PaymentStatus.PAID && existingPayment.getPaymentDate() == null) {
+                    existingPayment.setPaymentDate(LocalDateTime.now());
+                }
+            }
+            
+            // Save updated payment
+            Payment updatedPayment = paymentRepository.save(existingPayment);
+            return Optional.of(updatedPayment);
+            
+        } catch (Exception e) {
+            System.err.println("Error updating payment: " + e.getMessage());
+            e.printStackTrace();
+            return Optional.empty();
+        }
+    }
+
+    @Override
+    public boolean deletePayment(Integer paymentId) {
+        try {
+            Optional<Payment> paymentOpt = paymentRepository.findById(paymentId);
+            
+            if (!paymentOpt.isPresent()) {
+                return false;
+            }
+            
+            paymentRepository.deleteById(paymentId);
+            return true;
+            
+        } catch (Exception e) {
+            System.err.println("Error deleting payment: " + e.getMessage());
+            e.printStackTrace();
+            return false;
+        }
+    }
+    
+    /**
+     * Parse payment method string to enum safely
+     */
+    private Payment.Method parsePaymentMethod(String methodStr) {
+        if (methodStr == null || methodStr.isEmpty()) {
+            return Payment.Method.EWALLET;
+        }
+        
+        String normalized = methodStr.trim();
+        
+        // Handle various formats
+        if (normalized.equalsIgnoreCase("EWallet") || normalized.equalsIgnoreCase("EWALLET")) {
+            return Payment.Method.EWALLET;
+        } else if (normalized.equalsIgnoreCase("Banking") || normalized.equalsIgnoreCase("BANKING") ||
+                   normalized.equalsIgnoreCase("BankTransfer") || normalized.equalsIgnoreCase("BANKTRANSFER")) {
+            return Payment.Method.BANKING;
+        } else if (normalized.equalsIgnoreCase("Cash") || normalized.equalsIgnoreCase("CASH")) {
+            return Payment.Method.CASH;
+        }
+        
+        // Try direct enum value match
+        try {
+            return Payment.Method.valueOf(normalized.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            return Payment.Method.EWALLET; // Default fallback
+        }
+    }
+    
+    /**
+     * Parse payment status string to enum safely
+     */
+    private PaymentStatus parsePaymentStatus(String statusStr) {
+        if (statusStr == null || statusStr.isEmpty()) {
+            return PaymentStatus.PENDING;
+        }
+        
+        String normalized = statusStr.trim();
+        
+        // Handle common database formats and variations
+        if (normalized.equalsIgnoreCase("Pending") || normalized.equalsIgnoreCase("PENDING")) {
+            return PaymentStatus.PENDING;
+        } else if (normalized.equalsIgnoreCase("Paid") || normalized.equalsIgnoreCase("PAID") ||
+                   normalized.equalsIgnoreCase("Completed") || normalized.equalsIgnoreCase("COMPLETED")) {
+            return PaymentStatus.PAID;
+        } else if (normalized.equalsIgnoreCase("Overdue") || normalized.equalsIgnoreCase("OVERDUE")) {
+            return PaymentStatus.OVERDUE;
+        } else if (normalized.equalsIgnoreCase("Cancelled") || normalized.equalsIgnoreCase("CANCELLED") ||
+                   normalized.equalsIgnoreCase("Canceled") || normalized.equalsIgnoreCase("CANCELED")) {
+            return PaymentStatus.CANCELLED;
+        }
+        
+        // Try direct enum value match
+        try {
+            return PaymentStatus.valueOf(normalized.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            return PaymentStatus.PENDING; // Default fallback
+        }
     }
 }
 

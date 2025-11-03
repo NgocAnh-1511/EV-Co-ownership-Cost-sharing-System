@@ -12,7 +12,7 @@ import java.time.LocalDateTime;
  * Hỗ trợ Phương án C: Yêu cầu rút tiền + Voting + Phê duyệt
  */
 @Entity
-@Table(name = "FundTransaction")
+@Table(name = "fundtransaction")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

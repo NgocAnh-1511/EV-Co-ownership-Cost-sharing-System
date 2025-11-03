@@ -209,18 +209,18 @@ public class CostShareRestController {
      */
     private Payment.Method parsePaymentMethod(String method) {
         if (method == null || method.isEmpty()) {
-            return Payment.Method.EWallet;
+            return Payment.Method.EWALLET;
         }
         
         switch (method.toLowerCase()) {
             case "ewallet":
-                return Payment.Method.EWallet;
+                return Payment.Method.EWALLET;
             case "banking":
-                return Payment.Method.Banking;
+                return Payment.Method.BANKING;
             case "cash":
-                return Payment.Method.Cash;
+                return Payment.Method.CASH;
             default:
-                return Payment.Method.EWallet;
+                return Payment.Method.EWALLET;
         }
     }
 }

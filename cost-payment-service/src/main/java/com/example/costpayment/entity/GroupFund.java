@@ -12,7 +12,7 @@ import java.time.LocalDateTime;
  * Quản lý số dư và lịch sử đóng góp
  */
 @Entity
-@Table(name = "GroupFund")
+@Table(name = "groupfund")
 @Data
 @NoArgsConstructor
 @AllArgsConstructor

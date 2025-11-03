@@ -306,32 +306,94 @@
 
                 <!-- PAYMENT TRACKING SECTION -->
                 <section id="payment-tracking-section" class="content-section">
+                    <!-- Stats Cards -->
+                    <div class="stats-grid">
+                        <div class="stat-card primary">
+                            <div class="stat-icon">
+                                <i class="fas fa-receipt"></i>
+                            </div>
+                            <div class="stat-details">
+                                <div class="stat-label">Tổng thanh toán</div>
+                                <div class="stat-value" id="total-payments">0</div>
+                            </div>
+                        </div>
+
+                        <div class="stat-card success">
+                            <div class="stat-icon">
+                                <i class="fas fa-check-circle"></i>
+                            </div>
+                            <div class="stat-details">
+                                <div class="stat-label">Đã thanh toán</div>
+                                <div class="stat-value" id="paid-count">0</div>
+                            </div>
+                        </div>
+
+                        <div class="stat-card warning">
+                            <div class="stat-icon">
+                                <i class="fas fa-clock"></i>
+                            </div>
+                            <div class="stat-details">
+                                <div class="stat-label">Chờ thanh toán</div>
+                                <div class="stat-value" id="pending-count">0</div>
+                            </div>
+                        </div>
+
+                        <div class="stat-card info">
+                            <div class="stat-icon">
+                                <i class="fas fa-money-bill-wave"></i>
+                            </div>
+                            <div class="stat-details">
+                                <div class="stat-label">Tổng số tiền</div>
+                                <div class="stat-value" id="total-amount">0đ</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Filters -->
                     <div class="section-header">
-                        <h3>Theo dõi thanh toán</h3>
                         <div class="filter-group">
-                            <input type="date" id="date-from" placeholder="Từ ngày">
-                            <input type="date" id="date-to" placeholder="Đến ngày">
-                            <button class="btn btn-secondary" id="btn-filter-payment">
-                                <i class="fas fa-filter"></i> Lọc
+                            <select id="payment-status-filter">
+                                <option value="">Tất cả trạng thái</option>
+                                <option value="PENDING">Chờ thanh toán</option>
+                                <option value="PAID">Đã thanh toán</option>
+                                <option value="OVERDUE">Quá hạn</option>
+                            </select>
+                            <input type="date" id="payment-date-from" placeholder="Từ ngày">
+                            <input type="date" id="payment-date-to" placeholder="Đến ngày">
+                            <input type="text" id="payment-search" placeholder="Tìm kiếm...">
+                            <button class="btn btn-primary" id="btn-filter-payments">
+                                <i class="fas fa-search"></i> Tìm kiếm
+                            </button>
+                            <button class="btn btn-secondary" id="btn-reset-filters">
+                                <i class="fas fa-redo"></i> Đặt lại
                             </button>
                         </div>
+                        <button class="btn btn-success" id="btn-export-payments">
+                            <i class="fas fa-file-excel"></i> Xuất Excel
+                        </button>
                     </div>
 
                     <div class="data-table">
                         <table id="payments-table">
                             <thead>
                                 <tr>
-                                    <th>Người dùng</th>
+                                    <th>ID</th>
+                                    <th>User ID</th>
                                     <th>Chi phí</th>
-                                    <th>Số tiền phải trả</th>
-                                    <th>Đã thanh toán</th>
+                                    <th>Số tiền</th>
                                     <th>Phương thức</th>
+                                    <th>Mã GD</th>
+                                    <th>Ngày</th>
                                     <th>Trạng thái</th>
                                     <th>Thao tác</th>
                                 </tr>
                             </thead>
                             <tbody id="payments-tbody">
-                                <!-- Data will be loaded here -->
+                                <tr>
+                                    <td colspan="9" style="text-align: center; padding: 2rem;">
+                                        <i class="fas fa-spinner fa-spin"></i> Đang tải dữ liệu...
+                                    </td>
+                                </tr>
                             </tbody>
                         </table>
                     </div>
@@ -492,6 +554,155 @@
                     </button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- Payment Details Modal -->
+    <div id="payment-details-modal" class="modal">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <h3><i class="fas fa-info-circle"></i> Chi tiết thanh toán</h3>
+                <button class="close-btn" onclick="closePaymentDetailsModal()">&times;</button>
+            </div>
+            <div class="modal-body" id="payment-details-body">
+                <!-- Content will be dynamically loaded -->
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-secondary" onclick="closePaymentDetailsModal()">Đóng</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Confirm Payment Modal -->
+    <div id="confirm-payment-modal" class="modal">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h3><i class="fas fa-check-circle"></i> Xác nhận thanh toán</h3>
+                <button class="close-btn" onclick="closeConfirmPaymentModal()">&times;</button>
+            </div>
+            <form id="confirm-payment-form">
+                <div class="modal-body">
+                    <p style="margin-bottom: 1.5rem;">Bạn có chắc chắn muốn xác nhận thanh toán này?</p>
+                    
+                    <div class="info-box" style="background: var(--card-bg); padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                            <strong>User ID:</strong>
+                            <span id="confirm-user-id">-</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                            <strong>Số tiền:</strong>
+                            <span id="confirm-amount" style="color: var(--primary); font-weight: bold;">-</span>
+                        </div>
+                        <div style="display: flex; justify-content: space-between;">
+                            <strong>Mã giao dịch:</strong>
+                            <span id="confirm-transaction-code">-</span>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="confirm-note">Ghi chú (tùy chọn)</label>
+                        <textarea id="confirm-note" class="form-control" rows="3" placeholder="Thêm ghi chú về thanh toán..."></textarea>
+                    </div>
+
+                    <input type="hidden" id="confirm-payment-id">
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeConfirmPaymentModal()">Hủy</button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-check"></i> Xác nhận
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit Payment Modal -->
+    <div id="edit-payment-modal" class="modal">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <h3><i class="fas fa-edit"></i> Chỉnh sửa thanh toán</h3>
+                <button class="close-btn" onclick="closeEditPaymentModal()">&times;</button>
+            </div>
+            <form id="edit-payment-form">
+                <div class="modal-body">
+                    <input type="hidden" id="edit-payment-id">
+                    
+                    <div class="form-group">
+                        <label for="edit-user-id">User ID <span style="color: red;">*</span></label>
+                        <input type="number" id="edit-user-id" class="form-control" required placeholder="Nhập User ID">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="edit-cost-id">Cost ID <span style="color: red;">*</span></label>
+                        <input type="number" id="edit-cost-id" class="form-control" required placeholder="Nhập Cost ID">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="edit-amount">Số tiền <span style="color: red;">*</span></label>
+                        <input type="number" id="edit-amount" class="form-control" required placeholder="Nhập số tiền" step="0.01">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="edit-method">Phương thức thanh toán</label>
+                        <select id="edit-method" class="form-control">
+                            <option value="">-- Chọn phương thức --</option>
+                            <option value="BANKING">Chuyển khoản</option>
+                            <option value="CASH">Tiền mặt</option>
+                            <option value="EWALLET">Ví điện tử</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="edit-transaction-code">Mã giao dịch</label>
+                        <input type="text" id="edit-transaction-code" class="form-control" placeholder="Nhập mã giao dịch">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="edit-payment-date">Ngày thanh toán</label>
+                        <input type="date" id="edit-payment-date" class="form-control">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="edit-status">Trạng thái</label>
+                        <select id="edit-status" class="form-control">
+                            <option value="PENDING">Chờ thanh toán</option>
+                            <option value="PAID">Đã thanh toán</option>
+                            <option value="OVERDUE">Quá hạn</option>
+                            <option value="CANCELLED">Đã hủy</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeEditPaymentModal()">Hủy</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> Lưu thay đổi
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Print Invoice Modal -->
+    <div id="invoice-modal" class="modal">
+        <div class="modal-content" style="max-width: 800px;">
+            <div class="modal-header">
+                <h3><i class="fas fa-file-invoice"></i> Hóa đơn thanh toán</h3>
+                <button class="close-btn" onclick="closeInvoiceModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="invoice-content" style="padding: 2rem; background: white; color: #000;">
+                    <!-- Invoice content will be loaded here -->
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn btn-secondary" onclick="closeInvoiceModal()">Đóng</button>
+                <button type="button" class="btn btn-primary" onclick="printInvoice()">
+                    <i class="fas fa-print"></i> In hóa đơn
+                </button>
+                <button type="button" class="btn btn-success" onclick="downloadInvoicePDF()">
+                    <i class="fas fa-download"></i> Tải PDF
+                </button>
+            </div>
         </div>
     </div>
 

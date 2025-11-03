@@ -21,12 +21,15 @@ let currentGroupId = null;  // For group management
 
 // Initialize on DOM load
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('Admin Dashboard initializing...');
     initNavigation();
     initSplitMethodToggle();
     initAutoSplitForm();
     initGroupManagement();
+    initPaymentTracking();
     loadOverviewData();
     initCharts();
+    console.log('Admin Dashboard initialized');
 });
 
 // ============ NAVIGATION ============
@@ -421,44 +424,414 @@ function getFormData() {
 }
 
 // ============ PAYMENT TRACKING ============
-async function loadPayments() {
+let currentPaymentsData = [];
+
+async function loadPayments(filters = {}) {
     try {
-        // Load all cost shares
-        const costs = await fetch(API.COSTS).then(r => r.json());
-        const tbody = document.getElementById('payments-tbody');
+        console.log('Loading payments with filters:', filters);
         
-        // Mock payment data
-        tbody.innerHTML = `
-            <tr>
-                <td>User #1</td>
-                <td>Chi phí sạc điện</td>
-                <td>${formatCurrency(500000)}</td>
-                <td>${formatCurrency(500000)}</td>
-                <td>E-Wallet</td>
-                <td><span class="status-badge paid">Đã thanh toán</span></td>
-                <td>
-                    <button class="btn btn-secondary" style="padding: 0.5rem 1rem;">
-                        <i class="fas fa-check"></i> Xác nhận
-                    </button>
-                </td>
-            </tr>
-            <tr>
-                <td>User #2</td>
-                <td>Chi phí bảo dưỡng</td>
-                <td>${formatCurrency(300000)}</td>
-                <td>${formatCurrency(0)}</td>
-                <td>-</td>
-                <td><span class="status-badge pending">Chưa thanh toán</span></td>
-                <td>
-                    <button class="btn btn-secondary" style="padding: 0.5rem 1rem; background: var(--warning); color: white;">
-                        <i class="fas fa-bell"></i> Nhắc nhở
-                    </button>
-                </td>
-            </tr>
-        `;
+        // Build URL with filters
+        let url = '/api/payments/admin/tracking?';
+        if (filters.status) url += `status=${filters.status}&`;
+        if (filters.startDate) url += `startDate=${filters.startDate}&`;
+        if (filters.endDate) url += `endDate=${filters.endDate}&`;
+        if (filters.search) url += `search=${encodeURIComponent(filters.search)}&`;
+        
+        const response = await fetch(url);
+        const data = await response.json();
+        
+        console.log('Payments data:', data);
+        
+        currentPaymentsData = data.payments || [];
+        const stats = data.statistics || { total: 0, totalAmount: 0, paidCount: 0, pendingCount: 0 };
+        
+        // Update statistics
+        document.getElementById('total-payments').textContent = stats.total;
+        document.getElementById('paid-count').textContent = stats.paidCount;
+        document.getElementById('pending-count').textContent = stats.pendingCount;
+        document.getElementById('total-amount').textContent = formatCurrency(stats.totalAmount);
+        
+        // Render table
+        renderPaymentsTable(currentPaymentsData);
         
     } catch (error) {
         console.error('Error loading payments:', error);
+        showNotification('Lỗi khi tải danh sách thanh toán', 'error');
+    }
+}
+
+function renderPaymentsTable(payments) {
+    const tbody = document.getElementById('payments-tbody');
+    
+    if (!payments || payments.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="9" style="text-align: center; padding: 2rem; color: var(--text-light);">
+                    <i class="fas fa-inbox"></i><br>
+                    Không có dữ liệu thanh toán
+                </td>
+            </tr>
+        `;
+        return;
+    }
+    
+    tbody.innerHTML = payments.map(payment => {
+        const statusClass = getPaymentStatusClass(payment.status);
+        const statusText = getPaymentStatusText(payment.status);
+        const paymentDate = payment.paymentDate ? new Date(payment.paymentDate).toLocaleDateString('vi-VN') : '-';
+        const costType = payment.costType || '-';
+        const method = payment.method || '-';
+        const transactionCode = payment.transactionCode || '-';
+        
+        return `
+            <tr>
+                <td>${payment.paymentId}</td>
+                <td>User #${payment.userId}</td>
+                <td>${costType}</td>
+                <td style="font-weight: bold; color: var(--primary);">${formatCurrency(payment.amount)}</td>
+                <td>${method}</td>
+                <td style="font-family: monospace; font-size: 0.85rem;">${transactionCode}</td>
+                <td>${paymentDate}</td>
+                <td><span class="status-badge ${statusClass}">${statusText}</span></td>
+                <td>
+                    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap; align-items: center;">
+                        <button class="btn btn-sm" style="background: #10B981; color: white; padding: 0.5rem 0.75rem; border-radius: 6px; border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 0.25rem; font-size: 0.875rem; transition: all 0.2s;" onmouseover="this.style.background='#059669'" onmouseout="this.style.background='#10B981'" onclick="openEditPaymentModal(${payment.paymentId})" title="Chỉnh sửa thanh toán">
+                            <i class="fas fa-edit"></i>
+                            <span>Sửa</span>
+                        </button>
+                        <button class="btn btn-sm" style="background: var(--info); color: white; padding: 0.5rem 0.75rem; border-radius: 6px; border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 0.25rem; font-size: 0.875rem;" onclick="printPaymentInvoice(${payment.paymentId})" title="In hóa đơn">
+                            <i class="fas fa-print"></i>
+                        </button>
+                        <button class="btn btn-sm" style="background: var(--danger); color: white; padding: 0.5rem 0.75rem; border-radius: 6px; border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 0.25rem; font-size: 0.875rem;" onclick="deletePayment(${payment.paymentId})" title="Xóa thanh toán">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                        ${payment.status === 'PENDING' ? `
+                            <button class="btn btn-sm btn-success" onclick="openConfirmPaymentModal(${payment.paymentId})" title="Xác nhận">
+                                <i class="fas fa-check"></i>
+                            </button>
+                            <button class="btn btn-sm" style="background: var(--warning); color: white;" onclick="sendReminder(${payment.paymentId})" title="Nhắc nhở">
+                                <i class="fas fa-bell"></i>
+                            </button>
+                        ` : ''}
+                    </div>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function getPaymentStatusClass(status) {
+    const statusMap = {
+        'PAID': 'paid',
+        'PENDING': 'pending',
+        'OVERDUE': 'overdue',
+        'CANCELLED': 'cancelled'
+    };
+    return statusMap[status] || 'pending';
+}
+
+function getPaymentStatusText(status) {
+    const statusMap = {
+        'PAID': 'Đã thanh toán',
+        'PENDING': 'Chờ thanh toán',
+        'OVERDUE': 'Quá hạn',
+        'CANCELLED': 'Đã hủy'
+    };
+    return statusMap[status] || status;
+}
+
+function initPaymentTracking() {
+    console.log('Initializing payment tracking...');
+    
+    // Filter button
+    const btnFilter = document.getElementById('btn-filter-payments');
+    if (btnFilter) {
+        btnFilter.addEventListener('click', applyPaymentFilters);
+    }
+    
+    // Reset button
+    const btnReset = document.getElementById('btn-reset-filters');
+    if (btnReset) {
+        btnReset.addEventListener('click', resetPaymentFilters);
+    }
+    
+    // Export button
+    const btnExport = document.getElementById('btn-export-payments');
+    if (btnExport) {
+        btnExport.addEventListener('click', exportPaymentsToExcel);
+    }
+    
+    // Confirm payment form
+    const confirmForm = document.getElementById('confirm-payment-form');
+    if (confirmForm) {
+        confirmForm.addEventListener('submit', handleConfirmPayment);
+    }
+    
+    // Enter key on search input
+    const searchInput = document.getElementById('payment-search');
+    if (searchInput) {
+        searchInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                applyPaymentFilters();
+            }
+        });
+    }
+    
+    console.log('Payment tracking initialized');
+}
+
+function applyPaymentFilters() {
+    const filters = {
+        status: document.getElementById('payment-status-filter')?.value || '',
+        startDate: document.getElementById('payment-date-from')?.value || '',
+        endDate: document.getElementById('payment-date-to')?.value || '',
+        search: document.getElementById('payment-search')?.value || ''
+    };
+    
+    loadPayments(filters);
+}
+
+function resetPaymentFilters() {
+    document.getElementById('payment-status-filter').value = '';
+    document.getElementById('payment-date-from').value = '';
+    document.getElementById('payment-date-to').value = '';
+    document.getElementById('payment-search').value = '';
+    
+    loadPayments();
+}
+
+async function viewPaymentDetails(paymentId) {
+    try {
+        const response = await fetch(`/api/payments/${paymentId}/details`);
+        const details = await response.json();
+        
+        if (details.error) {
+            showNotification('Không tìm thấy thanh toán', 'error');
+            return;
+        }
+        
+        const modal = document.getElementById('payment-details-modal');
+        const body = document.getElementById('payment-details-body');
+        
+        const paymentDate = details.paymentDate ? new Date(details.paymentDate).toLocaleString('vi-VN') : '-';
+        const costDate = details.cost?.date ? new Date(details.cost.date).toLocaleDateString('vi-VN') : '-';
+        
+        body.innerHTML = `
+            <div style="display: grid; gap: 1.5rem;">
+                <div class="info-section">
+                    <h4 style="margin-bottom: 1rem; color: var(--primary);">
+                        <i class="fas fa-money-bill-wave"></i> Thông tin thanh toán
+                    </h4>
+                    <div class="info-grid">
+                        <div class="info-row">
+                            <span class="info-label">Mã thanh toán:</span>
+                            <span class="info-value">#${details.paymentId}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Số tiền:</span>
+                            <span class="info-value" style="color: var(--primary); font-weight: bold; font-size: 1.2rem;">
+                                ${formatCurrency(details.amount)}
+                            </span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Phương thức:</span>
+                            <span class="info-value">${details.method || '-'}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Mã giao dịch:</span>
+                            <span class="info-value" style="font-family: monospace;">${details.transactionCode || '-'}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Trạng thái:</span>
+                            <span class="status-badge ${getPaymentStatusClass(details.status)}">
+                                ${getPaymentStatusText(details.status)}
+                            </span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Ngày thanh toán:</span>
+                            <span class="info-value">${paymentDate}</span>
+                        </div>
+                    </div>
+                </div>
+                
+                ${details.user ? `
+                <div class="info-section">
+                    <h4 style="margin-bottom: 1rem; color: var(--primary);">
+                        <i class="fas fa-user"></i> Thông tin người dùng
+                    </h4>
+                    <div class="info-grid">
+                        <div class="info-row">
+                            <span class="info-label">User ID:</span>
+                            <span class="info-value">#${details.userId}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Tên:</span>
+                            <span class="info-value">${details.user.name || '-'}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Email:</span>
+                            <span class="info-value">${details.user.email || '-'}</span>
+                        </div>
+                    </div>
+                </div>
+                ` : ''}
+                
+                ${details.cost ? `
+                <div class="info-section">
+                    <h4 style="margin-bottom: 1rem; color: var(--primary);">
+                        <i class="fas fa-receipt"></i> Thông tin chi phí
+                    </h4>
+                    <div class="info-grid">
+                        <div class="info-row">
+                            <span class="info-label">Loại chi phí:</span>
+                            <span class="info-value">${details.cost.costType || '-'}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Tổng chi phí:</span>
+                            <span class="info-value">${formatCurrency(details.cost.amount || 0)}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Ngày phát sinh:</span>
+                            <span class="info-value">${costDate}</span>
+                        </div>
+                        ${details.cost.description ? `
+                        <div class="info-row">
+                            <span class="info-label">Mô tả:</span>
+                            <span class="info-value">${details.cost.description}</span>
+                        </div>
+                        ` : ''}
+                    </div>
+                </div>
+                ` : ''}
+            </div>
+        `;
+        
+        modal.style.display = 'flex';
+        
+    } catch (error) {
+        console.error('Error loading payment details:', error);
+        showNotification('Lỗi khi tải chi tiết thanh toán', 'error');
+    }
+}
+
+function closePaymentDetailsModal() {
+    document.getElementById('payment-details-modal').style.display = 'none';
+}
+
+function openConfirmPaymentModal(paymentId) {
+    const payment = currentPaymentsData.find(p => p.paymentId === paymentId);
+    
+    if (!payment) {
+        showNotification('Không tìm thấy thanh toán', 'error');
+        return;
+    }
+    
+    document.getElementById('confirm-payment-id').value = paymentId;
+    document.getElementById('confirm-user-id').textContent = `#${payment.userId}`;
+    document.getElementById('confirm-amount').textContent = formatCurrency(payment.amount);
+    document.getElementById('confirm-transaction-code').textContent = payment.transactionCode || '-';
+    document.getElementById('confirm-note').value = '';
+    
+    document.getElementById('confirm-payment-modal').style.display = 'flex';
+}
+
+function closeConfirmPaymentModal() {
+    document.getElementById('confirm-payment-modal').style.display = 'none';
+}
+
+async function handleConfirmPayment(event) {
+    event.preventDefault();
+    
+    const paymentId = document.getElementById('confirm-payment-id').value;
+    const note = document.getElementById('confirm-note').value;
+    
+    try {
+        const response = await fetch(`/api/payments/${paymentId}/admin-confirm`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ note })
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showNotification('Đã xác nhận thanh toán thành công!', 'success');
+            closeConfirmPaymentModal();
+            applyPaymentFilters(); // Reload with current filters
+        } else {
+            showNotification(result.message || 'Lỗi khi xác nhận thanh toán', 'error');
+        }
+        
+    } catch (error) {
+        console.error('Error confirming payment:', error);
+        showNotification('Lỗi khi xác nhận thanh toán', 'error');
+    }
+}
+
+async function sendReminder(paymentId) {
+    if (!confirm('Bạn có chắc chắn muốn gửi nhắc nhở thanh toán?')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/payments/${paymentId}/remind`, {
+            method: 'POST'
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showNotification('Đã gửi nhắc nhở thanh toán!', 'success');
+        } else {
+            showNotification(result.message || 'Lỗi khi gửi nhắc nhở', 'error');
+        }
+        
+    } catch (error) {
+        console.error('Error sending reminder:', error);
+        showNotification('Lỗi khi gửi nhắc nhở', 'error');
+    }
+}
+
+function exportPaymentsToExcel() {
+    if (currentPaymentsData.length === 0) {
+        showNotification('Không có dữ liệu để xuất', 'warning');
+        return;
+    }
+    
+    try {
+        // Create CSV content
+        let csv = 'ID,User ID,Chi phí,Số tiền,Phương thức,Mã giao dịch,Ngày,Trạng thái\n';
+        
+        currentPaymentsData.forEach(payment => {
+            const date = payment.paymentDate ? new Date(payment.paymentDate).toLocaleDateString('vi-VN') : '-';
+            csv += `${payment.paymentId},`;
+            csv += `${payment.userId},`;
+            csv += `"${payment.costType || '-'}",`;
+            csv += `${payment.amount},`;
+            csv += `${payment.method || '-'},`;
+            csv += `"${payment.transactionCode || '-'}",`;
+            csv += `${date},`;
+            csv += `${getPaymentStatusText(payment.status)}\n`;
+        });
+        
+        // Create download link
+        const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        
+        link.setAttribute('href', url);
+        link.setAttribute('download', `payments_${new Date().toISOString().split('T')[0]}.csv`);
+        link.style.visibility = 'hidden';
+        
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        showNotification('Đã xuất file Excel thành công!', 'success');
+        
+    } catch (error) {
+        console.error('Error exporting to Excel:', error);
+        showNotification('Lỗi khi xuất file Excel', 'error');
     }
 }
 
@@ -958,5 +1331,254 @@ function showNotification(message, type) {
         toast.style.transform = 'translateY(20px)';
         setTimeout(() => toast.remove(), 300);
     }, 3000);
+}
+
+// ============================================
+// EDIT PAYMENT FUNCTIONS
+// ============================================
+
+function openEditPaymentModal(paymentId) {
+    // Fetch payment details first
+    fetch(`/api/payments/${paymentId}/details`)
+        .then(response => response.json())
+        .then(payment => {
+            document.getElementById('edit-payment-id').value = payment.paymentId;
+            document.getElementById('edit-user-id').value = payment.userId;
+            document.getElementById('edit-cost-id').value = payment.costId;
+            document.getElementById('edit-amount').value = payment.amount;
+            document.getElementById('edit-method').value = payment.method || '';
+            document.getElementById('edit-transaction-code').value = payment.transactionCode || '';
+            document.getElementById('edit-status').value = payment.status;
+            
+            // Format date for input
+            if (payment.paymentDate) {
+                const date = new Date(payment.paymentDate);
+                document.getElementById('edit-payment-date').value = date.toISOString().split('T')[0];
+            }
+            
+            // Show modal
+            document.getElementById('edit-payment-modal').classList.add('active');
+            document.getElementById('modal-overlay').classList.add('active');
+        })
+        .catch(error => {
+            console.error('Error loading payment details:', error);
+            showNotification('Lỗi khi tải thông tin thanh toán', 'error');
+        });
+}
+
+function closeEditPaymentModal() {
+    document.getElementById('edit-payment-modal').classList.remove('active');
+    document.getElementById('modal-overlay').classList.remove('active');
+    document.getElementById('edit-payment-form').reset();
+}
+
+// Handle edit payment form submission
+document.addEventListener('DOMContentLoaded', function() {
+    const editForm = document.getElementById('edit-payment-form');
+    if (editForm) {
+        editForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const paymentId = document.getElementById('edit-payment-id').value;
+            const paymentData = {
+                userId: parseInt(document.getElementById('edit-user-id').value),
+                costId: parseInt(document.getElementById('edit-cost-id').value),
+                amount: parseFloat(document.getElementById('edit-amount').value),
+                method: document.getElementById('edit-method').value,
+                transactionCode: document.getElementById('edit-transaction-code').value,
+                paymentDate: document.getElementById('edit-payment-date').value || null,
+                status: document.getElementById('edit-status').value
+            };
+            
+            try {
+                const response = await fetch(`/api/payments/${paymentId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(paymentData)
+                });
+                
+                if (response.ok) {
+                    showNotification('Cập nhật thanh toán thành công!', 'success');
+                    closeEditPaymentModal();
+                    loadPayments(); // Reload the table
+                } else {
+                    const error = await response.text();
+                    showNotification('Lỗi: ' + error, 'error');
+                }
+            } catch (error) {
+                console.error('Error updating payment:', error);
+                showNotification('Lỗi khi cập nhật thanh toán', 'error');
+            }
+        });
+    }
+});
+
+// ============================================
+// DELETE PAYMENT FUNCTIONS
+// ============================================
+
+function deletePayment(paymentId) {
+    if (!confirm('Bạn có chắc chắn muốn xóa thanh toán này?\n\nThao tác này không thể hoàn tác!')) {
+        return;
+    }
+    
+    fetch(`/api/payments/${paymentId}`, {
+        method: 'DELETE'
+    })
+    .then(response => {
+        if (response.ok) {
+            showNotification('Xóa thanh toán thành công!', 'success');
+            loadPayments(); // Reload the table
+        } else {
+            return response.text().then(error => {
+                throw new Error(error);
+            });
+        }
+    })
+    .catch(error => {
+        console.error('Error deleting payment:', error);
+        showNotification('Lỗi khi xóa thanh toán: ' + error.message, 'error');
+    });
+}
+
+// ============================================
+// PRINT INVOICE FUNCTIONS
+// ============================================
+
+function printPaymentInvoice(paymentId) {
+    // Fetch payment details
+    fetch(`/api/payments/${paymentId}/details`)
+        .then(response => response.json())
+        .then(payment => {
+            // Generate invoice HTML
+            const invoiceHTML = generateInvoiceHTML(payment);
+            document.getElementById('invoice-content').innerHTML = invoiceHTML;
+            
+            // Show modal
+            document.getElementById('invoice-modal').classList.add('active');
+            document.getElementById('modal-overlay').classList.add('active');
+        })
+        .catch(error => {
+            console.error('Error loading payment for invoice:', error);
+            showNotification('Lỗi khi tải thông tin thanh toán', 'error');
+        });
+}
+
+function generateInvoiceHTML(payment) {
+    const invoiceDate = new Date().toLocaleDateString('vi-VN');
+    const paymentDate = payment.paymentDate ? new Date(payment.paymentDate).toLocaleDateString('vi-VN') : 'Chưa thanh toán';
+    const statusText = getPaymentStatusText(payment.status);
+    
+    return `
+        <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 800px; margin: 0 auto;">
+            <!-- Header -->
+            <div style="text-align: center; border-bottom: 3px solid #2196F3; padding-bottom: 1.5rem; margin-bottom: 2rem;">
+                <h1 style="color: #2196F3; margin: 0; font-size: 2rem;">HÓA ĐƠN THANH TOÁN</h1>
+                <p style="color: #666; margin: 0.5rem 0 0 0; font-size: 0.95rem;">Hệ thống quản lý chi phí xe điện</p>
+            </div>
+            
+            <!-- Invoice Info -->
+            <div style="display: flex; justify-content: space-between; margin-bottom: 2rem;">
+                <div>
+                    <p style="margin: 0.3rem 0; color: #333;"><strong>Số hóa đơn:</strong> #${payment.paymentId}</p>
+                    <p style="margin: 0.3rem 0; color: #333;"><strong>Ngày lập:</strong> ${invoiceDate}</p>
+                    <p style="margin: 0.3rem 0; color: #333;"><strong>Trạng thái:</strong> <span style="color: ${payment.status === 'PAID' ? '#4CAF50' : '#FF9800'}; font-weight: bold;">${statusText}</span></p>
+                </div>
+                <div style="text-align: right;">
+                    <p style="margin: 0.3rem 0; color: #333;"><strong>User ID:</strong> #${payment.userId}</p>
+                    <p style="margin: 0.3rem 0; color: #333;"><strong>Mã GD:</strong> ${payment.transactionCode || 'N/A'}</p>
+                    <p style="margin: 0.3rem 0; color: #333;"><strong>Ngày TT:</strong> ${paymentDate}</p>
+                </div>
+            </div>
+            
+            <!-- Payment Details -->
+            <div style="background: #f5f5f5; padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem;">
+                <h3 style="margin: 0 0 1rem 0; color: #333; font-size: 1.2rem;">Chi tiết thanh toán</h3>
+                <table style="width: 100%; border-collapse: collapse;">
+                    <thead>
+                        <tr style="background: #e0e0e0;">
+                            <th style="padding: 0.75rem; text-align: left; border: 1px solid #ccc;">Mô tả</th>
+                            <th style="padding: 0.75rem; text-align: right; border: 1px solid #ccc;">Số tiền</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td style="padding: 0.75rem; border: 1px solid #ccc;">
+                                <strong>Chi phí ID:</strong> #${payment.costId}<br>
+                                <span style="color: #666; font-size: 0.9rem;">Phương thức: ${payment.method || 'Chưa xác định'}</span>
+                            </td>
+                            <td style="padding: 0.75rem; text-align: right; border: 1px solid #ccc; font-size: 1.1rem;">
+                                <strong>${formatCurrency(payment.amount)}</strong>
+                            </td>
+                        </tr>
+                    </tbody>
+                    <tfoot>
+                        <tr style="background: #2196F3; color: white;">
+                            <td style="padding: 1rem; border: 1px solid #1976D2; font-size: 1.2rem;"><strong>TỔNG CỘNG</strong></td>
+                            <td style="padding: 1rem; text-align: right; border: 1px solid #1976D2; font-size: 1.3rem;">
+                                <strong>${formatCurrency(payment.amount)}</strong>
+                            </td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+            
+            <!-- Notes -->
+            <div style="margin-bottom: 2rem; padding: 1rem; background: #fff3cd; border-left: 4px solid #ffc107; border-radius: 4px;">
+                <p style="margin: 0; color: #856404; font-size: 0.9rem;">
+                    <strong>Lưu ý:</strong> Vui lòng giữ hóa đơn này để đối chiếu. Mọi thắc mắc xin liên hệ bộ phận hỗ trợ.
+                </p>
+            </div>
+            
+            <!-- Footer -->
+            <div style="text-align: center; padding-top: 1.5rem; border-top: 2px solid #e0e0e0; color: #666; font-size: 0.85rem;">
+                <p style="margin: 0.3rem 0;">Cảm ơn bạn đã sử dụng dịch vụ!</p>
+                <p style="margin: 0.3rem 0;">Hệ thống quản lý chi phí xe điện - EV Co-ownership System</p>
+                <p style="margin: 0.3rem 0;">Email: support@evsharing.com | Hotline: 1900-xxxx</p>
+            </div>
+        </div>
+    `;
+}
+
+function closeInvoiceModal() {
+    document.getElementById('invoice-modal').classList.remove('active');
+    document.getElementById('modal-overlay').classList.remove('active');
+}
+
+function printInvoice() {
+    const invoiceContent = document.getElementById('invoice-content').innerHTML;
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Hóa đơn thanh toán</title>
+            <style>
+                body { margin: 0; padding: 20px; }
+                @media print {
+                    body { margin: 0; }
+                }
+            </style>
+        </head>
+        <body>
+            ${invoiceContent}
+            <script>
+                window.onload = function() {
+                    window.print();
+                    setTimeout(function() { window.close(); }, 100);
+                }
+            </script>
+        </body>
+        </html>
+    `);
+    printWindow.document.close();
+}
+
+function downloadInvoicePDF() {
+    showNotification('Tính năng tải PDF đang được phát triển...', 'info');
+    // TODO: Implement PDF download using jsPDF or similar library
+    // For now, users can use the print function and "Save as PDF"
 }
 
