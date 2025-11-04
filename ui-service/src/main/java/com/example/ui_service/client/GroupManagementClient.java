@@ -84,15 +84,56 @@ public class GroupManagementClient {
     // Generic Map-based methods for REST API
     public List<Map<String, Object>> getAllGroupsAsMap() {
         try {
+            System.out.println("=== GROUP MANAGEMENT CLIENT: Fetching groups from " + groupManagementUrl + "/api/groups ===");
             ResponseEntity<List<Map<String, Object>>> response = restTemplate.exchange(
                 groupManagementUrl + "/api/groups",
                 HttpMethod.GET,
                 null,
                 new ParameterizedTypeReference<List<Map<String, Object>>>() {}
             );
-            return response.getBody() != null ? response.getBody() : List.of();
+            
+            if (response.getStatusCode().is2xxSuccessful()) {
+                List<Map<String, Object>> groups = response.getBody();
+                System.out.println("Successfully fetched " + (groups != null ? groups.size() : 0) + " groups");
+                return groups != null ? groups : List.of();
+            } else {
+                System.err.println("Failed to fetch groups. Status: " + response.getStatusCode());
+                return List.of();
+            }
+        } catch (org.springframework.web.client.ResourceAccessException e) {
+            System.err.println("ERROR: Cannot connect to Group Management Service at " + groupManagementUrl);
+            System.err.println("Please ensure the service is running on port 8082");
+            e.printStackTrace();
+            return List.of();
         } catch (Exception e) {
             System.err.println("Error fetching groups as map: " + e.getMessage());
+            System.err.println("Exception type: " + e.getClass().getName());
+            e.printStackTrace();
+            return List.of();
+        }
+    }
+
+    public List<Map<String, Object>> getGroupsByUserIdAsMap(Integer userId) {
+        try {
+            System.out.println("=== GROUP MANAGEMENT CLIENT: Fetching groups for userId=" + userId + " ===");
+            ResponseEntity<List<Map<String, Object>>> response = restTemplate.exchange(
+                groupManagementUrl + "/api/groups/user/" + userId,
+                HttpMethod.GET,
+                null,
+                new ParameterizedTypeReference<List<Map<String, Object>>>() {}
+            );
+            
+            if (response.getStatusCode().is2xxSuccessful()) {
+                List<Map<String, Object>> groups = response.getBody();
+                System.out.println("Successfully fetched " + (groups != null ? groups.size() : 0) + " groups for userId=" + userId);
+                return groups != null ? groups : List.of();
+            } else {
+                System.err.println("Failed to fetch groups for userId=" + userId + ". Status: " + response.getStatusCode());
+                return List.of();
+            }
+        } catch (Exception e) {
+            System.err.println("Error fetching groups for userId=" + userId + ": " + e.getMessage());
+            e.printStackTrace();
             return List.of();
         }
     }

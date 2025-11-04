@@ -59,20 +59,21 @@ public class AutoSplitController {
     }
 
     /**
-     * Tạo chi phí MỚI và tự động chia luôn
+     * Tạo chi phí MỚI và tự động chia luôn HOẶC chia chi phí đã tồn tại
      * POST /api/auto-split/create-and-split
+     * 
+     * Request có thể có:
+     * - costId: Nếu có -> chia chi phí đã tồn tại (không tạo mới)
+     * - amount: Nếu có -> tạo chi phí mới và chia
      */
     @PostMapping("/create-and-split")
     public ResponseEntity<Map<String, Object>> createAndAutoSplit(
             @RequestBody Map<String, Object> request) {
         
         try {
-            // Parse request
-            Integer vehicleId = (Integer) request.get("vehicleId");
-            String costType = (String) request.get("costType");
-            Double amount = ((Number) request.get("amount")).doubleValue();
-            String description = (String) request.get("description");
-            String splitMethod = (String) request.get("splitMethod"); // QUAN TRỌNG: Nhận splitMethod từ form
+            Integer costId = request.get("costId") != null ? 
+                (Integer) request.get("costId") : null;
+            String splitMethod = (String) request.get("splitMethod");
             Integer groupId = (Integer) request.get("groupId");
             
             // Lấy tháng/năm (mặc định là hiện tại nếu không có)
@@ -84,39 +85,109 @@ public class AutoSplitController {
                 java.time.LocalDate.now().getYear();
 
             System.out.println("=== AUTO SPLIT REQUEST ===");
-            System.out.println("Vehicle ID: " + vehicleId);
-            System.out.println("Cost Type: " + costType);
-            System.out.println("Amount: " + amount);
+            System.out.println("Cost ID: " + costId);
             System.out.println("Split Method: " + splitMethod);
             System.out.println("Group ID: " + groupId);
             System.out.println("Month/Year: " + month + "/" + year);
 
-            // Tạo cost mới
-            Cost cost = new Cost();
-            cost.setVehicleId(vehicleId);
-            cost.setCostType(Cost.CostType.valueOf(costType));
-            cost.setAmount(amount);
-            cost.setDescription(description);
-            
-            Cost savedCost = costService.createCost(cost);
-            System.out.println("Created Cost ID: " + savedCost.getCostId());
+            Cost savedCost;
+            List<CostShare> shares;
 
-            // Tự động chia CHI PHÍ theo splitMethod
-            List<CostShare> shares = autoSplitService.autoSplitCostWithMethod(
-                savedCost.getCostId(), 
-                groupId, 
-                splitMethod, 
-                month, 
-                year
-            );
+            // Xử lý hai trường hợp: chia chi phí đã tồn tại HOẶC tạo mới và chia
+            if (costId != null) {
+                // Trường hợp 1: Chia chi phí đã tồn tại
+                System.out.println("Splitting existing cost ID: " + costId);
+                
+                // Validate splitMethod và groupId
+                if (splitMethod == null || splitMethod.isEmpty()) {
+                    throw new IllegalArgumentException("splitMethod là bắt buộc");
+                }
+                if (groupId == null) {
+                    throw new IllegalArgumentException("groupId là bắt buộc");
+                }
+                
+                // Lấy cost từ database
+                savedCost = costService.getCostById(costId)
+                    .orElseThrow(() -> new RuntimeException("Không tìm thấy chi phí ID: " + costId));
+                
+                System.out.println("Found cost: ID=" + savedCost.getCostId() + ", Amount=" + savedCost.getAmount());
+                
+                // Chia chi phí theo splitMethod
+                shares = autoSplitService.autoSplitCostWithMethod(
+                    costId, 
+                    groupId, 
+                    splitMethod, 
+                    month, 
+                    year
+                );
+                
+                System.out.println("Created " + shares.size() + " cost shares for existing cost");
+                
+            } else {
+                // Trường hợp 2: Tạo chi phí mới và chia
+                System.out.println("Creating new cost and splitting...");
+                
+                // Parse request để tạo cost mới
+                Integer vehicleId = (Integer) request.get("vehicleId");
+                String costType = (String) request.get("costType");
+                Object amountObj = request.get("amount");
+                
+                // Validate required fields
+                if (amountObj == null) {
+                    throw new IllegalArgumentException("amount là bắt buộc khi tạo chi phí mới");
+                }
+                if (costType == null || costType.isEmpty()) {
+                    throw new IllegalArgumentException("costType là bắt buộc khi tạo chi phí mới");
+                }
+                if (splitMethod == null || splitMethod.isEmpty()) {
+                    throw new IllegalArgumentException("splitMethod là bắt buộc");
+                }
+                if (groupId == null) {
+                    throw new IllegalArgumentException("groupId là bắt buộc");
+                }
+                
+                Double amount;
+                if (amountObj instanceof Number) {
+                    amount = ((Number) amountObj).doubleValue();
+                } else {
+                    throw new IllegalArgumentException("amount phải là số");
+                }
+                
+                String description = (String) request.get("description");
+                
+                System.out.println("Vehicle ID: " + vehicleId);
+                System.out.println("Cost Type: " + costType);
+                System.out.println("Amount: " + amount);
 
-            System.out.println("Created " + shares.size() + " cost shares");
+                // Tạo cost mới
+                Cost cost = new Cost();
+                cost.setVehicleId(vehicleId);
+                cost.setCostType(Cost.CostType.valueOf(costType));
+                cost.setAmount(amount);
+                cost.setDescription(description);
+                
+                savedCost = costService.createCost(cost);
+                System.out.println("Created Cost ID: " + savedCost.getCostId());
+
+                // Tự động chia CHI PHÍ theo splitMethod
+                shares = autoSplitService.autoSplitCostWithMethod(
+                    savedCost.getCostId(), 
+                    groupId, 
+                    splitMethod, 
+                    month, 
+                    year
+                );
+
+                System.out.println("Created " + shares.size() + " cost shares for new cost");
+            }
 
             // Trả về kết quả
             Map<String, Object> result = new HashMap<>();
             result.put("cost", savedCost);
             result.put("shares", shares);
-            result.put("message", "Đã tạo chi phí và tự động chia thành công!");
+            result.put("message", costId != null ? 
+                "Đã phân chia chi phí thành công!" : 
+                "Đã tạo chi phí và tự động chia thành công!");
 
             return ResponseEntity.ok(result);
             
@@ -190,11 +261,16 @@ public class AutoSplitController {
     /**
      * Preview kết quả chia (không lưu)
      * POST /api/auto-split/preview
+     * 
+     * Request có thể có:
+     * - costId: Nếu có -> lấy amount từ cost đã tồn tại
+     * - amount: Nếu có -> dùng amount trực tiếp
      */
     @PostMapping("/preview")
     public ResponseEntity<Map<String, Object>> previewSplit(@RequestBody Map<String, Object> request) {
         try {
-            Double amount = ((Number) request.get("amount")).doubleValue();
+            Integer costId = request.get("costId") != null ? 
+                (Integer) request.get("costId") : null;
             String splitMethod = (String) request.get("splitMethod");
             Integer groupId = (Integer) request.get("groupId");
             Integer month = request.get("month") != null ? 
@@ -204,7 +280,28 @@ public class AutoSplitController {
                 (Integer) request.get("year") : 
                 java.time.LocalDate.now().getYear();
 
+            // Lấy amount: từ costId hoặc từ request
+            Double amount;
+            if (costId != null) {
+                // Lấy amount từ cost đã tồn tại
+                Cost cost = costService.getCostById(costId)
+                    .orElseThrow(() -> new RuntimeException("Không tìm thấy chi phí ID: " + costId));
+                amount = cost.getAmount();
+            } else {
+                // Lấy amount từ request
+                Object amountObj = request.get("amount");
+                if (amountObj == null) {
+                    throw new IllegalArgumentException("Cần có costId hoặc amount để preview");
+                }
+                if (amountObj instanceof Number) {
+                    amount = ((Number) amountObj).doubleValue();
+                } else {
+                    throw new IllegalArgumentException("amount phải là số");
+                }
+            }
+
             System.out.println("=== PREVIEW REQUEST ===");
+            System.out.println("Cost ID: " + costId);
             System.out.println("Amount: " + amount);
             System.out.println("Split Method: " + splitMethod);
             System.out.println("Group ID: " + groupId);

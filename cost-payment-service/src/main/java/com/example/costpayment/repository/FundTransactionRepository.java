@@ -46,6 +46,7 @@ public interface FundTransactionRepository extends JpaRepository<FundTransaction
      */
     @Query("SELECT ft FROM FundTransaction ft " +
            "WHERE ft.fundId = :fundId " +
+           "AND ft.transactionType = 'Withdraw' " +
            "AND ft.status = 'Pending' " +
            "ORDER BY ft.date DESC")
     List<FundTransaction> findPendingWithdrawRequests(@Param("fundId") Integer fundId);

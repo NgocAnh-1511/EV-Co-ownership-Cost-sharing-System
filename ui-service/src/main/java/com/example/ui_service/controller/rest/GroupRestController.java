@@ -23,13 +23,39 @@ public class GroupRestController {
      * GET /api/groups
      */
     @GetMapping
-    public ResponseEntity<List<Map<String, Object>>> getAllGroups() {
+    public ResponseEntity<?> getAllGroups() {
         try {
+            System.out.println("=== UI SERVICE: Fetching all groups ===");
             List<Map<String, Object>> groups = groupManagementClient.getAllGroupsAsMap();
-            return ResponseEntity.ok(groups);
+            System.out.println("Groups retrieved: " + (groups != null ? groups.size() : 0));
+            if (groups != null && !groups.isEmpty()) {
+                System.out.println("First group: " + groups.get(0));
+            }
+            return ResponseEntity.ok(groups != null ? groups : java.util.Collections.emptyList());
         } catch (Exception e) {
             System.err.println("Error fetching groups: " + e.getMessage());
-            return ResponseEntity.internalServerError().build();
+            e.printStackTrace();
+            return ResponseEntity.status(500)
+                .body(Map.of("error", "Failed to fetch groups: " + e.getMessage()));
+        }
+    }
+
+    /**
+     * Lấy groups theo userId (các nhóm mà user đã tham gia)
+     * GET /api/groups/user/{userId}
+     */
+    @GetMapping("/user/{userId}")
+    public ResponseEntity<?> getGroupsByUserId(@PathVariable Integer userId) {
+        try {
+            System.out.println("=== UI SERVICE: Fetching groups for userId=" + userId + " ===");
+            List<Map<String, Object>> groups = groupManagementClient.getGroupsByUserIdAsMap(userId);
+            System.out.println("Groups retrieved for userId " + userId + ": " + (groups != null ? groups.size() : 0));
+            return ResponseEntity.ok(groups != null ? groups : java.util.Collections.emptyList());
+        } catch (Exception e) {
+            System.err.println("Error fetching groups for userId " + userId + ": " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(500)
+                .body(Map.of("error", "Failed to fetch groups: " + e.getMessage()));
         }
     }
 

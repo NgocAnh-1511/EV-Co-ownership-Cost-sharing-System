@@ -36,6 +36,10 @@
                         <i class="fas fa-credit-card"></i>
                         <span>Thanh toán</span>
                     </a>
+                    <a href="#" class="nav-item" data-page="fund">
+                        <i class="fas fa-piggy-bank"></i>
+                        <span>Quỹ Chung</span>
+                    </a>
                 </nav>
             </div>
             <div class="header-right">
@@ -302,7 +306,315 @@
                 </div>
             </div>
 
+            <!-- FUND PAGE -->
+            <div id="fund-page" class="page">
+                <div class="page-header">
+                    <h1><i class="fas fa-piggy-bank"></i> Quỹ Chung</h1>
+                    <p>Quản lý quỹ chung của nhóm sở hữu xe điện</p>
+                    <div class="page-actions">
+                        <button class="btn btn-success" onclick="openDepositModal()">
+                            <i class="fas fa-arrow-up"></i>
+                            Nạp tiền
+                        </button>
+                        <button class="btn btn-primary" onclick="openWithdrawVoteModal()">
+                            <i class="fas fa-vote-yea"></i>
+                            Tạo phiếu rút tiền
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Statistics Cards -->
+                <div class="quick-stats">
+                    <div class="stat-box success">
+                        <div class="stat-icon">
+                            <i class="fas fa-wallet"></i>
+                        </div>
+                        <div class="stat-info">
+                            <div class="stat-label">Số dư hiện tại</div>
+                            <div class="stat-value" id="totalBalance">0 VNĐ</div>
+                        </div>
+                    </div>
+                    <div class="stat-box info">
+                        <div class="stat-icon">
+                            <i class="fas fa-arrow-up"></i>
+                        </div>
+                        <div class="stat-info">
+                            <div class="stat-label">Tôi đã nạp</div>
+                            <div class="stat-value" id="myDeposits">0 VNĐ</div>
+                        </div>
+                    </div>
+                    <div class="stat-box warning">
+                        <div class="stat-icon">
+                            <i class="fas fa-arrow-down"></i>
+                        </div>
+                        <div class="stat-info">
+                            <div class="stat-label">Tôi đã rút</div>
+                            <div class="stat-value" id="myWithdraws">0 VNĐ</div>
+                        </div>
+                    </div>
+                    <div class="stat-box primary">
+                        <div class="stat-icon">
+                            <i class="fas fa-clock"></i>
+                        </div>
+                        <div class="stat-info">
+                            <div class="stat-label">Yêu cầu của tôi</div>
+                            <div class="stat-value" id="myPending">0</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- My Pending Requests -->
+                <div class="section-card">
+                    <div class="card-header">
+                        <h2>
+                            <i class="fas fa-vote-yea"></i>
+                            Phiếu rút tiền của tôi đang chờ bỏ phiếu
+                        </h2>
+                        <span class="badge badge-warning" id="myPendingBadge">0</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-container">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Ngày tạo</th>
+                                        <th>Số tiền</th>
+                                        <th>Mục đích</th>
+                                        <th>Trạng thái</th>
+                                        <th>Kết quả vote</th>
+                                        <th>Thao tác</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="myPendingBody">
+                                    <tr>
+                                        <td colspan="6" class="empty-table">
+                                            <div class="empty-state">
+                                                <i class="fas fa-check-circle"></i>
+                                                <p>Không có phiếu nào đang chờ</p>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Fund Management -->
+                <div class="content-grid">
+                    <!-- Recent Transactions -->
+                    <div class="section-card">
+                        <div class="card-header">
+                            <h2>
+                                <i class="fas fa-history"></i>
+                                Giao dịch gần đây
+                            </h2>
+                            <button class="btn btn-sm btn-outline" onclick="viewAllTransactions()">
+                                Xem tất cả
+                            </button>
+                        </div>
+                        <div class="card-body">
+                            <div class="transaction-list" id="recentTransactions">
+                                <div class="empty-state">
+                                    <i class="fas fa-receipt"></i>
+                                    <p>Chưa có giao dịch nào</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Fund Summary -->
+                    <div class="section-card">
+                        <div class="card-header">
+                            <h2>
+                                <i class="fas fa-chart-pie"></i>
+                                Tóm tắt quỹ
+                            </h2>
+                        </div>
+                        <div class="card-body">
+                            <div class="fund-summary">
+                                <div class="summary-item">
+                                    <span class="label">Số dư đầu kỳ:</span>
+                                    <span class="value" id="summaryOpening">0 VNĐ</span>
+                                </div>
+                                <div class="summary-item">
+                                    <span class="label">Thu nhập:</span>
+                                    <span class="value positive" id="summaryIncome">0 VNĐ</span>
+                                </div>
+                                <div class="summary-item">
+                                    <span class="label">Chi phí:</span>
+                                    <span class="value negative" id="summaryExpense">0 VNĐ</span>
+                                </div>
+                                <div class="summary-item total">
+                                    <span class="label">Số dư cuối kỳ:</span>
+                                    <span class="value" id="summaryBalance">0 VNĐ</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Transaction History Table -->
+                <div class="section-card">
+                    <div class="card-header">
+                        <h2>
+                            <i class="fas fa-list"></i>
+                            Lịch sử giao dịch
+                        </h2>
+                        <div class="card-actions">
+                            <div class="filter-group">
+                                <select id="filterStatus" class="form-select">
+                                    <option value="">Tất cả trạng thái</option>
+                                    <option value="Completed" selected>Hoàn tất</option>
+                                    <option value="Pending">Chờ duyệt</option>
+                                    <option value="Approved">Đã duyệt</option>
+                                    <option value="Rejected">Từ chối</option>
+                                </select>
+                                <select id="filterType" class="form-select">
+                                    <option value="">Tất cả loại</option>
+                                    <option value="Deposit">Nạp tiền</option>
+                                    <option value="Withdraw">Rút tiền</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-container">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Ngày</th>
+                                        <th>Loại</th>
+                                        <th>Mục đích</th>
+                                        <th>Số tiền</th>
+                                        <th>Trạng thái</th>
+                                        <th>Người thực hiện</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="transactionsTableBody">
+                                    <tr>
+                                        <td colspan="6" class="empty-table">
+                                            <div class="empty-state">
+                                                <i class="fas fa-receipt"></i>
+                                                <p>Chưa có giao dịch nào</p>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
         </main>
+    </div>
+
+    <!-- Deposit Modal (Nạp tiền) -->
+    <div id="depositModal" class="modal-overlay">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>
+                    <i class="fas fa-arrow-up"></i>
+                    Nạp tiền vào quỹ
+                </h3>
+                <button class="modal-close" onclick="closeDepositModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <form id="depositForm" class="modal-body">
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i>
+                    <span>Tiền nạp sẽ được cập nhật ngay lập tức vào quỹ chung</span>
+                </div>
+                <div class="form-group">
+                    <label for="depositGroup">Nhóm</label>
+                    <select id="depositGroup" name="groupId" required>
+                        <option value="">Đang tải...</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="depositAmount">Số tiền (VNĐ)</label>
+                    <input type="number" id="depositAmount" name="amount" required min="1000" step="1000" 
+                           placeholder="VD: 500000">
+                </div>
+                <div class="form-group">
+                    <label for="depositPurpose">Mục đích</label>
+                    <textarea id="depositPurpose" name="purpose" rows="3" 
+                              placeholder="VD: Đóng quỹ tháng 11/2024" required></textarea>
+                </div>
+            </form>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeDepositModal()">
+                    Hủy
+                </button>
+                <button type="submit" form="depositForm" class="btn btn-success">
+                    <i class="fas fa-check"></i>
+                    Xác nhận nạp tiền
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Withdraw Vote Modal (Tạo phiếu rút tiền) -->
+    <div id="withdrawVoteModal" class="modal-overlay">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>
+                    <i class="fas fa-vote-yea"></i>
+                    Tạo phiếu bỏ phiếu rút tiền
+                </h3>
+                <button class="modal-close" onclick="closeWithdrawVoteModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <form id="withdrawVoteForm" class="modal-body">
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <div>
+                        <strong>Quy trình rút tiền:</strong>
+                        <ol style="margin: 0.5rem 0 0 1rem; padding-left: 1rem;">
+                            <li>Tạo phiếu bỏ phiếu cho yêu cầu rút tiền</li>
+                            <li>Các thành viên trong nhóm sẽ bỏ phiếu (3 ngày)</li>
+                            <li>Nếu vote PASS → Admin phê duyệt → Tiền được rút</li>
+                            <li>Nếu vote KHÔNG PASS → Yêu cầu bị từ chối</li>
+                        </ol>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="withdrawGroup">Nhóm</label>
+                    <select id="withdrawGroup" name="groupId" required>
+                        <option value="">Đang tải...</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="withdrawAmount">Số tiền muốn rút (VNĐ)</label>
+                    <input type="number" id="withdrawAmount" name="amount" required min="1000" step="1000" 
+                           placeholder="VD: 200000">
+                    <small class="form-text">Số dư khả dụng: <span id="availableBalance">0 VNĐ</span></small>
+                </div>
+                <div class="form-group">
+                    <label for="withdrawPurpose">Mục đích rút tiền (Sẽ hiển thị trong phiếu vote)</label>
+                    <textarea id="withdrawPurpose" name="purpose" rows="4" 
+                              placeholder="VD: Sửa chữa động cơ xe, chi phí dự kiến 200.000 VNĐ" required></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="withdrawReceipt">Link hóa đơn/báo giá (Tùy chọn)</label>
+                    <input type="url" id="withdrawReceipt" name="receiptUrl" 
+                           placeholder="https://example.com/receipt.pdf">
+                    <small class="form-text">Đính kèm hóa đơn giúp tăng khả năng vote thông qua</small>
+                </div>
+            </form>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeWithdrawVoteModal()">
+                    Hủy
+                </button>
+                <button type="submit" form="withdrawVoteForm" class="btn btn-primary">
+                    <i class="fas fa-paper-plane"></i>
+                    Tạo phiếu bỏ phiếu
+                </button>
+            </div>
+        </div>
     </div>
 
     <!-- Toast Notification -->

@@ -38,9 +38,9 @@
                     <i class="fas fa-users"></i>
                     <span>Quản lý nhóm</span>
                 </a>
-                <a href="#reports" class="nav-link" data-section="reports">
-                    <i class="fas fa-file-invoice"></i>
-                    <span>Báo cáo</span>
+                <a href="#fund-management" class="nav-link" data-section="fund-management">
+                    <i class="fas fa-wallet"></i>
+                    <span>Quản lý quỹ chung</span>
                 </a>
             </nav>
             
@@ -83,6 +83,49 @@
                 
                 <!-- OVERVIEW SECTION -->
                 <section id="overview-section" class="content-section active">
+                    <!-- Time Period Filter -->
+                    <div class="time-filter-bar" style="margin-bottom: 1.5rem; display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                        <button class="btn-time-filter active" data-period="today" onclick="setTimePeriod('today')">
+                            <i class="fas fa-calendar-day"></i> Hôm nay
+                        </button>
+                        <button class="btn-time-filter" data-period="week" onclick="setTimePeriod('week')">
+                            <i class="fas fa-calendar-week"></i> Tuần này
+                        </button>
+                        <button class="btn-time-filter" data-period="month" onclick="setTimePeriod('month')">
+                            <i class="fas fa-calendar-alt"></i> Tháng này
+                        </button>
+                        <button class="btn-time-filter" data-period="quarter" onclick="setTimePeriod('quarter')">
+                            <i class="fas fa-calendar"></i> Quý này
+                        </button>
+                        <button class="btn-time-filter" data-period="year" onclick="setTimePeriod('year')">
+                            <i class="fas fa-calendar-check"></i> Năm này
+                        </button>
+                        <button class="btn-time-filter" data-period="custom" onclick="showCustomDateRange()">
+                            <i class="fas fa-calendar-range"></i> Tùy chọn
+                        </button>
+                    </div>
+
+                    <!-- Quick Actions -->
+                    <div class="quick-actions" style="margin-bottom: 1.5rem; display: flex; gap: 1rem; flex-wrap: wrap;">
+                        <button class="btn btn-primary" onclick="openCreateCostModal()">
+                            <i class="fas fa-plus"></i> Tạo chi phí mới
+                        </button>
+                        <button class="btn btn-success" onclick="switchSection('auto-split')">
+                            <i class="fas fa-calculator"></i> Chia tự động
+                        </button>
+                        <button class="btn btn-secondary" onclick="switchSection('group-management')">
+                            <i class="fas fa-users"></i> Quản lý nhóm
+                        </button>
+                        <button class="btn btn-info" onclick="exportOverviewReport()">
+                            <i class="fas fa-file-excel"></i> Xuất báo cáo
+                        </button>
+                    </div>
+
+                    <!-- Alerts Section -->
+                    <div id="alerts-section" class="alerts-container" style="margin-bottom: 1.5rem;">
+                        <!-- Alerts will be loaded here -->
+                    </div>
+
                     <!-- Stats Cards -->
                     <div class="stats-grid">
                         <div class="stat-card primary">
@@ -90,10 +133,10 @@
                                 <i class="fas fa-dollar-sign"></i>
                             </div>
                             <div class="stat-details">
-                                <div class="stat-label">Tổng chi phí tháng này</div>
+                                <div class="stat-label">Tổng chi phí</div>
                                 <div class="stat-value" id="total-cost">0 ₫</div>
-                                <div class="stat-trend positive">
-                                    <i class="fas fa-arrow-up"></i> 12.5%
+                                <div class="stat-trend" id="total-cost-trend">
+                                    <i class="fas fa-minus"></i> -
                                 </div>
                             </div>
                         </div>
@@ -105,8 +148,8 @@
                             <div class="stat-details">
                                 <div class="stat-label">Đã thanh toán</div>
                                 <div class="stat-value" id="paid-amount">0 ₫</div>
-                                <div class="stat-trend positive">
-                                    <i class="fas fa-arrow-up"></i> 8.3%
+                                <div class="stat-trend" id="paid-amount-trend">
+                                    <i class="fas fa-minus"></i> -
                                 </div>
                             </div>
                         </div>
@@ -118,8 +161,21 @@
                             <div class="stat-details">
                                 <div class="stat-label">Chưa thanh toán</div>
                                 <div class="stat-value" id="pending-amount">0 ₫</div>
-                                <div class="stat-trend negative">
-                                    <i class="fas fa-arrow-down"></i> 4.2%
+                                <div class="stat-trend" id="pending-amount-trend">
+                                    <i class="fas fa-minus"></i> -
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="stat-card danger">
+                            <div class="stat-icon">
+                                <i class="fas fa-exclamation-triangle"></i>
+                            </div>
+                            <div class="stat-details">
+                                <div class="stat-label">Thanh toán quá hạn</div>
+                                <div class="stat-value" id="overdue-amount">0 ₫</div>
+                                <div class="stat-trend" id="overdue-count">
+                                    <i class="fas fa-info-circle"></i> <span id="overdue-count-value">0</span> khoản
                                 </div>
                             </div>
                         </div>
@@ -131,8 +187,47 @@
                             <div class="stat-details">
                                 <div class="stat-label">Tổng số thành viên</div>
                                 <div class="stat-value" id="total-members">0</div>
-                                <div class="stat-trend positive">
-                                    <i class="fas fa-arrow-up"></i> 2
+                                <div class="stat-trend" id="total-members-trend">
+                                    <i class="fas fa-minus"></i> -
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="stat-card secondary">
+                            <div class="stat-icon">
+                                <i class="fas fa-layer-group"></i>
+                            </div>
+                            <div class="stat-details">
+                                <div class="stat-label">Tổng số nhóm</div>
+                                <div class="stat-value" id="total-groups">0</div>
+                                <div class="stat-trend" id="total-groups-trend">
+                                    <i class="fas fa-minus"></i> -
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="stat-card success">
+                            <div class="stat-icon">
+                                <i class="fas fa-car"></i>
+                            </div>
+                            <div class="stat-details">
+                                <div class="stat-label">Tổng số xe</div>
+                                <div class="stat-value" id="total-vehicles">0</div>
+                                <div class="stat-trend" id="total-vehicles-trend">
+                                    <i class="fas fa-minus"></i> -
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="stat-card primary">
+                            <div class="stat-icon">
+                                <i class="fas fa-percentage"></i>
+                            </div>
+                            <div class="stat-details">
+                                <div class="stat-label">Tỷ lệ thanh toán</div>
+                                <div class="stat-value" id="payment-rate">0%</div>
+                                <div class="stat-trend" id="payment-rate-trend">
+                                    <i class="fas fa-minus"></i> -
                                 </div>
                             </div>
                         </div>
@@ -143,9 +238,10 @@
                         <div class="chart-card">
                             <div class="card-header">
                                 <h3>Chi phí theo tháng</h3>
-                                <select id="year-select">
+                                <select id="year-select" onchange="updateMonthlyChart()">
                                     <option value="2025">2025</option>
                                     <option value="2024">2024</option>
+                                    <option value="2023">2023</option>
                                 </select>
                             </div>
                             <div class="card-body">
@@ -163,17 +259,85 @@
                         </div>
                     </div>
 
+                    <!-- Additional Charts Row -->
+                    <div class="charts-row" style="margin-top: 1.5rem;">
+                        <div class="chart-card">
+                            <div class="card-header">
+                                <h3>Chi phí theo loại (Bar Chart)</h3>
+                            </div>
+                            <div class="card-body">
+                                <canvas id="category-bar-chart"></canvas>
+                            </div>
+                        </div>
+
+                        <div class="chart-card">
+                            <div class="card-header">
+                                <h3>Tỷ lệ thanh toán</h3>
+                            </div>
+                            <div class="card-body">
+                                <canvas id="payment-rate-chart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Top Lists Row -->
+                    <div class="charts-row" style="margin-top: 1.5rem;">
+                        <div class="chart-card">
+                            <div class="card-header">
+                                <h3>Top 5 chi phí cao nhất</h3>
+                            </div>
+                            <div class="card-body">
+                                <div id="top-costs-list" class="top-list">
+                                    <!-- Top costs will be loaded here -->
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="chart-card">
+                            <div class="card-header">
+                                <h3>Top 5 thành viên chưa thanh toán</h3>
+                            </div>
+                            <div class="card-body">
+                                <div id="top-unpaid-users-list" class="top-list">
+                                    <!-- Top unpaid users will be loaded here -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <!-- Recent Activities -->
                     <div class="recent-activities">
                         <div class="card-header">
                             <h3>Hoạt động gần đây</h3>
-                            <a href="#" class="view-all">Xem tất cả</a>
+                            <a href="#" class="view-all" onclick="switchSection('cost-management'); return false;">Xem tất cả</a>
                         </div>
                         <div class="activity-list" id="activity-list">
                             <!-- Activities will be loaded here -->
                         </div>
                     </div>
                 </section>
+
+                <!-- Custom Date Range Modal -->
+                <div id="custom-date-modal" class="modal">
+                    <div class="modal-header">
+                        <h3>Chọn khoảng thời gian</h3>
+                        <button class="modal-close" onclick="closeCustomDateModal()">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label>Từ ngày</label>
+                            <input type="date" id="custom-date-from" class="form-control">
+                        </div>
+                        <div class="form-group">
+                            <label>Đến ngày</label>
+                            <input type="date" id="custom-date-to" class="form-control">
+                        </div>
+                    </div>
+                    <div class="modal-actions">
+                        <button type="button" class="btn btn-secondary" onclick="closeCustomDateModal()">Hủy</button>
+                        <button type="button" class="btn btn-primary" onclick="applyCustomDateRange()">Áp dụng</button>
+                    </div>
+                </div>
 
                 <!-- COST MANAGEMENT SECTION -->
                 <section id="cost-management-section" class="content-section">
@@ -421,34 +585,120 @@
                     </div>
                 </section>
 
-                <!-- REPORTS SECTION -->
-                <section id="reports-section" class="content-section">
-                    <div class="reports-grid">
-                        <div class="report-card">
-                            <i class="fas fa-file-excel"></i>
-                            <h4>Báo cáo chi phí Excel</h4>
-                            <p>Xuất tất cả chi phí ra file Excel</p>
-                            <button class="btn btn-primary">
-                                <i class="fas fa-download"></i> Tải xuống
-                            </button>
+                <!-- FUND MANAGEMENT SECTION -->
+                <section id="fund-management-section" class="content-section">
+                    <!-- Stats Cards -->
+                    <div class="stats-grid">
+                        <div class="stat-card primary">
+                            <div class="stat-icon">
+                                <i class="fas fa-wallet"></i>
+                            </div>
+                            <div class="stat-details">
+                                <div class="stat-label">Tổng số dư quỹ</div>
+                                <div class="stat-value" id="total-fund-balance">0 ₫</div>
+                                <div class="stat-trend" id="total-fund-balance-trend">
+                                    <i class="fas fa-info-circle"></i> <span id="total-funds-count">0</span> quỹ
+                                </div>
+                            </div>
                         </div>
 
-                        <div class="report-card">
-                            <i class="fas fa-file-pdf"></i>
-                            <h4>Báo cáo PDF</h4>
-                            <p>Báo cáo tổng hợp theo tháng</p>
-                            <button class="btn btn-primary">
-                                <i class="fas fa-download"></i> Tải xuống
-                            </button>
+                        <div class="stat-card success">
+                            <div class="stat-icon">
+                                <i class="fas fa-arrow-down"></i>
+                            </div>
+                            <div class="stat-details">
+                                <div class="stat-label">Tổng nạp tiền</div>
+                                <div class="stat-value" id="total-deposits">0 ₫</div>
+                                <div class="stat-trend" id="total-deposits-trend">
+                                    <i class="fas fa-calendar-alt"></i> Tháng này
+                                </div>
+                            </div>
                         </div>
 
-                        <div class="report-card">
-                            <i class="fas fa-chart-pie"></i>
-                            <h4>Phân tích chi tiết</h4>
-                            <p>Phân tích chi tiêu theo nhóm</p>
-                            <button class="btn btn-primary">
-                                <i class="fas fa-eye"></i> Xem chi tiết
+                        <div class="stat-card warning">
+                            <div class="stat-icon">
+                                <i class="fas fa-arrow-up"></i>
+                            </div>
+                            <div class="stat-details">
+                                <div class="stat-label">Tổng rút tiền</div>
+                                <div class="stat-value" id="total-withdraws">0 ₫</div>
+                                <div class="stat-trend" id="total-withdraws-trend">
+                                    <i class="fas fa-calendar-alt"></i> Tháng này
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="stat-card danger">
+                            <div class="stat-icon">
+                                <i class="fas fa-hourglass-half"></i>
+                            </div>
+                            <div class="stat-details">
+                                <div class="stat-label">Yêu cầu chờ duyệt</div>
+                                <div class="stat-value" id="pending-requests-count">0</div>
+                                <div class="stat-trend" id="pending-requests-trend">
+                                    <i class="fas fa-info-circle"></i> Cần xử lý
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Filters and Actions -->
+                    <div class="section-header">
+                        <div class="filter-group">
+                            <select id="fund-group-filter" onchange="loadFundManagementData()">
+                                <option value="">Tất cả nhóm</option>
+                            </select>
+                            <select id="fund-status-filter" onchange="loadFundManagementData()">
+                                <option value="">Tất cả trạng thái</option>
+                                <option value="ACTIVE">Hoạt động</option>
+                                <option value="INACTIVE">Không hoạt động</option>
+                            </select>
+                            <input type="text" id="fund-search-input" placeholder="Tìm kiếm nhóm..." 
+                                   style="padding: 0.5rem; border: 1px solid var(--border); border-radius: 6px;">
+                            <button class="btn btn-secondary" onclick="loadFundManagementData()">
+                                <i class="fas fa-search"></i> Tìm
                             </button>
+                        </div>
+                        <button class="btn btn-success" onclick="exportFundReport()">
+                            <i class="fas fa-file-excel"></i> Xuất báo cáo
+                        </button>
+                    </div>
+
+                    <!-- Funds List -->
+                    <div class="data-table">
+                        <table id="funds-table">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Nhóm</th>
+                                    <th>Số dư hiện tại</th>
+                                    <th>Tổng nạp</th>
+                                    <th>Tổng rút</th>
+                                    <th>Giao dịch</th>
+                                    <th>Trạng thái</th>
+                                    <th>Thao tác</th>
+                                </tr>
+                            </thead>
+                            <tbody id="funds-tbody">
+                                <tr>
+                                    <td colspan="8" style="text-align: center; padding: 2rem;">
+                                        <i class="fas fa-spinner fa-spin"></i> Đang tải dữ liệu...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Pending Requests Section -->
+                    <div class="pending-requests-section" style="margin-top: 2rem;">
+                        <div class="card-header">
+                            <h3><i class="fas fa-hourglass-half"></i> Yêu cầu rút tiền chờ duyệt</h3>
+                            <button class="btn btn-secondary btn-sm" onclick="loadPendingWithdrawRequests()">
+                                <i class="fas fa-sync"></i> Làm mới
+                            </button>
+                        </div>
+                        <div id="pending-requests-list" class="pending-requests-list">
+                            <!-- Pending requests will be loaded here -->
                         </div>
                     </div>
                 </section>
@@ -857,6 +1107,75 @@
                     <i class="fas fa-download"></i> Tải PDF
                 </button>
             </div>
+        </div>
+    </div>
+
+    <!-- Fund Detail Modal -->
+    <div id="fund-detail-modal" class="modal" style="max-width: 900px;">
+        <div class="modal-header">
+            <h3 id="fund-detail-title">Chi tiết quỹ</h3>
+            <button class="modal-close" onclick="closeFundDetailModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div id="fund-detail-content">
+                <!-- Content loaded dynamically -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Fund Transaction History Modal -->
+    <div id="fund-transactions-modal" class="modal" style="max-width: 900px;">
+        <div class="modal-header">
+            <h3 id="fund-transactions-title">Lịch sử giao dịch</h3>
+            <button class="modal-close" onclick="closeFundTransactionsModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div class="filter-group" style="margin-bottom: 1rem;">
+                <select id="transaction-type-filter" onchange="loadFundTransactions()">
+                    <option value="">Tất cả loại</option>
+                    <option value="DEPOSIT">Nạp tiền</option>
+                    <option value="WITHDRAW">Rút tiền</option>
+                </select>
+                <select id="transaction-status-filter" onchange="loadFundTransactions()">
+                    <option value="">Tất cả trạng thái</option>
+                    <option value="APPROVED">Đã duyệt</option>
+                    <option value="PENDING">Chờ duyệt</option>
+                    <option value="REJECTED">Từ chối</option>
+                </select>
+            </div>
+            <div id="fund-transactions-content">
+                <!-- Transactions will be loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Approve/Reject Withdraw Request Modal -->
+    <div id="withdraw-request-modal" class="modal">
+        <div class="modal-header">
+            <h3 id="withdraw-request-title">Xử lý yêu cầu rút tiền</h3>
+            <button class="modal-close" onclick="closeWithdrawRequestModal()">&times;</button>
+        </div>
+        <div class="modal-body">
+            <div id="withdraw-request-content">
+                <!-- Request details will be loaded here -->
+            </div>
+            <form id="withdraw-request-form">
+                <input type="hidden" id="request-id">
+                <input type="hidden" id="request-action">
+                <div class="form-group">
+                    <label for="request-note">Ghi chú (tùy chọn)</label>
+                    <textarea id="request-note" class="form-control" rows="3" placeholder="Nhập ghi chú về quyết định..."></textarea>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-secondary" onclick="closeWithdrawRequestModal()">Hủy</button>
+                    <button type="button" class="btn btn-danger" onclick="rejectWithdrawRequest()">
+                        <i class="fas fa-times"></i> Từ chối
+                    </button>
+                    <button type="button" class="btn btn-success" onclick="approveWithdrawRequest()">
+                        <i class="fas fa-check"></i> Phê duyệt
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 

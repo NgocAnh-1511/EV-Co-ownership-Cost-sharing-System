@@ -9,7 +9,8 @@ const API = {
     COSTS: '/api/costs',
     AUTO_SPLIT: '/api/auto-split',
     USAGE: '/api/usage-tracking',
-    PAYMENTS: '/api/payments'
+    PAYMENTS: '/api/payments',
+    FUND: '/api/fund'                // Fund management
 };
 
 // Global State
@@ -17,7 +18,11 @@ let currentSection = 'overview';
 let chartsInitialized = false;
 let monthlyChart = null;
 let categoryChart = null;
+let categoryBarChart = null;
+let paymentRateChart = null;
 let currentGroupId = null;  // For group management
+let currentTimePeriod = 'month'; // today, week, month, quarter, year, custom
+let customDateRange = null; // {from: date, to: date}
 
 // Initialize on DOM load
 document.addEventListener('DOMContentLoaded', function() {
@@ -65,7 +70,7 @@ function switchSection(section) {
         'auto-split': 'Chia tự động',
         'payment-tracking': 'Theo dõi thanh toán',
         'group-management': 'Quản lý nhóm',
-        'reports': 'Báo cáo'
+        'fund-management': 'Quản lý quỹ chung'
     };
     document.getElementById('page-title').textContent = titles[section];
     
@@ -88,43 +93,348 @@ function switchSection(section) {
         case 'group-management':
             loadGroups();
             break;
+        case 'fund-management':
+            loadFundManagementData();
+            break;
     }
 }
 
 // ============ OVERVIEW SECTION ============
 async function loadOverviewData() {
     try {
-        // Load stats
-        const costs = await fetch(API.COSTS).then(r => r.json());
+        // Load all data in parallel
+        const [costsResponse, groupsResponse, paymentsResponse] = await Promise.all([
+            fetch(API.COSTS).catch(() => ({ json: () => [] })),
+            fetch(API.GROUPS).catch(() => ({ json: () => [] })),
+            fetch(`${API.PAYMENTS}/admin/tracking`).catch(() => ({ json: () => ({ payments: [], statistics: {} }) }))
+        ]);
         
-        // Calculate stats
-        const totalCost = costs.reduce((sum, c) => sum + c.amount, 0);
-        const currentMonth = new Date().getMonth() + 1;
-        const currentYear = new Date().getFullYear();
-        const monthCosts = costs.filter(c => {
-            const date = new Date(c.createdAt);
-            return date.getMonth() + 1 === currentMonth && date.getFullYear() === currentYear;
-        });
-        const monthTotal = monthCosts.reduce((sum, c) => sum + c.amount, 0);
+        const costs = await costsResponse.json();
+        const groups = await groupsResponse.json();
+        const paymentsData = await paymentsResponse.json();
+        const payments = paymentsData.payments || [];
         
-        // Update stats
-        document.getElementById('total-cost').textContent = formatCurrency(monthTotal);
-        document.getElementById('paid-amount').textContent = formatCurrency(monthTotal * 0.6);
-        document.getElementById('pending-amount').textContent = formatCurrency(monthTotal * 0.4);
+        // Check share status for each cost
+        const costsWithShares = await Promise.all(costs.map(async (cost) => {
+            try {
+                const sharesResponse = await fetch(`${API.COSTS}/${cost.costId}/splits`);
+                if (sharesResponse.ok) {
+                    const shares = await sharesResponse.json();
+                    cost.hasShares = shares && shares.length > 0;
+                    cost.shareCount = shares ? shares.length : 0;
+                } else {
+                    cost.hasShares = false;
+                    cost.shareCount = 0;
+                }
+            } catch (e) {
+                cost.hasShares = false;
+                cost.shareCount = 0;
+            }
+            return cost;
+        }));
         
-        // Load groups for member count
-        const groups = await fetch(API.GROUPS).then(r => r.json());
-        let totalMembers = 0;
-        groups.forEach(g => {
-            if (g.members) totalMembers += g.members.length;
-        });
-        document.getElementById('total-members').textContent = totalMembers;
+        // Filter data by time period
+        const dateRange = getDateRangeForPeriod(currentTimePeriod);
+        const filteredCosts = filterByDateRange(costsWithShares, dateRange);
+        const filteredPayments = filterByDateRange(payments, dateRange);
         
-        // Load recent activities
-        loadRecentActivities(costs);
+        // Calculate and update stats
+        updateStatsCards(filteredCosts, payments, groups);
+        
+        // Load alerts
+        loadAlerts(filteredCosts, payments, groups);
+        
+        // Load top lists
+        loadTopCosts(filteredCosts);
+        loadTopUnpaidUsers(payments);
+        
+        // Update charts
+        updateCharts(filteredCosts, payments, groups);
+        
+        // Load recent activities (use all costs, not filtered)
+        loadRecentActivities(costsWithShares);
         
     } catch (error) {
         console.error('Error loading overview:', error);
+        showNotification('Lỗi khi tải dữ liệu tổng quan', 'error');
+    }
+}
+
+function getDateRangeForPeriod(period) {
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    
+    if (period === 'custom' && customDateRange) {
+        return customDateRange;
+    }
+    
+    let from, to;
+    
+    switch(period) {
+        case 'today':
+            from = new Date(today);
+            to = new Date(today);
+            to.setHours(23, 59, 59, 999);
+            break;
+        case 'week':
+            const dayOfWeek = now.getDay();
+            from = new Date(today);
+            from.setDate(today.getDate() - dayOfWeek);
+            to = new Date(today);
+            to.setHours(23, 59, 59, 999);
+            break;
+        case 'month':
+            from = new Date(now.getFullYear(), now.getMonth(), 1);
+            to = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+            break;
+        case 'quarter':
+            const quarter = Math.floor(now.getMonth() / 3);
+            from = new Date(now.getFullYear(), quarter * 3, 1);
+            to = new Date(now.getFullYear(), (quarter + 1) * 3, 0, 23, 59, 59, 999);
+            break;
+        case 'year':
+            from = new Date(now.getFullYear(), 0, 1);
+            to = new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999);
+            break;
+        default:
+            from = new Date(now.getFullYear(), now.getMonth(), 1);
+            to = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+    }
+    
+    return { from, to };
+}
+
+function filterByDateRange(items, dateRange) {
+    if (!dateRange || !dateRange.from || !dateRange.to) return items;
+    
+    return items.filter(item => {
+        const itemDate = new Date(item.createdAt || item.paymentDate || item.date);
+        return itemDate >= dateRange.from && itemDate <= dateRange.to;
+    });
+}
+
+function updateStatsCards(costs, payments, groups) {
+    // Total costs
+    const totalCost = costs.reduce((sum, c) => sum + (c.amount || 0), 0);
+    document.getElementById('total-cost').textContent = formatCurrency(totalCost);
+    
+    // Paid amount
+    const paidPayments = payments.filter(p => p.status === 'PAID');
+    const paidAmount = paidPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
+    document.getElementById('paid-amount').textContent = formatCurrency(paidAmount);
+    
+    // Pending amount
+    const pendingPayments = payments.filter(p => p.status === 'PENDING');
+    const pendingAmount = pendingPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
+    document.getElementById('pending-amount').textContent = formatCurrency(pendingAmount);
+    
+    // Overdue amount
+    const overduePayments = payments.filter(p => p.status === 'OVERDUE');
+    const overdueAmount = overduePayments.reduce((sum, p) => sum + (p.amount || 0), 0);
+    document.getElementById('overdue-amount').textContent = formatCurrency(overdueAmount);
+    document.getElementById('overdue-count-value').textContent = overduePayments.length;
+    
+    // Total members
+    let totalMembers = 0;
+    const uniqueVehicles = new Set();
+    groups.forEach(g => {
+        // API trả về memberCount (số), không phải members (array)
+        if (g.memberCount) totalMembers += g.memberCount;
+        if (g.vehicleId) uniqueVehicles.add(g.vehicleId);
+    });
+    document.getElementById('total-members').textContent = totalMembers;
+    
+    // Total groups
+    document.getElementById('total-groups').textContent = groups.length;
+    
+    // Total vehicles
+    document.getElementById('total-vehicles').textContent = uniqueVehicles.size;
+    
+    // Payment rate
+    const totalPaymentAmount = paidAmount + pendingAmount;
+    const paymentRate = totalPaymentAmount > 0 ? ((paidAmount / totalPaymentAmount) * 100).toFixed(1) : 0;
+    document.getElementById('payment-rate').textContent = paymentRate + '%';
+    
+    // Update trends (simplified - can be enhanced with previous period comparison)
+    updateTrend('total-cost-trend', 0);
+    updateTrend('paid-amount-trend', 0);
+    updateTrend('pending-amount-trend', 0);
+    updateTrend('total-members-trend', 0);
+    updateTrend('total-groups-trend', 0);
+    updateTrend('total-vehicles-trend', 0);
+    updateTrend('payment-rate-trend', 0);
+}
+
+function updateTrend(elementId, change) {
+    const element = document.getElementById(elementId);
+    if (!element) return;
+    
+    if (change === 0) {
+        element.innerHTML = '<i class="fas fa-minus"></i> -';
+        element.className = 'stat-trend';
+    } else if (change > 0) {
+        element.innerHTML = `<i class="fas fa-arrow-up"></i> ${Math.abs(change).toFixed(1)}%`;
+        element.className = 'stat-trend positive';
+    } else {
+        element.innerHTML = `<i class="fas fa-arrow-down"></i> ${Math.abs(change).toFixed(1)}%`;
+        element.className = 'stat-trend negative';
+    }
+}
+
+function loadAlerts(costs, payments, groups) {
+    const alertsSection = document.getElementById('alerts-section');
+    if (!alertsSection) return;
+    
+    const alerts = [];
+    
+    // Overdue payments alert
+    const overduePayments = payments.filter(p => p.status === 'OVERDUE');
+    if (overduePayments.length > 0) {
+        const overdueAmount = overduePayments.reduce((sum, p) => sum + (p.amount || 0), 0);
+        alerts.push({
+            type: 'danger',
+            icon: 'exclamation-triangle',
+            title: `${overduePayments.length} khoản thanh toán quá hạn`,
+            message: `Tổng số tiền: ${formatCurrency(overdueAmount)}`,
+            action: 'Xem chi tiết',
+            actionType: 'payment-tracking'
+        });
+    }
+    
+    // Unshared costs alert
+    const unsharedCosts = costs.filter(c => {
+        // Check if cost has shares
+        return !c.hasShares;
+    });
+    if (unsharedCosts.length > 0) {
+        alerts.push({
+            type: 'warning',
+            icon: 'share-alt',
+            title: `${unsharedCosts.length} chi phí chưa được chia`,
+            message: 'Cần phân chia chi phí để tính toán thanh toán',
+            action: 'Xem chi tiết',
+            actionType: 'cost-management'
+        });
+    }
+    
+    // Empty groups alert
+    const emptyGroups = groups.filter(g => !g.memberCount || g.memberCount === 0);
+    if (emptyGroups.length > 0) {
+        alerts.push({
+            type: 'info',
+            icon: 'users',
+            title: `${emptyGroups.length} nhóm chưa có thành viên`,
+            message: 'Cần thêm thành viên vào nhóm để sử dụng các tính năng',
+            action: 'Quản lý nhóm',
+            actionType: 'group-management'
+        });
+    }
+    
+    // Render alerts
+    if (alerts.length === 0) {
+        alertsSection.innerHTML = '';
+    } else {
+        alertsSection.innerHTML = alerts.map(alert => `
+            <div class="alert-item ${alert.type}">
+                <div class="alert-icon">
+                    <i class="fas fa-${alert.icon}"></i>
+                </div>
+                <div class="alert-content">
+                    <div class="alert-title">${alert.title}</div>
+                    <div class="alert-message">${alert.message}</div>
+                </div>
+                <button class="alert-action" onclick="switchSection('${alert.actionType}')">${alert.action}</button>
+            </div>
+        `).join('');
+    }
+}
+
+function loadTopCosts(costs) {
+    const topCostsList = document.getElementById('top-costs-list');
+    if (!topCostsList) return;
+    
+    const sortedCosts = [...costs]
+        .sort((a, b) => (b.amount || 0) - (a.amount || 0))
+        .slice(0, 5);
+    
+    if (sortedCosts.length === 0) {
+        topCostsList.innerHTML = '<p style="text-align: center; color: var(--text-light); padding: 2rem;">Không có dữ liệu</p>';
+        return;
+    }
+    
+    topCostsList.innerHTML = sortedCosts.map((cost, index) => `
+        <div class="top-list-item">
+            <div class="top-list-item-rank ${index === 0 ? 'top-1' : index === 1 ? 'top-2' : index === 2 ? 'top-3' : ''}">
+                ${index + 1}
+            </div>
+            <div class="top-list-item-info">
+                <div class="top-list-item-name">${getCostTypeName(cost.costType)}</div>
+                <div class="top-list-item-detail">ID: #${cost.costId} | ${formatDate(cost.createdAt)}</div>
+            </div>
+            <div class="top-list-item-value">${formatCurrency(cost.amount)}</div>
+        </div>
+    `).join('');
+}
+
+function loadTopUnpaidUsers(payments) {
+    const topUnpaidList = document.getElementById('top-unpaid-users-list');
+    if (!topUnpaidList) return;
+    
+    const unpaidPayments = payments.filter(p => p.status === 'PENDING' || p.status === 'OVERDUE');
+    
+    // Group by userId
+    const userTotals = {};
+    unpaidPayments.forEach(p => {
+        const userId = p.userId;
+        if (!userTotals[userId]) {
+            userTotals[userId] = { userId, amount: 0, count: 0 };
+        }
+        userTotals[userId].amount += p.amount || 0;
+        userTotals[userId].count += 1;
+    });
+    
+    const sortedUsers = Object.values(userTotals)
+        .sort((a, b) => b.amount - a.amount)
+        .slice(0, 5);
+    
+    if (sortedUsers.length === 0) {
+        topUnpaidList.innerHTML = '<p style="text-align: center; color: var(--text-light); padding: 2rem;">Không có dữ liệu</p>';
+        return;
+    }
+    
+    topUnpaidList.innerHTML = sortedUsers.map((user, index) => `
+        <div class="top-list-item">
+            <div class="top-list-item-rank ${index === 0 ? 'top-1' : index === 1 ? 'top-2' : index === 2 ? 'top-3' : ''}">
+                ${index + 1}
+            </div>
+            <div class="top-list-item-info">
+                <div class="top-list-item-name">User #${user.userId}</div>
+                <div class="top-list-item-detail">${user.count} khoản chưa thanh toán</div>
+            </div>
+            <div class="top-list-item-value">${formatCurrency(user.amount)}</div>
+        </div>
+    `).join('');
+}
+
+function updateCharts(costs, payments, groups) {
+    // Update monthly chart
+    if (monthlyChart) {
+        updateMonthlyChartData(costs);
+    }
+    
+    // Update category charts
+    if (categoryChart) {
+        updateCategoryChartData(costs);
+    }
+    
+    // Update category bar chart
+    if (categoryBarChart) {
+        updateCategoryBarChartData(costs);
+    }
+    
+    // Update payment rate chart
+    if (paymentRateChart) {
+        updatePaymentRateChartData(payments);
     }
 }
 
@@ -161,7 +471,7 @@ function initCharts() {
                 labels: ['T1', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'T8', 'T9', 'T10', 'T11', 'T12'],
                 datasets: [{
                     label: 'Chi phí',
-                    data: [1200000, 1900000, 1500000, 2100000, 1800000, 2400000, 2200000, 1900000, 2100000, 2300000, 2500000, 2700000],
+                    data: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
                     borderColor: '#3B82F6',
                     backgroundColor: 'rgba(59, 130, 246, 0.1)',
                     tension: 0.4,
@@ -190,7 +500,7 @@ function initCharts() {
         });
     }
     
-    // Category Chart
+    // Category Doughnut Chart
     const categoryCtx = document.getElementById('category-chart');
     if (categoryCtx) {
         categoryChart = new Chart(categoryCtx, {
@@ -198,7 +508,7 @@ function initCharts() {
             data: {
                 labels: ['Sạc điện', 'Bảo dưỡng', 'Bảo hiểm', 'Đăng kiểm', 'Vệ sinh', 'Khác'],
                 datasets: [{
-                    data: [35, 25, 15, 10, 10, 5],
+                    data: [0, 0, 0, 0, 0, 0],
                     backgroundColor: [
                         '#3B82F6',
                         '#10B981',
@@ -221,7 +531,297 @@ function initCharts() {
         });
     }
     
+    // Category Bar Chart
+    const categoryBarCtx = document.getElementById('category-bar-chart');
+    if (categoryBarCtx) {
+        categoryBarChart = new Chart(categoryBarCtx, {
+            type: 'bar',
+            data: {
+                labels: ['Sạc điện', 'Bảo dưỡng', 'Bảo hiểm', 'Đăng kiểm', 'Vệ sinh', 'Khác'],
+                datasets: [{
+                    label: 'Chi phí',
+                    data: [0, 0, 0, 0, 0, 0],
+                    backgroundColor: [
+                        '#3B82F6',
+                        '#10B981',
+                        '#F59E0B',
+                        '#EF4444',
+                        '#8B5CF6',
+                        '#6B7280'
+                    ]
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function(value) {
+                                return (value / 1000000).toFixed(1) + 'M';
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+    
+    // Payment Rate Chart
+    const paymentRateCtx = document.getElementById('payment-rate-chart');
+    if (paymentRateCtx) {
+        paymentRateChart = new Chart(paymentRateCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Đã thanh toán', 'Chưa thanh toán', 'Quá hạn'],
+                datasets: [{
+                    data: [0, 0, 0],
+                    backgroundColor: [
+                        '#10B981',
+                        '#F59E0B',
+                        '#EF4444'
+                    ]
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    }
+                }
+            }
+        });
+    }
+    
     chartsInitialized = true;
+}
+
+function updateMonthlyChartData(costs) {
+    if (!monthlyChart) return;
+    
+    const year = parseInt(document.getElementById('year-select')?.value || new Date().getFullYear());
+    const monthlyData = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+    
+    costs.forEach(cost => {
+        const date = new Date(cost.createdAt);
+        if (date.getFullYear() === year) {
+            const month = date.getMonth();
+            monthlyData[month] += cost.amount || 0;
+        }
+    });
+    
+    monthlyChart.data.datasets[0].data = monthlyData;
+    monthlyChart.update();
+}
+
+function updateMonthlyChart() {
+    loadOverviewData();
+}
+
+function updateCategoryChartData(costs) {
+    if (!categoryChart) return;
+    
+    const categoryTotals = {
+        'ElectricCharge': 0,
+        'Maintenance': 0,
+        'Insurance': 0,
+        'Inspection': 0,
+        'Cleaning': 0,
+        'Other': 0
+    };
+    
+    costs.forEach(cost => {
+        const type = cost.costType || 'Other';
+        categoryTotals[type] = (categoryTotals[type] || 0) + (cost.amount || 0);
+    });
+    
+    categoryChart.data.datasets[0].data = [
+        categoryTotals['ElectricCharge'],
+        categoryTotals['Maintenance'],
+        categoryTotals['Insurance'],
+        categoryTotals['Inspection'],
+        categoryTotals['Cleaning'],
+        categoryTotals['Other']
+    ];
+    
+    categoryChart.update();
+}
+
+function updateCategoryBarChartData(costs) {
+    if (!categoryBarChart) return;
+    
+    const categoryTotals = {
+        'ElectricCharge': 0,
+        'Maintenance': 0,
+        'Insurance': 0,
+        'Inspection': 0,
+        'Cleaning': 0,
+        'Other': 0
+    };
+    
+    costs.forEach(cost => {
+        const type = cost.costType || 'Other';
+        categoryTotals[type] = (categoryTotals[type] || 0) + (cost.amount || 0);
+    });
+    
+    categoryBarChart.data.datasets[0].data = [
+        categoryTotals['ElectricCharge'],
+        categoryTotals['Maintenance'],
+        categoryTotals['Insurance'],
+        categoryTotals['Inspection'],
+        categoryTotals['Cleaning'],
+        categoryTotals['Other']
+    ];
+    
+    categoryBarChart.update();
+}
+
+function updatePaymentRateChartData(payments) {
+    if (!paymentRateChart) return;
+    
+    const paid = payments.filter(p => p.status === 'PAID').reduce((sum, p) => sum + (p.amount || 0), 0);
+    const pending = payments.filter(p => p.status === 'PENDING').reduce((sum, p) => sum + (p.amount || 0), 0);
+    const overdue = payments.filter(p => p.status === 'OVERDUE').reduce((sum, p) => sum + (p.amount || 0), 0);
+    
+    paymentRateChart.data.datasets[0].data = [paid, pending, overdue];
+    paymentRateChart.update();
+}
+
+// ============ TIME PERIOD FILTERS ============
+function setTimePeriod(period) {
+    currentTimePeriod = period;
+    
+    // Update button states
+    document.querySelectorAll('.btn-time-filter').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    const activeBtn = document.querySelector(`[data-period="${period}"]`);
+    if (activeBtn) {
+        activeBtn.classList.add('active');
+    }
+    
+    // Reload data
+    loadOverviewData();
+}
+
+function showCustomDateRange() {
+    openModal('custom-date-modal');
+    
+    // Set default dates (last 30 days)
+    const to = new Date();
+    const from = new Date();
+    from.setDate(from.getDate() - 30);
+    
+    document.getElementById('custom-date-from').value = from.toISOString().split('T')[0];
+    document.getElementById('custom-date-to').value = to.toISOString().split('T')[0];
+}
+
+function applyCustomDateRange() {
+    const fromStr = document.getElementById('custom-date-from').value;
+    const toStr = document.getElementById('custom-date-to').value;
+    
+    if (!fromStr || !toStr) {
+        showNotification('Vui lòng chọn đầy đủ từ ngày và đến ngày', 'warning');
+        return;
+    }
+    
+    customDateRange = {
+        from: new Date(fromStr),
+        to: new Date(toStr)
+    };
+    
+    customDateRange.to.setHours(23, 59, 59, 999);
+    
+    currentTimePeriod = 'custom';
+    
+    // Update button states
+    document.querySelectorAll('.btn-time-filter').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    const customBtn = document.querySelector(`[data-period="custom"]`);
+    if (customBtn) {
+        customBtn.classList.add('active');
+    }
+    
+    closeCustomDateModal();
+    loadOverviewData();
+}
+
+function closeCustomDateModal() {
+    closeModal('custom-date-modal');
+}
+
+// ============ EXPORT REPORT ============
+function exportOverviewReport() {
+    try {
+        // Get current data
+        Promise.all([
+            fetch(API.COSTS).then(r => r.json()).catch(() => []),
+            fetch(API.GROUPS).then(r => r.json()).catch(() => []),
+            fetch(`${API.PAYMENTS}/admin/tracking`).then(r => r.json()).catch(() => ({ payments: [] }))
+        ]).then(([costs, groups, paymentsData]) => {
+            const payments = paymentsData.payments || [];
+            
+            // Create CSV content
+            let csv = 'BÁO CÁO TỔNG QUAN\n\n';
+            csv += `Thời gian: ${new Date().toLocaleString('vi-VN')}\n`;
+            csv += `Kỳ: ${getPeriodLabel(currentTimePeriod)}\n\n`;
+            
+            // Statistics
+            csv += 'THỐNG KÊ TỔNG QUAN\n';
+            csv += `Tổng chi phí,${formatCurrency(costs.reduce((sum, c) => sum + (c.amount || 0), 0))}\n`;
+            csv += `Tổng số nhóm,${groups.length}\n`;
+            csv += `Tổng số thành viên,${groups.reduce((sum, g) => sum + (g.memberCount || 0), 0)}\n`;
+            csv += `Tổng số thanh toán,${payments.length}\n\n`;
+            
+            // Top costs
+            csv += 'TOP 5 CHI PHÍ CAO NHẤT\n';
+            csv += 'Thứ hạng,Loại chi phí,Số tiền\n';
+            const topCosts = [...costs].sort((a, b) => (b.amount || 0) - (a.amount || 0)).slice(0, 5);
+            topCosts.forEach((cost, index) => {
+                csv += `${index + 1},${getCostTypeName(cost.costType)},${formatCurrency(cost.amount)}\n`;
+            });
+            
+            // Create download link
+            const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            const url = URL.createObjectURL(blob);
+            
+            link.setAttribute('href', url);
+            link.setAttribute('download', `overview_report_${new Date().toISOString().split('T')[0]}.csv`);
+            link.style.visibility = 'hidden';
+            
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            
+            showNotification('Đã xuất báo cáo thành công!', 'success');
+        });
+        
+    } catch (error) {
+        console.error('Error exporting report:', error);
+        showNotification('Lỗi khi xuất báo cáo', 'error');
+    }
+}
+
+function getPeriodLabel(period) {
+    const labels = {
+        'today': 'Hôm nay',
+        'week': 'Tuần này',
+        'month': 'Tháng này',
+        'quarter': 'Quý này',
+        'year': 'Năm này',
+        'custom': 'Tùy chọn'
+    };
+    return labels[period] || period;
 }
 
 // ============ COST MANAGEMENT ============
@@ -592,15 +1192,72 @@ function initSplitMethodToggle() {
 
 async function loadGroupsForSplit() {
     try {
+        console.log('Loading groups for split form...');
         const response = await fetch(API.GROUPS);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
         const groups = await response.json();
+        console.log('Groups loaded:', groups);
+        
+        if (!Array.isArray(groups)) {
+            console.error('Groups response is not an array:', groups);
+            throw new Error('Invalid response format from server');
+        }
         
         const select = document.getElementById('group-select');
-        select.innerHTML = '<option value="">-- Chọn nhóm --</option>' +
-            groups.map(g => `<option value="${g.groupId}">${g.groupName}</option>`).join('');
+        if (!select) {
+            console.error('Group select element not found');
+            return;
+        }
+        
+        if (groups.length === 0) {
+            select.innerHTML = '<option value="">-- Không có nhóm nào --</option>';
+            console.warn('No groups found in database');
+            return;
+        }
+        
+        // Clear existing options
+        select.innerHTML = '';
+        
+        // Add default option
+        const defaultOption = document.createElement('option');
+        defaultOption.value = '';
+        defaultOption.textContent = '-- Chọn nhóm --';
+        select.appendChild(defaultOption);
+        
+        // Add groups with vehicleId stored in data attribute
+        groups.forEach(g => {
+            const option = document.createElement('option');
+            const groupId = g.groupId || g.id;
+            const groupName = g.groupName || g.name || `Nhóm #${groupId}`;
+            const vehicleId = g.vehicleId || null;
+            
+            option.value = String(groupId);
+            
+            // Store vehicleId in data attribute
+            if (vehicleId) {
+                option.setAttribute('data-vehicle-id', String(vehicleId));
+                option.textContent = `${groupName} (Xe ID: ${vehicleId})`;
+            } else {
+                option.textContent = `${groupName} (⚠️ Chưa có xe)`;
+            }
+            
+            select.appendChild(option);
+        });
+        
+        console.log(`Successfully loaded ${groups.length} groups`);
             
     } catch (error) {
         console.error('Error loading groups:', error);
+        const select = document.getElementById('group-select');
+        if (select) {
+            select.innerHTML = '<option value="">-- Lỗi tải danh sách nhóm --</option>';
+        }
+        // Show user-friendly error message
+        alert('Không thể tải danh sách nhóm từ database. Vui lòng kiểm tra:\n1. Group Management Service đang chạy (port 8082)\n2. Kết nối database\n3. Console để xem lỗi chi tiết');
     }
 }
 
@@ -623,7 +1280,15 @@ function initAutoSplitForm() {
 }
 
 async function previewSplit() {
-    const data = getFormData();
+    let data;
+    
+    try {
+        data = getFormData();
+    } catch (error) {
+        console.error('Error getting form data:', error);
+        showNotification(error.message || 'Lỗi khi lấy dữ liệu form', 'error');
+        return;
+    }
     
     try {
         const response = await fetch(`${API.AUTO_SPLIT}/preview`, {
@@ -670,7 +1335,15 @@ async function previewSplit() {
 }
 
 async function createAndSplit() {
-    const data = getFormData();
+    let data;
+    
+    try {
+        data = getFormData();
+    } catch (error) {
+        console.error('Error getting form data:', error);
+        showNotification(error.message || 'Lỗi khi lấy dữ liệu form', 'error');
+        return;
+    }
     
     console.log('=== CREATING COST ===');
     console.log('Data:', data);
@@ -709,15 +1382,36 @@ async function createAndSplit() {
 }
 
 function getFormData() {
+    const groupSelect = document.getElementById('group-select');
+    const selectedOption = groupSelect.options[groupSelect.selectedIndex];
+    
+    // Get groupId from option value
+    const groupId = parseInt(groupSelect.value);
+    if (!groupId) {
+        throw new Error('Vui lòng chọn nhóm');
+    }
+    
+    // Get vehicleId from data attribute
+    const vehicleIdAttr = selectedOption ? selectedOption.getAttribute('data-vehicle-id') : null;
+    const vehicleId = vehicleIdAttr ? parseInt(vehicleIdAttr) : null;
+    
+    if (!vehicleId) {
+        throw new Error('Nhóm này chưa có thông tin xe. Vui lòng chọn nhóm khác hoặc cập nhật thông tin nhóm.');
+    }
+    
+    // Get month and year, default to current month/year if not provided
+    const month = parseInt(document.getElementById('month').value) || new Date().getMonth() + 1;
+    const year = parseInt(document.getElementById('year').value) || new Date().getFullYear();
+    
     return {
-        vehicleId: parseInt(document.getElementById('group-select').value),
+        groupId: groupId,
+        vehicleId: vehicleId,
         costType: document.getElementById('cost-type').value,
         amount: parseFloat(document.getElementById('amount').value),
         description: document.getElementById('description').value,
         splitMethod: document.getElementById('split-method').value,
-        groupId: parseInt(document.getElementById('group-select').value),
-        month: parseInt(document.getElementById('month').value),
-        year: parseInt(document.getElementById('year').value)
+        month: month,
+        year: year
     };
 }
 
@@ -1941,7 +2635,7 @@ async function openCostSplitModal(costId) {
         customSplitMembers = [];
         
         // Load groups for dropdown
-        await loadGroupsForSplit();
+        await loadGroupsForCostSplitModal();
         
         // Setup form handlers
         setupSplitFormHandlers();
@@ -1983,17 +2677,50 @@ function setupSplitFormHandlers() {
     };
 }
 
-async function loadGroupsForSplit() {
+async function loadGroupsForCostSplitModal() {
     try {
+        console.log('Loading groups for split modal...');
         const response = await fetch(API.GROUPS);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
         const groups = await response.json();
+        console.log('Groups loaded for split modal:', groups);
+        
+        if (!Array.isArray(groups)) {
+            console.error('Groups response is not an array:', groups);
+            throw new Error('Invalid response format from server');
+        }
         
         const select = document.getElementById('split-group-id');
+        if (!select) {
+            console.error('Split group select element not found');
+            return;
+        }
+        
+        if (groups.length === 0) {
+            select.innerHTML = '<option value="">-- Không có nhóm nào --</option>';
+            console.warn('No groups found in database');
+            return;
+        }
+        
         select.innerHTML = '<option value="">-- Chọn nhóm --</option>' +
-            groups.map(g => `<option value="${g.groupId}">${g.groupName || 'Nhóm #' + g.groupId}</option>`).join('');
+            groups.map(g => {
+                const groupId = g.groupId || g.id;
+                const groupName = g.groupName || g.name || `Nhóm #${groupId}`;
+                return `<option value="${groupId}">${groupName}</option>`;
+            }).join('');
+        
+        console.log(`Successfully loaded ${groups.length} groups for split modal`);
             
     } catch (error) {
-        console.error('Error loading groups:', error);
+        console.error('Error loading groups for split modal:', error);
+        const select = document.getElementById('split-group-id');
+        if (select) {
+            select.innerHTML = '<option value="">-- Lỗi tải danh sách nhóm --</option>';
+        }
     }
 }
 
@@ -2293,5 +3020,693 @@ function closeCostSplitModal() {
     closeModal('cost-split-modal');
     document.getElementById('split-preview-section').style.display = 'none';
     customSplitMembers = [];
+}
+
+// ============ FUND MANAGEMENT SECTION ============
+let currentFundId = null;
+let currentFundGroupId = null;
+
+async function loadFundManagementData() {
+    try {
+        // Load groups
+        const groupsResponse = await fetch(API.GROUPS);
+        const groups = groupsResponse.ok ? await groupsResponse.json() : [];
+        
+        // Populate group filter
+        const groupFilter = document.getElementById('fund-group-filter');
+        if (groupFilter) {
+            groupFilter.innerHTML = '<option value="">Tất cả nhóm</option>' +
+                groups.map(g => `<option value="${g.groupId}">${g.groupName}</option>`).join('');
+        }
+        
+        // Load all funds with statistics
+        const fundsData = await Promise.all(
+            groups.map(async (group) => {
+                try {
+                    const fundResponse = await fetch(`${API.FUND}/group/${group.groupId}`);
+                    if (fundResponse.ok) {
+                        const fund = await fundResponse.json();
+                        
+                        // Fetch statistics for this fund
+                        let statistics = null;
+                        try {
+                            const statsUrl = `/api/funds/${fund.fundId}/statistics`;
+                            console.log(`Fetching statistics from: ${statsUrl}`);
+                            const statsResponse = await fetch(statsUrl);
+                            if (statsResponse.ok) {
+                                statistics = await statsResponse.json();
+                                console.log(`Statistics for fund ${fund.fundId}:`, statistics);
+                            } else {
+                                console.warn(`Failed to load statistics for fund ${fund.fundId}: ${statsResponse.status}`);
+                            }
+                        } catch (e) {
+                            console.error(`Error loading statistics for fund ${fund.fundId}:`, e);
+                        }
+                        
+                        // Fetch transaction count
+                        let transactionCount = 0;
+                        try {
+                            const transUrl = `/api/funds/${fund.fundId}/transactions`;
+                            const transResponse = await fetch(transUrl);
+                            if (transResponse.ok) {
+                                const transactions = await transResponse.json();
+                                transactionCount = transactions ? transactions.length : 0;
+                            }
+                        } catch (e) {
+                            console.error(`Error loading transactions for fund ${fund.fundId}:`, e);
+                        }
+                        
+                        return { 
+                            ...fund, 
+                            groupName: group.groupName, 
+                            groupId: group.groupId,
+                            totalDeposit: statistics ? (statistics.totalDeposit || 0) : 0,
+                            totalWithdraw: statistics ? (statistics.totalWithdraw || 0) : 0,
+                            transactionCount: transactionCount
+                        };
+                    }
+                } catch (e) {
+                    console.warn(`No fund for group ${group.groupId}:`, e);
+                }
+                return null;
+            })
+        );
+        
+        const funds = fundsData.filter(f => f !== null);
+        console.log(`Loaded ${funds.length} funds with statistics`);
+        
+        // Apply filters
+        const filteredFunds = applyFundFilters(funds);
+        
+        // Update stats
+        updateFundStats(funds);
+        
+        // Render funds table
+        renderFundsTable(filteredFunds);
+        
+        // Load pending requests
+        loadPendingWithdrawRequests();
+        
+    } catch (error) {
+        console.error('Error loading fund management data:', error);
+        showNotification('Lỗi khi tải dữ liệu quỹ', 'error');
+    }
+}
+
+function applyFundFilters(funds) {
+    const groupFilter = document.getElementById('fund-group-filter')?.value;
+    const statusFilter = document.getElementById('fund-status-filter')?.value;
+    const searchInput = document.getElementById('fund-search-input')?.value.toLowerCase();
+    
+    let filtered = funds;
+    
+    if (groupFilter) {
+        filtered = filtered.filter(f => f.groupId == groupFilter);
+    }
+    
+    if (statusFilter) {
+        // Assuming fund has status field
+        filtered = filtered.filter(f => f.status === statusFilter);
+    }
+    
+    if (searchInput) {
+        filtered = filtered.filter(f => 
+            f.groupName?.toLowerCase().includes(searchInput) ||
+            f.fundId?.toString().includes(searchInput)
+        );
+    }
+    
+    return filtered;
+}
+
+function updateFundStats(funds) {
+    let totalBalance = 0;
+    let totalDeposits = 0;
+    let totalWithdraws = 0;
+    // Don't reset pendingCount here - it will be updated by loadPendingWithdrawRequests()
+    // Get current pending count if element exists, otherwise keep it 0
+    const pendingCountElement = document.getElementById('pending-requests-count');
+    let pendingCount = pendingCountElement ? parseInt(pendingCountElement.textContent) || 0 : 0;
+    
+    // Calculate stats from funds data (which now includes statistics)
+    funds.forEach(fund => {
+        totalBalance += fund.currentBalance || 0;
+        totalDeposits += fund.totalDeposit || 0;
+        totalWithdraws += fund.totalWithdraw || 0;
+    });
+    
+    console.log(`Fund stats - Balance: ${totalBalance}, Deposits: ${totalDeposits}, Withdraws: ${totalWithdraws}`);
+    
+    // Update UI
+    const balanceEl = document.getElementById('total-fund-balance');
+    const countEl = document.getElementById('total-funds-count');
+    const depositsEl = document.getElementById('total-deposits');
+    const withdrawsEl = document.getElementById('total-withdraws');
+    
+    if (balanceEl) balanceEl.textContent = formatCurrency(totalBalance);
+    if (countEl) countEl.textContent = funds.length;
+    if (depositsEl) depositsEl.textContent = formatCurrency(totalDeposits);
+    if (withdrawsEl) withdrawsEl.textContent = formatCurrency(totalWithdraws);
+    // Don't update pending count here - it will be updated by loadPendingWithdrawRequests()
+}
+
+function renderFundsTable(funds) {
+    const tbody = document.getElementById('funds-tbody');
+    if (!tbody) return;
+    
+    if (funds.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="8" style="text-align: center; padding: 2rem;">
+                    Không có quỹ nào
+                </td>
+            </tr>
+        `;
+        return;
+    }
+    
+    tbody.innerHTML = funds.map(fund => `
+        <tr>
+            <td>${fund.fundId}</td>
+            <td><strong>${fund.groupName || 'N/A'}</strong></td>
+            <td><strong style="color: var(--primary);">${formatCurrency(fund.currentBalance || 0)}</strong></td>
+            <td>${formatCurrency(fund.totalDeposit || 0)}</td>
+            <td>${formatCurrency(fund.totalWithdraw || 0)}</td>
+            <td>
+                <span class="badge badge-info">${fund.transactionCount || 0}</span>
+            </td>
+            <td>
+                <span class="badge badge-success">Hoạt động</span>
+            </td>
+            <td>
+                <button class="btn btn-sm btn-primary" onclick="viewFundDetail(${fund.fundId}, ${fund.groupId})">
+                    <i class="fas fa-eye"></i> Chi tiết
+                </button>
+                <button class="btn btn-sm btn-info" onclick="viewFundTransactions(${fund.fundId}, ${fund.groupId})">
+                    <i class="fas fa-history"></i> Lịch sử
+                </button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+async function viewFundDetail(fundId, groupId) {
+    try {
+        const response = await fetch(`${API.FUND}/group/${groupId}`);
+        if (!response.ok) throw new Error('Failed to load fund');
+        
+        const fund = await response.json();
+        
+        // Also get summary
+        let summary = null;
+        try {
+            const summaryResponse = await fetch(`/api/funds/${fundId}/summary`);
+            if (summaryResponse.ok) {
+                summary = await summaryResponse.json();
+            }
+        } catch (e) {
+            console.warn('Could not load summary');
+        }
+        
+        const content = `
+            <div style="display: grid; gap: 1.5rem;">
+                <div class="info-box" style="background: var(--light); padding: 1rem; border-radius: 8px;">
+                    <h4 style="margin-bottom: 1rem;">Thông tin quỹ</h4>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                        <div>
+                            <strong>Fund ID:</strong> ${fund.fundId}
+                        </div>
+                        <div>
+                            <strong>Group ID:</strong> ${fund.groupId}
+                        </div>
+                        <div>
+                            <strong>Tên nhóm:</strong> ${fund.groupName || 'N/A'}
+                        </div>
+                        <div>
+                            <strong>Số dư hiện tại:</strong> 
+                            <span style="color: var(--primary); font-weight: bold; font-size: 1.2rem;">
+                                ${formatCurrency(fund.currentBalance || 0)}
+                            </span>
+                        </div>
+                        <div>
+                            <strong>Ngày tạo:</strong> ${formatDate(fund.createdAt)}
+                        </div>
+                        <div>
+                            <strong>Cập nhật:</strong> ${formatDate(fund.updatedAt)}
+                        </div>
+                    </div>
+                </div>
+                ${summary ? `
+                <div class="info-box" style="background: var(--light); padding: 1rem; border-radius: 8px;">
+                    <h4 style="margin-bottom: 1rem;">Thống kê</h4>
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem;">
+                        <div>
+                            <div style="color: var(--text-light); font-size: 0.9rem;">Tổng nạp</div>
+                            <div style="color: var(--success); font-weight: bold; font-size: 1.1rem;">
+                                ${formatCurrency(summary.totalDeposit || 0)}
+                            </div>
+                        </div>
+                        <div>
+                            <div style="color: var(--text-light); font-size: 0.9rem;">Tổng rút</div>
+                            <div style="color: var(--warning); font-weight: bold; font-size: 1.1rem;">
+                                ${formatCurrency(summary.totalWithdraw || 0)}
+                            </div>
+                        </div>
+                        <div>
+                            <div style="color: var(--text-light); font-size: 0.9rem;">Giao dịch</div>
+                            <div style="font-weight: bold; font-size: 1.1rem;">
+                                ${summary.transactionCount || 0}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                ` : ''}
+            </div>
+        `;
+        
+        document.getElementById('fund-detail-title').textContent = `Chi tiết quỹ - ${fund.groupName || 'N/A'}`;
+        document.getElementById('fund-detail-content').innerHTML = content;
+        openModal('fund-detail-modal');
+        
+    } catch (error) {
+        console.error('Error loading fund detail:', error);
+        showNotification('Lỗi khi tải chi tiết quỹ', 'error');
+    }
+}
+
+async function viewFundTransactions(fundId, groupId) {
+    currentFundId = fundId;
+    currentFundGroupId = groupId;
+    
+    try {
+        const response = await fetch(`/api/funds/${fundId}/transactions`);
+        if (!response.ok) throw new Error('Failed to load transactions');
+        
+        const transactions = await response.json();
+        
+        document.getElementById('fund-transactions-title').textContent = `Lịch sử giao dịch - Fund #${fundId}`;
+        loadFundTransactions(); // Will use currentFundId
+        
+        openModal('fund-transactions-modal');
+    } catch (error) {
+        console.error('Error loading transactions:', error);
+        showNotification('Lỗi khi tải lịch sử giao dịch', 'error');
+    }
+}
+
+async function loadFundTransactions() {
+    if (!currentFundId) return;
+    
+    try {
+        const typeFilter = document.getElementById('transaction-type-filter')?.value || '';
+        const statusFilter = document.getElementById('transaction-status-filter')?.value || '';
+        
+        let url = `/api/funds/${currentFundId}/transactions`;
+        const params = new URLSearchParams();
+        if (typeFilter) params.append('type', typeFilter);
+        if (statusFilter) params.append('status', statusFilter);
+        if (params.toString()) url += '?' + params.toString();
+        
+        const response = await fetch(url);
+        if (!response.ok) throw new Error('Failed to load transactions');
+        
+        const transactions = await response.json();
+        
+        const content = `
+            <div style="max-height: 500px; overflow-y: auto;">
+                ${transactions.length === 0 ? '<p style="text-align: center; padding: 2rem;">Không có giao dịch nào</p>' : `
+                <table style="width: 100%; border-collapse: collapse;">
+                    <thead>
+                        <tr style="background: var(--light);">
+                            <th style="padding: 0.75rem; text-align: left; border-bottom: 2px solid var(--border);">ID</th>
+                            <th style="padding: 0.75rem; text-align: left; border-bottom: 2px solid var(--border);">Loại</th>
+                            <th style="padding: 0.75rem; text-align: left; border-bottom: 2px solid var(--border);">Số tiền</th>
+                            <th style="padding: 0.75rem; text-align: left; border-bottom: 2px solid var(--border);">User</th>
+                            <th style="padding: 0.75rem; text-align: left; border-bottom: 2px solid var(--border);">Trạng thái</th>
+                            <th style="padding: 0.75rem; text-align: left; border-bottom: 2px solid var(--border);">Ngày</th>
+                            <th style="padding: 0.75rem; text-align: left; border-bottom: 2px solid var(--border);">Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${transactions.map(t => `
+                            <tr>
+                                <td style="padding: 0.75rem; border-bottom: 1px solid var(--border);">${t.transactionId}</td>
+                                <td style="padding: 0.75rem; border-bottom: 1px solid var(--border);">
+                                    <span class="badge ${t.transactionType === 'DEPOSIT' ? 'badge-success' : 'badge-warning'}">
+                                        ${t.transactionType === 'DEPOSIT' ? 'Nạp' : 'Rút'}
+                                    </span>
+                                </td>
+                                <td style="padding: 0.75rem; border-bottom: 1px solid var(--border); font-weight: bold;">
+                                    ${formatCurrency(t.amount || 0)}
+                                </td>
+                                <td style="padding: 0.75rem; border-bottom: 1px solid var(--border);">${t.userId || 'N/A'}</td>
+                                <td style="padding: 0.75rem; border-bottom: 1px solid var(--border);">
+                                    <span class="badge ${getStatusBadgeClass(t.status)}">
+                                        ${getStatusText(t.status)}
+                                    </span>
+                                </td>
+                                <td style="padding: 0.75rem; border-bottom: 1px solid var(--border);">${formatDate(t.date || t.createdAt || t.transactionDate)}</td>
+                                <td style="padding: 0.75rem; border-bottom: 1px solid var(--border);">
+                                    ${(t.status === 'PENDING' || t.status === 'Pending') ? `
+                                        <button class="btn btn-sm btn-success" onclick="approveTransaction(${t.transactionId})">
+                                            <i class="fas fa-check"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-danger" onclick="rejectTransaction(${t.transactionId})">
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                    ` : '-'}
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+                `}
+            </div>
+        `;
+        
+        document.getElementById('fund-transactions-content').innerHTML = content;
+        
+    } catch (error) {
+        console.error('Error loading transactions:', error);
+        document.getElementById('fund-transactions-content').innerHTML = 
+            '<p style="color: var(--danger); text-align: center; padding: 2rem;">Lỗi khi tải giao dịch</p>';
+    }
+}
+
+async function loadPendingWithdrawRequests() {
+    try {
+        console.log('Loading pending withdraw requests...');
+        // Load all groups and their pending requests
+        const groupsResponse = await fetch(API.GROUPS);
+        if (!groupsResponse.ok) {
+            console.error('Failed to load groups:', groupsResponse.status);
+            return;
+        }
+        const groups = await groupsResponse.json();
+        console.log(`Found ${groups.length} groups`);
+        
+        const allPendingRequests = [];
+        
+        for (const group of groups) {
+            try {
+                const fundResponse = await fetch(`${API.FUND}/group/${group.groupId}`);
+                if (fundResponse.ok) {
+                    const fund = await fundResponse.json();
+                    console.log(`Found fund ${fund.fundId} for group ${group.groupId}`);
+                    
+                    const pendingUrl = `/api/funds/${fund.fundId}/pending-requests`;
+                    console.log(`Fetching pending requests from: ${pendingUrl}`);
+                    
+                    const requestsResponse = await fetch(pendingUrl);
+                    if (requestsResponse.ok) {
+                        const requests = await requestsResponse.json();
+                        console.log(`Found ${requests.length} pending requests for fund ${fund.fundId}`);
+                        
+                        // Filter to ensure we only get Withdraw transactions with Pending status
+                        requests.forEach(req => {
+                            // Enum values: Deposit, Withdraw (capitalized) and Pending, Approved, Rejected, Completed
+                            // Check transaction type (case-insensitive for safety)
+                            const transactionType = req.transactionType || req.transaction_type;
+                            const status = req.status || req.transaction_status;
+                            
+                            const isWithdraw = transactionType === 'Withdraw' || 
+                                             transactionType === 'WITHDRAW' ||
+                                             transactionType === 'withdraw';
+                            const isPending = status === 'Pending' || 
+                                            status === 'PENDING' ||
+                                            status === 'pending';
+                            
+                            console.log(`Checking request ${req.transactionId}: type=${transactionType}, status=${status}, isWithdraw=${isWithdraw}, isPending=${isPending}`);
+                            
+                            if (isWithdraw && isPending) {
+                                allPendingRequests.push({
+                                    ...req,
+                                    groupName: group.groupName,
+                                    groupId: group.groupId,
+                                    fundId: fund.fundId
+                                });
+                            }
+                        });
+                    } else {
+                        console.warn(`Failed to load pending requests for fund ${fund.fundId}: ${requestsResponse.status}`);
+                    }
+                } else {
+                    console.log(`No fund found for group ${group.groupId}`);
+                }
+            } catch (e) {
+                console.error(`Error loading fund for group ${group.groupId}:`, e);
+                // Skip groups without funds
+            }
+        }
+        
+        console.log(`Total pending requests found: ${allPendingRequests.length}`);
+        
+        // Update pending count
+        const pendingCountElement = document.getElementById('pending-requests-count');
+        if (pendingCountElement) {
+            pendingCountElement.textContent = allPendingRequests.length;
+        }
+        
+        // Render pending requests
+        const container = document.getElementById('pending-requests-list');
+        if (!container) {
+            console.warn('pending-requests-list container not found');
+            return;
+        }
+        
+        if (allPendingRequests.length === 0) {
+            container.innerHTML = '<p style="text-align: center; padding: 2rem; color: var(--text-light);">Không có yêu cầu nào chờ duyệt</p>';
+            return;
+        }
+        
+        container.innerHTML = allPendingRequests.map(req => `
+            <div class="pending-request-card" style="background: white; padding: 1.5rem; border-radius: 8px; margin-bottom: 1rem; border: 1px solid var(--border);">
+                <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 1rem;">
+                    <div>
+                        <h4 style="margin: 0 0 0.5rem 0;">Yêu cầu rút tiền #${req.transactionId}</h4>
+                        <div style="color: var(--text-light); font-size: 0.9rem;">
+                            Nhóm: <strong>${req.groupName}</strong> | User ID: ${req.userId}
+                        </div>
+                    </div>
+                    <span class="badge badge-warning">Chờ duyệt</span>
+                </div>
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-bottom: 1rem;">
+                    <div>
+                        <div style="color: var(--text-light); font-size: 0.9rem;">Số tiền</div>
+                        <div style="font-weight: bold; font-size: 1.2rem; color: var(--primary);">
+                            ${formatCurrency(req.amount || 0)}
+                        </div>
+                    </div>
+                    <div>
+                        <div style="color: var(--text-light); font-size: 0.9rem;">Mục đích</div>
+                        <div>${req.purpose || 'N/A'}</div>
+                    </div>
+                    <div>
+                        <div style="color: var(--text-light); font-size: 0.9rem;">Ngày tạo</div>
+                        <div>${formatDate(req.date || req.createdAt)}</div>
+                    </div>
+                </div>
+                ${req.receiptUrl ? `
+                    <div style="margin-bottom: 1rem;">
+                        <a href="${req.receiptUrl}" target="_blank" class="btn btn-sm btn-outline">
+                            <i class="fas fa-image"></i> Xem hóa đơn
+                        </a>
+                    </div>
+                ` : ''}
+                <div style="display: flex; gap: 0.5rem;">
+                    <button class="btn btn-sm btn-success" onclick="openWithdrawRequestModal(${req.transactionId}, ${req.fundId}, true)">
+                        <i class="fas fa-check"></i> Phê duyệt
+                    </button>
+                    <button class="btn btn-sm btn-danger" onclick="openWithdrawRequestModal(${req.transactionId}, ${req.fundId}, false)">
+                        <i class="fas fa-times"></i> Từ chối
+                    </button>
+                </div>
+            </div>
+        `).join('');
+        
+    } catch (error) {
+        console.error('Error loading pending requests:', error);
+        showNotification('Lỗi khi tải yêu cầu chờ duyệt', 'error');
+    }
+}
+
+function openWithdrawRequestModal(transactionId, fundId, approve) {
+    document.getElementById('request-id').value = transactionId;
+    document.getElementById('request-action').value = approve ? 'approve' : 'reject';
+    document.getElementById('withdraw-request-title').textContent = 
+        approve ? 'Phê duyệt yêu cầu rút tiền' : 'Từ chối yêu cầu rút tiền';
+    
+    // Load transaction details
+    fetch(`${API.FUND}/transactions/${transactionId}`)
+        .then(res => res.json())
+        .then(transaction => {
+            const content = `
+                <div class="info-box" style="background: var(--light); padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                        <div><strong>Transaction ID:</strong> ${transaction.transactionId}</div>
+                        <div><strong>Fund ID:</strong> ${fundId}</div>
+                        <div><strong>User ID:</strong> ${transaction.userId}</div>
+                        <div><strong>Số tiền:</strong> <span style="color: var(--primary); font-weight: bold;">${formatCurrency(transaction.amount || 0)}</span></div>
+                        <div><strong>Mục đích:</strong> ${transaction.purpose || 'N/A'}</div>
+                        <div><strong>Ngày tạo:</strong> ${formatDate(transaction.createdAt)}</div>
+                    </div>
+                </div>
+            `;
+            document.getElementById('withdraw-request-content').innerHTML = content;
+            openModal('withdraw-request-modal');
+        })
+        .catch(err => {
+            console.error('Error loading transaction:', err);
+            showNotification('Lỗi khi tải chi tiết giao dịch', 'error');
+        });
+}
+
+function approveWithdrawRequest() {
+    const transactionId = document.getElementById('request-id').value;
+    const note = document.getElementById('request-note').value;
+    
+    fetch(`${API.FUND}/transactions/${transactionId}/approve`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ adminId: 1, note: note }) // TODO: Get adminId from session
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            showNotification('Đã phê duyệt yêu cầu thành công!', 'success');
+            closeWithdrawRequestModal();
+            loadFundManagementData();
+        } else {
+            showNotification('Lỗi: ' + (data.error || 'Không thể phê duyệt'), 'error');
+        }
+    })
+    .catch(err => {
+        console.error('Error approving request:', err);
+        showNotification('Lỗi khi phê duyệt yêu cầu', 'error');
+    });
+}
+
+function rejectWithdrawRequest() {
+    const transactionId = document.getElementById('request-id').value;
+    const note = document.getElementById('request-note').value;
+    
+    fetch(`${API.FUND}/transactions/${transactionId}/reject`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ adminId: 1, reason: note }) // TODO: Get adminId from session
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            showNotification('Đã từ chối yêu cầu thành công!', 'success');
+            closeWithdrawRequestModal();
+            loadFundManagementData();
+        } else {
+            showNotification('Lỗi: ' + (data.error || 'Không thể từ chối'), 'error');
+        }
+    })
+    .catch(err => {
+        console.error('Error rejecting request:', err);
+        showNotification('Lỗi khi từ chối yêu cầu', 'error');
+    });
+}
+
+async function approveTransaction(transactionId) {
+    if (!confirm('Bạn có chắc chắn muốn phê duyệt giao dịch này?')) return;
+    
+    try {
+        const response = await fetch(`${API.FUND}/transactions/${transactionId}/approve`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ adminId: 1 })
+        });
+        
+        const data = await response.json();
+        if (data.success) {
+            showNotification('Đã phê duyệt thành công!', 'success');
+            loadFundTransactions();
+            loadPendingWithdrawRequests();
+        } else {
+            showNotification('Lỗi: ' + (data.error || 'Không thể phê duyệt'), 'error');
+        }
+    } catch (error) {
+        console.error('Error approving transaction:', error);
+        showNotification('Lỗi khi phê duyệt', 'error');
+    }
+}
+
+async function rejectTransaction(transactionId) {
+    const reason = prompt('Nhập lý do từ chối:');
+    if (!reason) return;
+    
+    try {
+        const response = await fetch(`${API.FUND}/transactions/${transactionId}/reject`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ adminId: 1, reason: reason })
+        });
+        
+        const data = await response.json();
+        if (data.success) {
+            showNotification('Đã từ chối thành công!', 'success');
+            loadFundTransactions();
+            loadPendingWithdrawRequests();
+        } else {
+            showNotification('Lỗi: ' + (data.error || 'Không thể từ chối'), 'error');
+        }
+    } catch (error) {
+        console.error('Error rejecting transaction:', error);
+        showNotification('Lỗi khi từ chối', 'error');
+    }
+}
+
+function closeFundDetailModal() {
+    closeModal('fund-detail-modal');
+}
+
+function closeFundTransactionsModal() {
+    closeModal('fund-transactions-modal');
+    currentFundId = null;
+    currentFundGroupId = null;
+}
+
+function closeWithdrawRequestModal() {
+    closeModal('withdraw-request-modal');
+    document.getElementById('withdraw-request-form').reset();
+}
+
+function exportFundReport() {
+    showNotification('Chức năng xuất báo cáo đang được phát triển', 'info');
+}
+
+function formatCurrency(amount) {
+    return new Intl.NumberFormat('vi-VN', {
+        style: 'currency',
+        currency: 'VND'
+    }).format(amount || 0);
+}
+
+function formatDate(dateString) {
+    if (!dateString) return 'N/A';
+    const date = new Date(dateString);
+    return date.toLocaleString('vi-VN');
+}
+
+function getStatusBadgeClass(status) {
+    switch(status) {
+        case 'APPROVED': return 'badge-success';
+        case 'PENDING': return 'badge-warning';
+        case 'REJECTED': return 'badge-danger';
+        default: return 'badge-secondary';
+    }
+}
+
+function getStatusText(status) {
+    switch(status) {
+        case 'APPROVED': return 'Đã duyệt';
+        case 'PENDING': return 'Chờ duyệt';
+        case 'REJECTED': return 'Từ chối';
+        default: return status;
+    }
 }
 

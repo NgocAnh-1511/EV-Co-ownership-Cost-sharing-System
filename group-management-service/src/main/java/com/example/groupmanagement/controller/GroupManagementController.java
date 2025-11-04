@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -61,7 +62,9 @@ public class GroupManagementController {
     @GetMapping
     public ResponseEntity<?> getAllGroups() {
         try {
+            logger.info("=== GROUP MANAGEMENT SERVICE: Fetching all groups ===");
             List<Group> groups = groupRepository.findAll();
+            logger.info("Found {} groups in database", groups.size());
             
             // Convert to DTO with member count and vote count
             List<GroupResponseDto> groupDtos = groups.stream()
@@ -72,8 +75,14 @@ public class GroupManagementController {
                 })
                 .collect(Collectors.toList());
             
+            logger.info("Returning {} group DTOs", groupDtos.size());
+            if (!groupDtos.isEmpty()) {
+                logger.info("First group: ID={}, Name={}", groupDtos.get(0).getGroupId(), groupDtos.get(0).getGroupName());
+            }
+            
             return ResponseEntity.ok(groupDtos);
         } catch (Exception e) {
+            logger.error("Error fetching groups", e);
             e.printStackTrace();
             return ResponseEntity.status(500).body("Error: " + e.getMessage() + " - Cause: " + (e.getCause() != null ? e.getCause().getMessage() : "null"));
         }
@@ -133,6 +142,47 @@ public class GroupManagementController {
             return ResponseEntity.ok().build();
         }
         return ResponseEntity.notFound().build();
+    }
+
+    // Get groups by user ID (groups that user is a member of)
+    @GetMapping("/user/{userId}")
+    public ResponseEntity<?> getGroupsByUserId(@PathVariable Integer userId) {
+        try {
+            logger.info("=== GROUP MANAGEMENT SERVICE: Fetching groups for userId={} ===", userId);
+            
+            // Get all memberships for this user
+            List<GroupMember> memberships = groupMemberRepository.findByUserId(userId);
+            logger.info("Found {} group memberships for userId={}", memberships.size(), userId);
+            
+            // Extract unique group IDs
+            List<Integer> groupIds = memberships.stream()
+                .map(m -> m.getGroup().getGroupId())
+                .distinct()
+                .collect(Collectors.toList());
+            
+            // Get groups for these IDs
+            List<Group> groups = groupIds.stream()
+                .map(groupId -> groupRepository.findById(groupId))
+                .filter(Optional::isPresent)
+                .map(Optional::get)
+                .collect(Collectors.toList());
+            
+            // Convert to DTO with member count and vote count
+            List<GroupResponseDto> groupDtos = groups.stream()
+                .map(group -> {
+                    Integer memberCount = groupMemberRepository.countByGroup_GroupId(group.getGroupId());
+                    Integer voteCount = votingRepository.countByGroup_GroupId(group.getGroupId());
+                    return GroupResponseDto.fromEntity(group, memberCount, voteCount);
+                })
+                .collect(Collectors.toList());
+            
+            logger.info("Returning {} groups for userId={}", groupDtos.size(), userId);
+            return ResponseEntity.ok(groupDtos);
+        } catch (Exception e) {
+            logger.error("Error fetching groups for userId={}", userId, e);
+            return ResponseEntity.status(500)
+                .body(Map.of("error", "Failed to fetch groups: " + e.getMessage()));
+        }
     }
 
     // GroupMember endpoints

@@ -1,6 +1,7 @@
 package com.example.ui_service.controller.rest;
 
 import com.example.ui_service.client.CostPaymentClient;
+import com.example.ui_service.client.GroupManagementClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -10,6 +11,7 @@ import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -25,26 +27,182 @@ public class FundRestController {
     @Value("${cost-payment.service.url:http://localhost:8081}")
     private String costPaymentServiceUrl;
 
+    @Autowired
+    private GroupManagementClient groupManagementClient;
+
     private final RestTemplate restTemplate = new RestTemplate();
 
     /**
      * Lấy thống kê quỹ
-     * GET /api/fund/stats
+     * GET /api/fund/stats?userId={userId}
+     * Nếu không có userId, trả về tổng số dư của tất cả các nhóm mà user tham gia
      */
     @GetMapping("/stats")
-    public ResponseEntity<?> getFundStats() {
+    public ResponseEntity<?> getFundStats(@RequestParam(required = false) Integer userId) {
         try {
-            // TODO: Tạo endpoint tổng hợp stats trong backend
-            // Tạm thời return mock data
+            // Nếu không có userId, trả về mock data như cũ (backward compatibility)
+            if (userId == null) {
             Map<String, Object> stats = Map.of(
-                "totalBalance", 3500000,
-                "totalIncome", 5000000,
-                "totalExpense", 1500000,
-                "pendingCount", 2,
-                "openingBalance", 0
-            );
+                    "totalBalance", 0,
+                    "totalIncome", 0,
+                    "totalExpense", 0,
+                    "pendingCount", 0,
+                    "openingBalance", 0,
+                    "myDeposits", 0,
+                    "myWithdraws", 0,
+                    "myPendingCount", 0
+                );
+                return ResponseEntity.ok(stats);
+            }
+
+            // Lấy danh sách các nhóm mà user tham gia
+            List<Map<String, Object>> userGroups = groupManagementClient.getGroupsByUserIdAsMap(userId);
+            logger.info("Found {} groups for userId={}", userGroups.size(), userId);
+
+            // Tính tổng số dư, thu nhập, chi phí của tất cả các nhóm mà user tham gia
+            double totalBalance = 0;
+            double totalIncome = 0;
+            double totalExpense = 0;
+            int totalPendingCount = 0;
+            double myDeposits = 0;
+            double myWithdraws = 0;
+            int myPendingCount = 0;
+
+            // Lấy tất cả transactions của user một lần để tối ưu performance
+            List<Map<String, Object>> allUserTransactions = null;
+            try {
+                ResponseEntity<List> userTransactionsResponse = restTemplate.exchange(
+                    costPaymentServiceUrl + "/api/funds/transactions/user/" + userId,
+                    HttpMethod.GET,
+                    null,
+                    new ParameterizedTypeReference<List>() {}
+                );
+                if (userTransactionsResponse.getStatusCode().is2xxSuccessful() && userTransactionsResponse.getBody() != null) {
+                    allUserTransactions = userTransactionsResponse.getBody();
+                }
+            } catch (Exception e) {
+                logger.warn("Failed to get user transactions for userId={}: {}", userId, e.getMessage());
+            }
+
+            // Tập hợp các fundId của các nhóm mà user tham gia
+            java.util.Set<Integer> userFundIds = new java.util.HashSet<>();
+
+            for (Map<String, Object> group : userGroups) {
+                Integer groupId = (Integer) group.get("groupId");
+                if (groupId == null) continue;
+
+                try {
+                    // Lấy fund của nhóm này
+                    ResponseEntity<Map> fundResponse = restTemplate.getForEntity(
+                        costPaymentServiceUrl + "/api/funds/group/" + groupId,
+                        Map.class
+                    );
+
+                    if (fundResponse.getStatusCode().is2xxSuccessful() && fundResponse.getBody() != null) {
+                        Map<String, Object> fund = fundResponse.getBody();
+                        Integer fundId = (Integer) fund.get("fundId");
+                        if (fundId != null) {
+                            userFundIds.add(fundId);
+
+                            // Lấy số dư hiện tại của fund
+                            Object currentBalanceObj = fund.get("currentBalance");
+                            if (currentBalanceObj != null) {
+                                double balance = currentBalanceObj instanceof Number 
+                                    ? ((Number) currentBalanceObj).doubleValue() 
+                                    : Double.parseDouble(currentBalanceObj.toString());
+                                totalBalance += balance;
+                            }
+
+                            // Lấy thống kê chi tiết của fund
+                            try {
+                                ResponseEntity<Map> statsResponse = restTemplate.getForEntity(
+                                    costPaymentServiceUrl + "/api/funds/" + fundId + "/statistics",
+                                    Map.class
+                                );
+
+                                if (statsResponse.getStatusCode().is2xxSuccessful() && statsResponse.getBody() != null) {
+                                    Map<String, Object> fundStats = statsResponse.getBody();
+                                    
+                                    // Tổng nạp tiền
+                                    Object totalDepositObj = fundStats.get("totalDeposit");
+                                    if (totalDepositObj != null) {
+                                        double deposit = totalDepositObj instanceof Number 
+                                            ? ((Number) totalDepositObj).doubleValue() 
+                                            : Double.parseDouble(totalDepositObj.toString());
+                                        totalIncome += deposit;
+                                    }
+
+                                    // Tổng rút tiền
+                                    Object totalWithdrawObj = fundStats.get("totalWithdraw");
+                                    if (totalWithdrawObj != null) {
+                                        double withdraw = totalWithdrawObj instanceof Number 
+                                            ? ((Number) totalWithdrawObj).doubleValue() 
+                                            : Double.parseDouble(totalWithdrawObj.toString());
+                                        totalExpense += withdraw;
+                                    }
+
+                                    // Số yêu cầu đang chờ
+                                    Object pendingObj = fundStats.get("pendingRequests");
+                                    if (pendingObj != null) {
+                                        int pending = pendingObj instanceof Number 
+                                            ? ((Number) pendingObj).intValue() 
+                                            : Integer.parseInt(pendingObj.toString());
+                                        totalPendingCount += pending;
+                                    }
+                                }
+                            } catch (Exception e) {
+                                logger.warn("Failed to get statistics for fundId={}: {}", fundId, e.getMessage());
+                            }
+                        }
+                    }
+                } catch (Exception e) {
+                    logger.warn("Failed to get fund for groupId={}: {}", groupId, e.getMessage());
+                }
+            }
+
+            // Tính toán các giao dịch của user từ danh sách đã lấy
+            if (allUserTransactions != null) {
+                for (Map<String, Object> transaction : allUserTransactions) {
+                    Integer transactionFundId = (Integer) transaction.get("fundId");
+                    if (transactionFundId != null && userFundIds.contains(transactionFundId)) {
+                        String transactionType = (String) transaction.get("transactionType");
+                        String status = (String) transaction.get("status");
+                        Object amountObj = transaction.get("amount");
+                        
+                        if (amountObj != null) {
+                            double amount = amountObj instanceof Number 
+                                ? ((Number) amountObj).doubleValue() 
+                                : Double.parseDouble(amountObj.toString());
+
+                            if ("Deposit".equals(transactionType)) {
+                                myDeposits += amount;
+                            } else if ("Withdraw".equals(transactionType)) {
+                                myWithdraws += amount;
+                                if ("Pending".equals(status)) {
+                                    myPendingCount++;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            Map<String, Object> stats = new HashMap<>();
+            stats.put("totalBalance", totalBalance);
+            stats.put("totalIncome", totalIncome);
+            stats.put("totalExpense", totalExpense);
+            stats.put("pendingCount", totalPendingCount);
+            stats.put("openingBalance", 0); // TODO: Tính opening balance nếu cần
+            stats.put("myDeposits", myDeposits);
+            stats.put("myWithdraws", myWithdraws);
+            stats.put("myPendingCount", myPendingCount);
+
+            logger.info("Fund stats for userId={}: totalBalance={}, totalIncome={}, totalExpense={}", 
+                userId, totalBalance, totalIncome, totalExpense);
+
             return ResponseEntity.ok(stats);
         } catch (Exception e) {
+            logger.error("Error getting fund stats for userId={}: {}", userId, e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(Map.of("error", e.getMessage()));
         }
@@ -226,18 +384,58 @@ public class FundRestController {
     }
 
     /**
+     * Lấy giao dịch theo ID
+     * GET /api/fund/transactions/{transactionId}
+     */
+    @GetMapping("/transactions/{transactionId}")
+    public ResponseEntity<?> getTransactionById(@PathVariable Integer transactionId) {
+        try {
+            // Tìm transaction trong tất cả funds
+            // Note: This is a simplified approach - in production, you might want to store transactionId mapping
+            String url = costPaymentServiceUrl + "/api/funds/transactions/" + transactionId;
+            
+            try {
+                ResponseEntity<Map> response = restTemplate.getForEntity(url, Map.class);
+                return ResponseEntity.ok(response.getBody());
+            } catch (Exception e) {
+                // Transaction might not exist at this endpoint, try alternative approach
+                logger.warn("Transaction {} not found directly, trying alternative method", transactionId);
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body(Map.of("error", "Transaction not found"));
+            }
+        } catch (Exception e) {
+            logger.error("Error getting transaction {}: {}", transactionId, e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    /**
      * Phê duyệt giao dịch
      * POST /api/fund/transactions/{transactionId}/approve
      */
     @PostMapping("/transactions/{transactionId}/approve")
-    public ResponseEntity<?> approveTransaction(@PathVariable Integer transactionId) {
+    public ResponseEntity<?> approveTransaction(
+        @PathVariable Integer transactionId,
+        @RequestBody(required = false) Map<String, Object> body
+    ) {
         try {
             String url = costPaymentServiceUrl + "/api/funds/transactions/" + transactionId + "/approve";
             
-            ResponseEntity<Map> response = restTemplate.postForEntity(url, null, Map.class);
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
+            
+            ResponseEntity<Map> response = restTemplate.exchange(
+                url,
+                HttpMethod.POST,
+                entity,
+                Map.class
+            );
             
             return ResponseEntity.ok(response.getBody());
         } catch (Exception e) {
+            logger.error("Error approving transaction {}: {}", transactionId, e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(Map.of("error", e.getMessage()));
         }
@@ -250,14 +448,14 @@ public class FundRestController {
     @PostMapping("/transactions/{transactionId}/reject")
     public ResponseEntity<?> rejectTransaction(
         @PathVariable Integer transactionId,
-        @RequestBody(required = false) Map<String, String> body
+        @RequestBody(required = false) Map<String, Object> body
     ) {
         try {
             String url = costPaymentServiceUrl + "/api/funds/transactions/" + transactionId + "/reject";
             
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
-            HttpEntity<Map<String, String>> entity = new HttpEntity<>(body, headers);
+            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
             
             ResponseEntity<Map> response = restTemplate.exchange(
                 url,
@@ -268,6 +466,7 @@ public class FundRestController {
             
             return ResponseEntity.ok(response.getBody());
         } catch (Exception e) {
+            logger.error("Error rejecting transaction {}: {}", transactionId, e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(Map.of("error", e.getMessage()));
         }
