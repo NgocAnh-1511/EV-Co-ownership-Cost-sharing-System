@@ -33,15 +33,15 @@ CREATE TABLE CostShare (
 );
 
 -- 3. Thanh toán
-CREATE TABLE Payment (
+CREATE TABLE payment (
     `paymentId` INT AUTO_INCREMENT PRIMARY KEY,
     `userId` INT NOT NULL,
     `costId` INT,
-    `method` ENUM('EWallet','Banking','Cash') DEFAULT 'EWallet',
+    `method` ENUM('EWALLET','BANKING','CASH') DEFAULT 'EWALLET',
     `amount` DOUBLE NOT NULL,
     `transactionCode` VARCHAR(100),
     `paymentDate` DATETIME DEFAULT CURRENT_TIMESTAMP,
-    `status` ENUM('Pending','Completed','Failed') DEFAULT 'Pending',
+    `status` ENUM('PENDING','PAID','OVERDUE','CANCELLED') DEFAULT 'PENDING',
     FOREIGN KEY (`costId`) REFERENCES Cost(`costId`) ON DELETE SET NULL
 );
 
@@ -132,11 +132,11 @@ INSERT INTO CostShare (`costId`, `userId`, `percent`, `amountShare`) VALUES
 (4, 3, 33.34, 50000);
 
 -- Thanh toán mẫu
-INSERT INTO Payment (`userId`, `costId`, `method`, `amount`, `status`) VALUES
-(1, 1, 'Banking', 3000000, 'Completed'),
-(2, 1, 'EWallet', 1800000, 'Completed'),
-(3, 1, 'Banking', 1200000, 'Pending'),
-(1, 3, 'EWallet', 300000, 'Completed');
+INSERT INTO payment (`userId`, `costId`, `method`, `amount`, `status`) VALUES
+(1, 1, 'BANKING', 3000000, 'PAID'),
+(2, 1, 'EWALLET', 1800000, 'PAID'),
+(3, 1, 'BANKING', 1200000, 'PENDING'),
+(1, 3, 'EWALLET', 300000, 'PAID');
 
 -- Quỹ
 INSERT INTO GroupFund (`groupId`, `totalContributed`, `currentBalance`) VALUES 
@@ -175,9 +175,9 @@ SELECT '=== 4. NỢ CỦA USER ===' as '';
 SELECT 
     cs.`userId`,
     FORMAT(SUM(cs.`amountShare`),0) as 'Phải trả',
-    FORMAT(SUM(CASE WHEN p.`status`='Completed' THEN p.`amount` ELSE 0 END),0) as 'Đã trả',
-    FORMAT(SUM(cs.`amountShare`)-SUM(CASE WHEN p.`status`='Completed' THEN p.`amount` ELSE 0 END),0) as 'Còn nợ'
-FROM CostShare cs LEFT JOIN Payment p ON cs.`costId`=p.`costId` AND cs.`userId`=p.`userId`
+    FORMAT(SUM(CASE WHEN p.`status`='PAID' THEN p.`amount` ELSE 0 END),0) as 'Đã trả',
+    FORMAT(SUM(cs.`amountShare`)-SUM(CASE WHEN p.`status`='PAID' THEN p.`amount` ELSE 0 END),0) as 'Còn nợ'
+FROM CostShare cs LEFT JOIN payment p ON cs.`costId`=p.`costId` AND cs.`userId`=p.`userId`
 GROUP BY cs.`userId`;
 
 SELECT '=== 5. QUỸ CHUNG ===' as '';

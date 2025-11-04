@@ -506,26 +506,29 @@ public class PaymentController {
             return PaymentStatus.PENDING;
         }
         
-        String normalized = statusStr.trim();
+        // Normalize: trim whitespace and convert to uppercase
+        String normalized = statusStr.trim().toUpperCase();
         
-        // Handle common database formats and variations
-        if (normalized.equalsIgnoreCase("Pending") || normalized.equalsIgnoreCase("PENDING")) {
-            return PaymentStatus.PENDING;
-        } else if (normalized.equalsIgnoreCase("Paid") || normalized.equalsIgnoreCase("PAID") ||
-                   normalized.equalsIgnoreCase("Completed") || normalized.equalsIgnoreCase("COMPLETED")) {
-            return PaymentStatus.PAID;
-        } else if (normalized.equalsIgnoreCase("Overdue") || normalized.equalsIgnoreCase("OVERDUE")) {
-            return PaymentStatus.OVERDUE;
-        } else if (normalized.equalsIgnoreCase("Cancelled") || normalized.equalsIgnoreCase("CANCELLED") ||
-                   normalized.equalsIgnoreCase("Canceled") || normalized.equalsIgnoreCase("CANCELED")) {
-            return PaymentStatus.CANCELLED;
-        }
-        
-        // Try direct enum value match
-        try {
-            return PaymentStatus.valueOf(normalized.toUpperCase());
-        } catch (IllegalArgumentException e) {
-            return PaymentStatus.PENDING; // Default fallback
+        // Map to enum values (database ENUM: 'PENDING','PAID','OVERDUE','CANCELLED')
+        switch (normalized) {
+            case "PENDING":
+                return PaymentStatus.PENDING;
+            case "PAID":
+            case "COMPLETED": // Handle legacy values
+                return PaymentStatus.PAID;
+            case "OVERDUE":
+                return PaymentStatus.OVERDUE;
+            case "CANCELLED":
+            case "CANCELED": // Handle both spellings
+                return PaymentStatus.CANCELLED;
+            default:
+                // Try direct enum value match as fallback
+                try {
+                    return PaymentStatus.valueOf(normalized);
+                } catch (IllegalArgumentException e) {
+                    System.err.println("Warning: Invalid payment status value: '" + statusStr + "'. Using PENDING as default.");
+                    return PaymentStatus.PENDING; // Default fallback
+                }
         }
     }
 }

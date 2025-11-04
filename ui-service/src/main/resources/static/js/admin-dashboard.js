@@ -225,54 +225,352 @@ function initCharts() {
 }
 
 // ============ COST MANAGEMENT ============
+let currentCostsData = [];
+
 async function loadCosts() {
     try {
         const response = await fetch(API.COSTS);
         const costs = await response.json();
+        currentCostsData = costs;
         
-        const tbody = document.getElementById('costs-tbody');
-        tbody.innerHTML = costs.map(cost => `
-            <tr>
-                <td>${cost.costId}</td>
-                <td>${getCostTypeName(cost.costType)}</td>
-                <td>${formatCurrency(cost.amount)}</td>
-                <td>${getSplitMethodName(cost.splitMethod || 'N/A')}</td>
-                <td>${formatDate(cost.createdAt)}</td>
-                <td>
-                    <span class="status-badge ${getStatusClass(cost.status)}">
-                        ${getStatusName(cost.status)}
-                    </span>
-                </td>
-                <td>
-                    <button class="btn btn-secondary" style="padding: 0.5rem 1rem;" onclick="viewCostDetail(${cost.costId})">
-                        <i class="fas fa-eye"></i> Xem
-                    </button>
-                    <button class="btn btn-secondary" style="padding: 0.5rem 1rem; background: var(--danger); color: white;" onclick="deleteCost(${cost.costId})">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </td>
-            </tr>
-        `).join('');
+        // Check share status for each cost
+        const costsWithShares = await Promise.all(costs.map(async (cost) => {
+            try {
+                const sharesResponse = await fetch(`${API.COSTS}/${cost.costId}/splits`);
+                if (sharesResponse.ok) {
+                    const shares = await sharesResponse.json();
+                    cost.hasShares = shares && shares.length > 0;
+                    cost.shareCount = shares ? shares.length : 0;
+                } else {
+                    cost.hasShares = false;
+                    cost.shareCount = 0;
+                }
+            } catch (e) {
+                cost.hasShares = false;
+                cost.shareCount = 0;
+            }
+            return cost;
+        }));
+        
+        renderCostsTable(costsWithShares);
         
     } catch (error) {
         console.error('Error loading costs:', error);
+        document.getElementById('costs-tbody').innerHTML = `
+            <tr>
+                <td colspan="7" style="text-align: center; padding: 2rem; color: var(--danger);">
+                    <i class="fas fa-exclamation-circle"></i> Lỗi khi tải dữ liệu
+                </td>
+            </tr>
+        `;
     }
 }
 
-function viewCostDetail(costId) {
-    // Show modal with cost details
-    alert('Chi tiết chi phí #' + costId);
+function renderCostsTable(costs) {
+    const tbody = document.getElementById('costs-tbody');
+    
+    if (!costs || costs.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="7" style="text-align: center; padding: 2rem; color: var(--text-light);">
+                    <i class="fas fa-inbox"></i><br>Không có dữ liệu chi phí
+                </td>
+            </tr>
+        `;
+        return;
+    }
+    
+    tbody.innerHTML = costs.map(cost => `
+        <tr>
+            <td>${cost.costId}</td>
+            <td>${cost.vehicleId || '-'}</td>
+            <td>${getCostTypeName(cost.costType)}</td>
+            <td style="font-weight: bold; color: var(--primary);">${formatCurrency(cost.amount)}</td>
+            <td>${formatDate(cost.createdAt)}</td>
+            <td>
+                ${cost.hasShares ? 
+                    `<span class="status-badge paid" style="background: #10B981;">Đã chia (${cost.shareCount})</span>` :
+                    `<span class="status-badge pending">Chưa chia</span>`
+                }
+            </td>
+            <td>
+                <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+                    <button class="btn btn-sm" style="background: var(--info); color: white; padding: 0.5rem 0.75rem;" 
+                            onclick="viewCostDetail(${cost.costId})" title="Xem chi tiết">
+                        <i class="fas fa-eye"></i>
+                    </button>
+                    <button class="btn btn-sm" style="background: #10B981; color: white; padding: 0.5rem 0.75rem;" 
+                            onclick="openCostSplitModal(${cost.costId})" title="Chia chi phí">
+                        <i class="fas fa-share-alt"></i>
+                    </button>
+                    <button class="btn btn-sm" style="background: var(--primary); color: white; padding: 0.5rem 0.75rem;" 
+                            onclick="editCost(${cost.costId})" title="Sửa">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button class="btn btn-sm" style="background: var(--danger); color: white; padding: 0.5rem 0.75rem;" 
+                            onclick="deleteCost(${cost.costId})" title="Xóa">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </div>
+            </td>
+        </tr>
+    `).join('');
 }
 
-async function deleteCost(costId) {
-    if (confirm('Bạn có chắc muốn xóa chi phí này?')) {
+function applyCostFilters() {
+    const typeFilter = document.getElementById('cost-type-filter').value;
+    const statusFilter = document.getElementById('cost-status-filter').value;
+    const searchInput = document.getElementById('cost-search-input').value.toLowerCase();
+    
+    let filtered = [...currentCostsData];
+    
+    if (typeFilter) {
+        filtered = filtered.filter(c => c.costType === typeFilter);
+    }
+    
+    if (searchInput) {
+        filtered = filtered.filter(c => 
+            c.costId.toString().includes(searchInput) ||
+            (c.description && c.description.toLowerCase().includes(searchInput))
+        );
+    }
+    
+    // Note: status filter will be applied after checking shares
+    renderCostsTable(filtered);
+}
+
+async function viewCostDetail(costId) {
+    try {
+        const costResponse = await fetch(`${API.COSTS}/${costId}`);
+        const cost = await costResponse.json();
+        
+        // Get cost shares
+        let shares = [];
         try {
-            await fetch(`${API.COSTS}/${costId}`, { method: 'DELETE' });
-            loadCosts();
-            showNotification('Đã xóa chi phí thành công', 'success');
-        } catch (error) {
-            showNotification('Lỗi khi xóa chi phí', 'error');
+            const sharesResponse = await fetch(`${API.COSTS}/${costId}/splits`);
+            if (sharesResponse.ok) {
+                shares = await sharesResponse.json();
+            }
+        } catch (e) {
+            console.error('Error loading shares:', e);
         }
+        
+        const modal = document.getElementById('cost-modal');
+        const body = document.getElementById('cost-modal-body');
+        const actions = document.getElementById('cost-modal-actions');
+        
+        document.getElementById('cost-modal-title').textContent = `Chi tiết chi phí #${cost.costId}`;
+        
+        const totalShared = shares.reduce((sum, s) => sum + (s.amountShare || 0), 0);
+        
+        body.innerHTML = `
+            <div style="display: grid; gap: 1.5rem;">
+                <div class="info-section">
+                    <h4 style="margin-bottom: 1rem; color: var(--primary);">
+                        <i class="fas fa-info-circle"></i> Thông tin chi phí
+                    </h4>
+                    <div class="info-grid">
+                        <div class="info-row">
+                            <span class="info-label">ID chi phí:</span>
+                            <span class="info-value">#${cost.costId}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Vehicle ID:</span>
+                            <span class="info-value">#${cost.vehicleId}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Loại chi phí:</span>
+                            <span class="info-value">${getCostTypeName(cost.costType)}</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Số tiền:</span>
+                            <span class="info-value" style="color: var(--primary); font-weight: bold; font-size: 1.2rem;">
+                                ${formatCurrency(cost.amount)}
+                            </span>
+                        </div>
+                        <div class="info-row">
+                            <span class="info-label">Ngày tạo:</span>
+                            <span class="info-value">${formatDate(cost.createdAt)}</span>
+                        </div>
+                        ${cost.description ? `
+                        <div class="info-row">
+                            <span class="info-label">Mô tả:</span>
+                            <span class="info-value">${cost.description}</span>
+                        </div>
+                        ` : ''}
+                    </div>
+                </div>
+                
+                <div class="info-section">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                        <h4 style="color: var(--primary); margin: 0;">
+                            <i class="fas fa-users"></i> Phân chia chi phí (${shares.length})
+                        </h4>
+                        ${shares.length === 0 ? `
+                            <button class="btn btn-primary btn-sm" onclick="closeCostModal(); openCostSplitModal(${cost.costId});">
+                                <i class="fas fa-share-alt"></i> Chia chi phí
+                            </button>
+                        ` : ''}
+                    </div>
+                    ${shares.length > 0 ? `
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <thead>
+                                <tr style="background: var(--light);">
+                                    <th style="padding: 0.75rem; text-align: left; border: 1px solid var(--border);">User ID</th>
+                                    <th style="padding: 0.75rem; text-align: right; border: 1px solid var(--border);">Phần trăm</th>
+                                    <th style="padding: 0.75rem; text-align: right; border: 1px solid var(--border);">Số tiền</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${shares.map(s => `
+                                    <tr>
+                                        <td style="padding: 0.75rem; border: 1px solid var(--border);">User #${s.userId}</td>
+                                        <td style="padding: 0.75rem; text-align: right; border: 1px solid var(--border);">${s.percent}%</td>
+                                        <td style="padding: 0.75rem; text-align: right; border: 1px solid var(--border); font-weight: bold;">
+                                            ${formatCurrency(s.amountShare)}
+                                        </td>
+                                    </tr>
+                                `).join('')}
+                                <tr style="background: var(--light); font-weight: bold;">
+                                    <td style="padding: 0.75rem; border: 1px solid var(--border);">TỔNG CỘNG</td>
+                                    <td style="padding: 0.75rem; text-align: right; border: 1px solid var(--border);">100%</td>
+                                    <td style="padding: 0.75rem; text-align: right; border: 1px solid var(--border);">
+                                        ${formatCurrency(totalShared)}
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    ` : `
+                        <p style="text-align: center; padding: 2rem; color: var(--text-light);">
+                            <i class="fas fa-info-circle"></i> Chi phí này chưa được phân chia
+                        </p>
+                    `}
+                </div>
+            </div>
+        `;
+        
+        actions.innerHTML = `
+            <button type="button" class="btn btn-secondary" onclick="closeCostModal()">Đóng</button>
+            <button type="button" class="btn btn-primary" onclick="closeCostModal(); openCostSplitModal(${cost.costId});">
+                <i class="fas fa-share-alt"></i> ${shares.length > 0 ? 'Sửa phân chia' : 'Chia chi phí'}
+            </button>
+            <button type="button" class="btn btn-secondary" onclick="closeCostModal(); editCost(${cost.costId});">
+                <i class="fas fa-edit"></i> Sửa chi phí
+            </button>
+        `;
+        
+        openModal('cost-modal');
+        
+    } catch (error) {
+        console.error('Error loading cost detail:', error);
+        showNotification('Lỗi khi tải chi tiết chi phí', 'error');
+    }
+}
+
+// ============ COST CRUD FUNCTIONS ============
+function openCreateCostModal() {
+    document.getElementById('cost-form-modal-title').textContent = 'Tạo chi phí mới';
+    document.getElementById('cost-form').reset();
+    document.getElementById('cost-form-id').value = '';
+    openModal('cost-form-modal');
+}
+
+async function editCost(costId) {
+    try {
+        const response = await fetch(`${API.COSTS}/${costId}`);
+        const cost = await response.json();
+        
+        document.getElementById('cost-form-modal-title').textContent = 'Sửa chi phí';
+        document.getElementById('cost-form-id').value = cost.costId;
+        document.getElementById('cost-vehicle-id').value = cost.vehicleId;
+        document.getElementById('cost-type-select').value = cost.costType;
+        document.getElementById('cost-amount').value = cost.amount;
+        document.getElementById('cost-description').value = cost.description || '';
+        
+        openModal('cost-form-modal');
+    } catch (error) {
+        console.error('Error loading cost for edit:', error);
+        showNotification('Lỗi khi tải thông tin chi phí', 'error');
+    }
+}
+
+function closeCostModal() {
+    closeModal('cost-modal');
+}
+
+function closeCostFormModal() {
+    closeModal('cost-form-modal');
+}
+
+// Cost form submit handler
+document.addEventListener('DOMContentLoaded', function() {
+    const costForm = document.getElementById('cost-form');
+    if (costForm) {
+        costForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const costId = document.getElementById('cost-form-id').value;
+            const costData = {
+                vehicleId: parseInt(document.getElementById('cost-vehicle-id').value),
+                costType: document.getElementById('cost-type-select').value,
+                amount: parseFloat(document.getElementById('cost-amount').value),
+                description: document.getElementById('cost-description').value
+            };
+            
+            try {
+                let response;
+                if (costId) {
+                    // Update
+                    response = await fetch(`${API.COSTS}/${costId}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(costData)
+                    });
+                } else {
+                    // Create
+                    response = await fetch(API.COSTS, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(costData)
+                    });
+                }
+                
+                if (response.ok) {
+                    showNotification(costId ? 'Cập nhật chi phí thành công!' : 'Tạo chi phí thành công!', 'success');
+                    closeCostFormModal();
+                    loadCosts();
+                } else {
+                    const error = await response.text();
+                    showNotification('Lỗi: ' + error, 'error');
+                }
+            } catch (error) {
+                console.error('Error saving cost:', error);
+                showNotification('Lỗi khi lưu chi phí', 'error');
+            }
+        });
+    }
+});
+
+async function deleteCost(costId) {
+    if (!confirm('Bạn có chắc muốn xóa chi phí này?\n\nLưu ý: Nếu đã có phân chia, các phân chia sẽ bị xóa theo!')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`${API.COSTS}/${costId}`, { 
+            method: 'DELETE' 
+        });
+        
+        if (response.ok) {
+            showNotification('Đã xóa chi phí thành công', 'success');
+            loadCosts();
+        } else {
+            const error = await response.text();
+            showNotification('Lỗi: ' + error, 'error');
+        }
+    } catch (error) {
+        console.error('Error deleting cost:', error);
+        showNotification('Lỗi khi xóa chi phí', 'error');
     }
 }
 
@@ -1348,7 +1646,10 @@ function openEditPaymentModal(paymentId) {
             document.getElementById('edit-amount').value = payment.amount;
             document.getElementById('edit-method').value = payment.method || '';
             document.getElementById('edit-transaction-code').value = payment.transactionCode || '';
-            document.getElementById('edit-status').value = payment.status;
+            
+            // Normalize status to uppercase to match select option values
+            const statusValue = payment.status ? String(payment.status).trim().toUpperCase() : 'PENDING';
+            document.getElementById('edit-status').value = statusValue;
             
             // Format date for input
             if (payment.paymentDate) {
@@ -1380,6 +1681,11 @@ document.addEventListener('DOMContentLoaded', function() {
             e.preventDefault();
             
             const paymentId = document.getElementById('edit-payment-id').value;
+            const statusValue = document.getElementById('edit-status').value;
+            
+            // Normalize status to uppercase to match database ENUM
+            const normalizedStatus = statusValue ? statusValue.trim().toUpperCase() : 'PENDING';
+            
             const paymentData = {
                 userId: parseInt(document.getElementById('edit-user-id').value),
                 costId: parseInt(document.getElementById('edit-cost-id').value),
@@ -1387,7 +1693,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 method: document.getElementById('edit-method').value,
                 transactionCode: document.getElementById('edit-transaction-code').value,
                 paymentDate: document.getElementById('edit-payment-date').value || null,
-                status: document.getElementById('edit-status').value
+                status: normalizedStatus
             };
             
             try {
@@ -1580,5 +1886,412 @@ function downloadInvoicePDF() {
     showNotification('Tính năng tải PDF đang được phát triển...', 'info');
     // TODO: Implement PDF download using jsPDF or similar library
     // For now, users can use the print function and "Save as PDF"
+}
+
+// ============ COST SPLIT MANAGEMENT ============
+let customSplitMembers = [];
+
+async function openCostSplitModal(costId) {
+    try {
+        // Load cost info
+        const costResponse = await fetch(`${API.COSTS}/${costId}`);
+        const cost = await costResponse.json();
+        
+        document.getElementById('split-cost-id').value = costId;
+        document.getElementById('cost-split-modal-title').textContent = `Phân chia chi phí #${costId}`;
+        
+        // Display cost info
+        document.getElementById('cost-split-info').innerHTML = `
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem;">
+                <div>
+                    <strong>Loại chi phí:</strong> ${getCostTypeName(cost.costType)}
+                </div>
+                <div>
+                    <strong>Vehicle ID:</strong> #${cost.vehicleId}
+                </div>
+                <div>
+                    <strong>Số tiền:</strong> 
+                    <span style="color: var(--primary); font-weight: bold; font-size: 1.1rem;">
+                        ${formatCurrency(cost.amount)}
+                    </span>
+                </div>
+                <div>
+                    <strong>Ngày tạo:</strong> ${formatDate(cost.createdAt)}
+                </div>
+            </div>
+        `;
+        
+        // Load existing shares if any
+        let existingShares = [];
+        try {
+            const sharesResponse = await fetch(`${API.COSTS}/${costId}/splits`);
+            if (sharesResponse.ok) {
+                existingShares = await sharesResponse.json();
+            }
+        } catch (e) {
+            console.error('Error loading existing shares:', e);
+        }
+        
+        // Reset form
+        document.getElementById('split-method-select').value = '';
+        document.getElementById('split-group-container').style.display = 'none';
+        document.getElementById('split-usage-period').style.display = 'none';
+        document.getElementById('split-custom-container').style.display = 'none';
+        document.getElementById('split-preview-section').style.display = 'none';
+        customSplitMembers = [];
+        
+        // Load groups for dropdown
+        await loadGroupsForSplit();
+        
+        // Setup form handlers
+        setupSplitFormHandlers();
+        
+        openModal('cost-split-modal');
+        
+    } catch (error) {
+        console.error('Error opening split modal:', error);
+        showNotification('Lỗi khi mở form phân chia', 'error');
+    }
+}
+
+function setupSplitFormHandlers() {
+    const methodSelect = document.getElementById('split-method-select');
+    const groupContainer = document.getElementById('split-group-container');
+    const usagePeriod = document.getElementById('split-usage-period');
+    const customContainer = document.getElementById('split-custom-container');
+    
+    methodSelect.onchange = function() {
+        const method = this.value;
+        
+        // Hide all optional fields
+        groupContainer.style.display = 'none';
+        usagePeriod.style.display = 'none';
+        customContainer.style.display = 'none';
+        document.getElementById('split-preview-section').style.display = 'none';
+        
+        if (method === 'BY_OWNERSHIP' || method === 'BY_USAGE' || method === 'EQUAL') {
+            groupContainer.style.display = 'block';
+            if (method === 'BY_USAGE') {
+                usagePeriod.style.display = 'block';
+            }
+        } else if (method === 'CUSTOM') {
+            customContainer.style.display = 'block';
+            if (customSplitMembers.length === 0) {
+                addCustomSplitMember();
+            }
+        }
+    };
+}
+
+async function loadGroupsForSplit() {
+    try {
+        const response = await fetch(API.GROUPS);
+        const groups = await response.json();
+        
+        const select = document.getElementById('split-group-id');
+        select.innerHTML = '<option value="">-- Chọn nhóm --</option>' +
+            groups.map(g => `<option value="${g.groupId}">${g.groupName || 'Nhóm #' + g.groupId}</option>`).join('');
+            
+    } catch (error) {
+        console.error('Error loading groups:', error);
+    }
+}
+
+function addCustomSplitMember() {
+    const index = customSplitMembers.length;
+    customSplitMembers.push({ userId: '', percent: '' });
+    
+    const list = document.getElementById('split-members-list');
+    const memberDiv = document.createElement('div');
+    memberDiv.className = 'custom-split-member';
+    memberDiv.style.cssText = 'display: grid; grid-template-columns: 2fr 1fr auto; gap: 1rem; align-items: end; margin-bottom: 1rem;';
+    memberDiv.innerHTML = `
+        <div>
+            <label style="display: block; margin-bottom: 0.5rem; font-size: 0.875rem;">User ID</label>
+            <input type="number" class="form-control split-user-id" placeholder="Nhập User ID" 
+                   data-index="${index}" onchange="updateCustomSplitMember(${index})">
+        </div>
+        <div>
+            <label style="display: block; margin-bottom: 0.5rem; font-size: 0.875rem;">Phần trăm (%)</label>
+            <input type="number" class="form-control split-percent" placeholder="%" 
+                   min="0" max="100" step="0.01" data-index="${index}" onchange="updateCustomSplitMember(${index})">
+        </div>
+        <div>
+            <button type="button" class="btn btn-sm" style="background: var(--danger); color: white;" 
+                    onclick="removeCustomSplitMember(${index})">
+                <i class="fas fa-trash"></i>
+            </button>
+        </div>
+    `;
+    list.appendChild(memberDiv);
+}
+
+function updateCustomSplitMember(index) {
+    const memberDiv = document.querySelector(`.custom-split-member input[data-index="${index}"].split-user-id`).closest('.custom-split-member');
+    const userId = memberDiv.querySelector('.split-user-id').value;
+    const percent = memberDiv.querySelector('.split-percent').value;
+    
+    customSplitMembers[index] = {
+        userId: userId ? parseInt(userId) : '',
+        percent: percent ? parseFloat(percent) : ''
+    };
+}
+
+function removeCustomSplitMember(index) {
+    customSplitMembers.splice(index, 1);
+    renderCustomSplitMembers();
+}
+
+function renderCustomSplitMembers() {
+    const list = document.getElementById('split-members-list');
+    list.innerHTML = '';
+    
+    customSplitMembers.forEach((member, index) => {
+        const memberDiv = document.createElement('div');
+        memberDiv.className = 'custom-split-member';
+        memberDiv.style.cssText = 'display: grid; grid-template-columns: 2fr 1fr auto; gap: 1rem; align-items: end; margin-bottom: 1rem;';
+        memberDiv.innerHTML = `
+            <div>
+                <label style="display: block; margin-bottom: 0.5rem; font-size: 0.875rem;">User ID</label>
+                <input type="number" class="form-control split-user-id" placeholder="Nhập User ID" 
+                       value="${member.userId || ''}" data-index="${index}" onchange="updateCustomSplitMember(${index})">
+            </div>
+            <div>
+                <label style="display: block; margin-bottom: 0.5rem; font-size: 0.875rem;">Phần trăm (%)</label>
+                <input type="number" class="form-control split-percent" placeholder="%" 
+                       value="${member.percent || ''}" min="0" max="100" step="0.01" 
+                       data-index="${index}" onchange="updateCustomSplitMember(${index})">
+            </div>
+            <div>
+                <button type="button" class="btn btn-sm" style="background: var(--danger); color: white;" 
+                        onclick="removeCustomSplitMember(${index})">
+                    <i class="fas fa-trash"></i>
+                </button>
+            </div>
+        `;
+        list.appendChild(memberDiv);
+    });
+}
+
+async function previewCostSplit() {
+    const costId = document.getElementById('split-cost-id').value;
+    const method = document.getElementById('split-method-select').value;
+    
+    if (!method) {
+        showNotification('Vui lòng chọn phương thức chia', 'warning');
+        return;
+    }
+    
+    try {
+        // Load cost amount
+        const costResponse = await fetch(`${API.COSTS}/${costId}`);
+        const cost = await costResponse.json();
+        const totalAmount = cost.amount;
+        
+        let shares = [];
+        
+        if (method === 'CUSTOM') {
+            // Validate custom split
+            const totalPercent = customSplitMembers.reduce((sum, m) => sum + (parseFloat(m.percent) || 0), 0);
+            if (Math.abs(totalPercent - 100) > 0.01) {
+                showNotification(`Tổng phần trăm phải bằng 100%. Hiện tại: ${totalPercent.toFixed(2)}%`, 'error');
+                return;
+            }
+            
+            // Calculate custom shares
+            shares = customSplitMembers.map(m => ({
+                userId: m.userId,
+                percent: parseFloat(m.percent),
+                amountShare: (totalAmount * parseFloat(m.percent)) / 100
+            }));
+            
+        } else {
+            // For other methods, call API to preview
+            const groupId = document.getElementById('split-group-id').value;
+            if (!groupId) {
+                showNotification('Vui lòng chọn nhóm', 'warning');
+                return;
+            }
+            
+            const previewData = {
+                costId: parseInt(costId),
+                groupId: parseInt(groupId),
+                splitMethod: method,
+                month: method === 'BY_USAGE' ? parseInt(document.getElementById('split-month').value) : null,
+                year: method === 'BY_USAGE' ? parseInt(document.getElementById('split-year').value) : null
+            };
+            
+            try {
+                const previewResponse = await fetch(`${API.AUTO_SPLIT}/preview`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(previewData)
+                });
+                
+                if (previewResponse.ok) {
+                    const result = await previewResponse.json();
+                    shares = result.shares || [];
+                } else {
+                    throw new Error('Không thể preview');
+                }
+            } catch (e) {
+                // If preview API doesn't exist, calculate manually for EQUAL
+                if (method === 'EQUAL') {
+                    // This would require getting group members - for now, show a message
+                    showNotification('Vui lòng lưu phân chia để xem kết quả', 'info');
+                    return;
+                }
+                throw e;
+            }
+        }
+        
+        // Display preview
+        displaySplitPreview(shares, totalAmount);
+        
+    } catch (error) {
+        console.error('Error previewing split:', error);
+        showNotification('Lỗi khi xem trước phân chia: ' + error.message, 'error');
+    }
+}
+
+function displaySplitPreview(shares, totalAmount) {
+    const previewSection = document.getElementById('split-preview-section');
+    const previewContent = document.getElementById('split-preview-content');
+    
+    const totalShared = shares.reduce((sum, s) => sum + (s.amountShare || 0), 0);
+    
+    previewContent.innerHTML = `
+        <table style="width: 100%; border-collapse: collapse;">
+            <thead>
+                <tr style="background: var(--light);">
+                    <th style="padding: 0.75rem; text-align: left; border: 1px solid var(--border);">User ID</th>
+                    <th style="padding: 0.75rem; text-align: right; border: 1px solid var(--border);">Phần trăm</th>
+                    <th style="padding: 0.75rem; text-align: right; border: 1px solid var(--border);">Số tiền</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${shares.map(s => `
+                    <tr>
+                        <td style="padding: 0.75rem; border: 1px solid var(--border);">User #${s.userId}</td>
+                        <td style="padding: 0.75rem; text-align: right; border: 1px solid var(--border);">${s.percent.toFixed(2)}%</td>
+                        <td style="padding: 0.75rem; text-align: right; border: 1px solid var(--border); font-weight: bold;">
+                            ${formatCurrency(s.amountShare)}
+                        </td>
+                    </tr>
+                `).join('')}
+                <tr style="background: var(--light); font-weight: bold;">
+                    <td style="padding: 0.75rem; border: 1px solid var(--border);">TỔNG CỘNG</td>
+                    <td style="padding: 0.75rem; text-align: right; border: 1px solid var(--border);">100%</td>
+                    <td style="padding: 0.75rem; text-align: right; border: 1px solid var(--border);">
+                        ${formatCurrency(totalShared)}
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+        ${Math.abs(totalShared - totalAmount) > 0.01 ? `
+            <div style="margin-top: 1rem; padding: 1rem; background: #fff3cd; border-left: 4px solid #ffc107; border-radius: 4px;">
+                <strong>Lưu ý:</strong> Có sự chênh lệch nhỏ do làm tròn số (${formatCurrency(Math.abs(totalShared - totalAmount))})
+            </div>
+        ` : ''}
+    `;
+    
+    previewSection.style.display = 'block';
+}
+
+// Cost split form submit
+document.addEventListener('DOMContentLoaded', function() {
+    const splitForm = document.getElementById('cost-split-form');
+    if (splitForm) {
+        splitForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const costId = document.getElementById('split-cost-id').value;
+            const method = document.getElementById('split-method-select').value;
+            
+            if (!method) {
+                showNotification('Vui lòng chọn phương thức chia', 'warning');
+                return;
+            }
+            
+            try {
+                let requestData;
+                
+                if (method === 'CUSTOM') {
+                    // Validate custom split
+                    const totalPercent = customSplitMembers.reduce((sum, m) => sum + (parseFloat(m.percent) || 0), 0);
+                    if (Math.abs(totalPercent - 100) > 0.01) {
+                        showNotification(`Tổng phần trăm phải bằng 100%. Hiện tại: ${totalPercent.toFixed(2)}%`, 'error');
+                        return;
+                    }
+                    
+                    // Prepare custom split request
+                    const userIds = customSplitMembers.map(m => parseInt(m.userId));
+                    const percentages = customSplitMembers.map(m => parseFloat(m.percent));
+                    
+                    requestData = {
+                        userIds: userIds,
+                        percentages: percentages
+                    };
+                    
+                    const response = await fetch(`${API.COSTS}/${costId}/splits`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(requestData)
+                    });
+                    
+                    if (response.ok) {
+                        showNotification('Đã phân chia chi phí thành công!', 'success');
+                        closeCostSplitModal();
+                        loadCosts();
+                    } else {
+                        const error = await response.text();
+                        showNotification('Lỗi: ' + error, 'error');
+                    }
+                    
+                } else {
+                    // For other methods, use auto-split API
+                    const groupId = document.getElementById('split-group-id').value;
+                    if (!groupId) {
+                        showNotification('Vui lòng chọn nhóm', 'warning');
+                        return;
+                    }
+                    
+                    requestData = {
+                        costId: parseInt(costId),
+                        vehicleId: null, // Will be determined from cost
+                        groupId: parseInt(groupId),
+                        splitMethod: method,
+                        month: method === 'BY_USAGE' ? parseInt(document.getElementById('split-month').value) : null,
+                        year: method === 'BY_USAGE' ? parseInt(document.getElementById('split-year').value) : null
+                    };
+                    
+                    const response = await fetch(`${API.AUTO_SPLIT}/create-and-split`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(requestData)
+                    });
+                    
+                    if (response.ok) {
+                        showNotification('Đã tạo và phân chia chi phí thành công!', 'success');
+                        closeCostSplitModal();
+                        loadCosts();
+                    } else {
+                        const error = await response.text();
+                        showNotification('Lỗi: ' + error, 'error');
+                    }
+                }
+                
+            } catch (error) {
+                console.error('Error splitting cost:', error);
+                showNotification('Lỗi khi phân chia chi phí: ' + error.message, 'error');
+            }
+        });
+    }
+});
+
+function closeCostSplitModal() {
+    closeModal('cost-split-modal');
+    document.getElementById('split-preview-section').style.display = 'none';
+    customSplitMembers = [];
 }
 

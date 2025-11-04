@@ -10,22 +10,34 @@ public class PaymentStatusConverter implements AttributeConverter<PaymentStatus,
     @Override
     public String convertToDatabaseColumn(PaymentStatus attribute) {
         if (attribute == null) {
+            System.err.println("PaymentStatusConverter: Received null status, returning null");
             return null;
         }
+        
         // Convert enum to database format: use uppercase to match ENUM values in database
         // Database ENUM: 'PENDING','PAID','OVERDUE','CANCELLED'
+        String dbValue;
         switch (attribute) {
             case PENDING:
-                return "PENDING";
+                dbValue = "PENDING";
+                break;
             case PAID:
-                return "PAID";
+                dbValue = "PAID";
+                break;
             case OVERDUE:
-                return "OVERDUE";
+                dbValue = "OVERDUE";
+                break;
             case CANCELLED:
-                return "CANCELLED";
+                dbValue = "CANCELLED";
+                break;
             default:
-                return attribute.name(); // Already uppercase
+                dbValue = attribute.name(); // Already uppercase
+                System.err.println("PaymentStatusConverter: Unknown enum value: " + attribute + ", using: " + dbValue);
+                break;
         }
+        
+        System.out.println("PaymentStatusConverter: Converting " + attribute + " -> " + dbValue);
+        return dbValue;
     }
 
     @Override

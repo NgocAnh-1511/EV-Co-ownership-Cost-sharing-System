@@ -732,7 +732,7 @@ tbody tr:hover {
     box-shadow: 0 20px 60px rgba(0,0,0,0.3);
     max-width: 600px;
     width: 90%;
-    max-height: 80vh;
+    max-height: 90vh;
     overflow: hidden;
     z-index: 9999;
     opacity: 0;
@@ -778,8 +778,10 @@ tbody tr:hover {
 
 .modal-body {
     padding: 1.5rem;
-    max-height: calc(80vh - 100px);
+    max-height: calc(90vh - 200px);
     overflow-y: auto;
+    flex: 1;
+    min-height: 0;
 }
 
 /* ============ FORM STYLES ============ */
@@ -817,12 +819,13 @@ tbody tr:hover {
 
 /* ============ MODAL ACTIONS ============ */
 .modal-actions {
-    display: flex;
+    display: flex !important;
     gap: 1rem;
     justify-content: flex-end;
-    margin-top: 2rem;
-    padding-top: 1.5rem;
+    padding: 1.5rem;
     border-top: 1px solid var(--border);
+    background: white;
+    flex-shrink: 0;
 }
 
 /* ============ TABLE STYLES ============ */
