@@ -6,7 +6,7 @@ public class VehicleDTO {
     private String vehicleId;
     private String groupId;
     private String name;
-    private String licensePlate;
+    private String vehicleNumber; // Biển số xe
     private String type;
     private String status;
     private double mileage;
@@ -24,8 +24,8 @@ public class VehicleDTO {
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }
 
-    public String getLicensePlate() { return licensePlate; }
-    public void setLicensePlate(String licensePlate) { this.licensePlate = licensePlate; }
+    public String getVehicleNumber() { return vehicleNumber; }
+    public void setVehicleNumber(String vehicleNumber) { this.vehicleNumber = vehicleNumber; }
 
     public String getType() { return type; }
     public void setType(String type) { this.type = type; }

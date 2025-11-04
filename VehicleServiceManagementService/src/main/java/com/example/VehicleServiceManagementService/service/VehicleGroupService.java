@@ -36,6 +36,25 @@ public class VehicleGroupService {
     }
 
     /**
+     * Lấy chi tiết nhóm xe theo groupId
+     * @param groupId ID của nhóm xe
+     * @return Vehiclegroup nếu tìm thấy, null nếu không
+     */
+    public Vehiclegroup getVehicleGroupById(String groupId) {
+        Optional<Vehiclegroup> group = vehicleGroupRepository.findById(groupId);
+        return group.orElse(null);
+    }
+
+    /**
+     * Lấy danh sách xe trong nhóm
+     * @param groupId ID của nhóm xe
+     * @return Danh sách các xe trong nhóm
+     */
+    public List<Vehicle> getVehiclesByGroupId(String groupId) {
+        return vehicleRepository.findByGroupId(groupId);
+    }
+
+    /**
      * Lọc nhóm xe theo tên và trạng thái
      * @param searchQuery Tìm kiếm theo tên nhóm
      * @param statusFilter Lọc theo trạng thái nhóm

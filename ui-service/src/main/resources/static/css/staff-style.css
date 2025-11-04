@@ -579,3 +579,42 @@ body {
     color: #D97706;
     border: 1px solid #F59E0B;
 }
+
+/* Modal View Details Styles */
+.modal-body {
+    max-height: 70vh;
+    overflow-y: auto;
+}
+
+.detail-item {
+    padding: 12px;
+    background-color: #F9FAFB;
+    border-radius: 8px;
+    border: 1px solid #E5E7EB;
+}
+
+.detail-item label {
+    display: block;
+    color: #64748B;
+    font-size: 13px;
+    margin-bottom: 6px;
+}
+
+.detail-item span {
+    display: block;
+    color: #1E293B;
+    font-size: 15px;
+    font-weight: 500;
+}
+
+#vehiclesTableContainer {
+    overflow-x: auto;
+}
+
+#vehiclesTableContainer .table {
+    margin-top: 0;
+}
+
+#vehiclesTableContainer .table tbody tr:hover {
+    background-color: #F9FAFB;
+}

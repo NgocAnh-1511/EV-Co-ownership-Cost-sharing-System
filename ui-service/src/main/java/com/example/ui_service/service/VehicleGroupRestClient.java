@@ -10,6 +10,7 @@ import org.springframework.web.client.RestClientException;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 @Service
 public class VehicleGroupRestClient {
@@ -41,6 +42,69 @@ public class VehicleGroupRestClient {
         } catch (RestClientException e) {
             // Xử lý khi API gọi gặp lỗi khác
             System.err.println("Lỗi khi gọi API: " + e.getMessage());
+            return new ArrayList<>();
+        }
+    }
+
+    /**
+     * Lấy chi tiết nhóm xe theo groupId
+     * @param groupId ID của nhóm xe
+     * @return VehiclegroupDTO nếu tìm thấy, null nếu không
+     */
+    public VehiclegroupDTO getVehicleGroupById(String groupId) {
+        try {
+            String url = BASE_URL + "/" + groupId;
+            ResponseEntity<VehiclegroupDTO> response = restTemplate.getForEntity(url, VehiclegroupDTO.class);
+            
+            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                return response.getBody();
+            }
+            return null;
+        } catch (HttpClientErrorException e) {
+            System.err.println("Lỗi khi lấy chi tiết nhóm xe: " + e.getStatusCode() + " - " + e.getMessage());
+            return null;
+        } catch (RestClientException e) {
+            System.err.println("Lỗi khi lấy chi tiết nhóm xe: " + e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Lấy danh sách xe trong nhóm theo groupId
+     * @param groupId ID của nhóm xe
+     * @return Danh sách xe trong nhóm (List<Map<String, Object>>)
+     */
+    public List<?> getVehiclesByGroupId(String groupId) {
+        try {
+            String url = BASE_URL + "/" + groupId + "/vehicles";
+            System.out.println("DEBUG: Calling API: " + url);
+            org.springframework.core.ParameterizedTypeReference<List<java.util.Map<String, Object>>> typeRef = 
+                new org.springframework.core.ParameterizedTypeReference<List<java.util.Map<String, Object>>>() {};
+            ResponseEntity<List<java.util.Map<String, Object>>> response = restTemplate.exchange(
+                url, 
+                org.springframework.http.HttpMethod.GET, 
+                null, 
+                typeRef
+            );
+            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                List<java.util.Map<String, Object>> vehicles = response.getBody();
+                System.out.println("DEBUG: Received " + vehicles.size() + " vehicles");
+                if (!vehicles.isEmpty()) {
+                    java.util.Map<String, Object> firstVehicle = vehicles.get(0);
+                    System.out.println("DEBUG: First vehicle keys: " + firstVehicle.keySet());
+                    System.out.println("DEBUG: First vehicle data: " + firstVehicle);
+                    System.out.println("DEBUG: vehicleNumber value: " + firstVehicle.get("vehicleNumber"));
+                }
+                return vehicles;
+            }
+            return new ArrayList<>();
+        } catch (HttpClientErrorException e) {
+            System.err.println("Lỗi khi lấy danh sách xe: " + e.getStatusCode() + " - " + e.getMessage());
+            e.printStackTrace();
+            return new ArrayList<>();
+        } catch (RestClientException e) {
+            System.err.println("Lỗi khi lấy danh sách xe: " + e.getMessage());
+            e.printStackTrace();
             return new ArrayList<>();
         }
     }
@@ -86,6 +150,48 @@ public class VehicleGroupRestClient {
         } catch (RestClientException e) {
             System.err.println("Lỗi khi cập nhật nhóm xe: " + e.getMessage());
             throw new RuntimeException("Lỗi kết nối khi cập nhật nhóm xe: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Thêm nhiều xe vào nhóm
+     * @param groupId ID của nhóm xe
+     * @param vehicles Danh sách xe cần thêm (List<Map<String, Object>>)
+     * @return Danh sách xe đã được thêm
+     */
+    public List<?> addVehiclesToGroup(String groupId, List<Map<String, Object>> vehicles) {
+        try {
+            String url = "http://localhost:8083/api/vehicles/batch";
+            
+            Map<String, Object> requestData = new java.util.HashMap<>();
+            requestData.put("groupId", groupId);
+            requestData.put("vehicles", vehicles);
+            
+            org.springframework.core.ParameterizedTypeReference<List<java.util.Map<String, Object>>> typeRef = 
+                new org.springframework.core.ParameterizedTypeReference<List<java.util.Map<String, Object>>>() {};
+            
+            ResponseEntity<List<java.util.Map<String, Object>>> response = restTemplate.exchange(
+                url,
+                org.springframework.http.HttpMethod.POST,
+                new org.springframework.http.HttpEntity<>(requestData),
+                typeRef
+            );
+            
+            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                System.out.println("DEBUG: Đã thêm " + response.getBody().size() + " xe vào nhóm " + groupId);
+                return response.getBody();
+            }
+            return new ArrayList<>();
+        } catch (HttpClientErrorException e) {
+            System.err.println("Lỗi khi thêm xe: " + e.getStatusCode() + " - " + e.getMessage());
+            String errorBody = e.getResponseBodyAsString();
+            if (errorBody != null && !errorBody.isEmpty()) {
+                System.err.println("Error body: " + errorBody);
+            }
+            throw new RuntimeException("Không thể thêm xe: " + (errorBody != null ? errorBody : e.getMessage()), e);
+        } catch (RestClientException e) {
+            System.err.println("Lỗi khi thêm xe: " + e.getMessage());
+            throw new RuntimeException("Lỗi kết nối khi thêm xe: " + e.getMessage(), e);
         }
     }
 

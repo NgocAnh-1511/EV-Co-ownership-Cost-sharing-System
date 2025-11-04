@@ -1,6 +1,7 @@
 package com.example.VehicleServiceManagementService.controller;
 
 import com.example.VehicleServiceManagementService.model.Vehiclegroup;
+import com.example.VehicleServiceManagementService.model.Vehicle;
 import com.example.VehicleServiceManagementService.service.VehicleGroupService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -18,11 +19,46 @@ public class VehicleGroupAPI {
     private VehicleGroupService vehicleGroupService;
 
     // Lấy danh sách tất cả nhóm xe
-
     @GetMapping
     public List<Vehiclegroup> getAllVehicleGroups() {
         // Gọi phương thức getAllVehicleGroups() trong service
         return vehicleGroupService.getAllVehicleGroups();
+    }
+
+    /**
+     * Lấy chi tiết nhóm xe theo groupId
+     * @param groupId ID của nhóm xe
+     * @return ResponseEntity với Vehiclegroup hoặc thông báo lỗi
+     */
+    @GetMapping("/{groupId}")
+    public ResponseEntity<?> getVehicleGroupById(@PathVariable String groupId) {
+        try {
+            Vehiclegroup group = vehicleGroupService.getVehicleGroupById(groupId);
+            if (group != null) {
+                return ResponseEntity.ok(group);
+            }
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body("Không tìm thấy nhóm xe với ID: " + groupId);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Đã xảy ra lỗi khi lấy thông tin nhóm xe: " + e.getMessage());
+        }
+    }
+
+    /**
+     * Lấy danh sách xe trong nhóm theo groupId
+     * @param groupId ID của nhóm xe
+     * @return ResponseEntity với danh sách xe hoặc thông báo lỗi
+     */
+    @GetMapping("/{groupId}/vehicles")
+    public ResponseEntity<?> getVehiclesByGroupId(@PathVariable String groupId) {
+        try {
+            List<Vehicle> vehicles = vehicleGroupService.getVehiclesByGroupId(groupId);
+            return ResponseEntity.ok(vehicles);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Đã xảy ra lỗi khi lấy danh sách xe: " + e.getMessage());
+        }
     }
 
     // Thêm nhóm xe mới

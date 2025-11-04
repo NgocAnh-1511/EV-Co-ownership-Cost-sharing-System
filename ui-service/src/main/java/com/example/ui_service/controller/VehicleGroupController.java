@@ -6,7 +6,9 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Controller
@@ -22,7 +24,8 @@ public class VehicleGroupController {
     public String StaffMangement(Model model,
                                  @RequestParam(value = "searchQuery", required = false, defaultValue = "") String searchQuery,
                                  @RequestParam(value = "statusFilter", required = false, defaultValue = "Tất cả") String statusFilter,
-                                 @RequestParam(value = "deleteGroupId", required = false) String deleteGroupId) {
+                                 @RequestParam(value = "deleteGroupId", required = false) String deleteGroupId,
+                                 @RequestParam(value = "viewGroupId", required = false) String viewGroupId) {
 
         String deleteStatusMessage = null;
         boolean deleteSuccess = false;
@@ -46,6 +49,41 @@ public class VehicleGroupController {
                 deleteSuccess = false;
             }
         }
+
+        // Nếu có yêu cầu xem chi tiết nhóm xe, load thông tin
+        VehiclegroupDTO viewGroup = null;
+        List<?> viewGroupVehicles = null;
+        boolean showViewModal = false;
+        if (viewGroupId != null && !viewGroupId.isEmpty()) {
+            System.out.println("DEBUG: viewGroupId = " + viewGroupId);
+            try {
+                viewGroup = vehicleGroupRestClient.getVehicleGroupById(viewGroupId);
+                System.out.println("DEBUG: viewGroup = " + (viewGroup != null ? viewGroup.getName() : "null"));
+                if (viewGroup != null) {
+                    viewGroupVehicles = vehicleGroupRestClient.getVehiclesByGroupId(viewGroupId);
+                    System.out.println("DEBUG: viewGroupVehicles size = " + (viewGroupVehicles != null ? viewGroupVehicles.size() : 0));
+                    // Debug: In ra dữ liệu từng vehicle
+                    if (viewGroupVehicles != null && !viewGroupVehicles.isEmpty()) {
+                        System.out.println("DEBUG: First vehicle data: " + viewGroupVehicles.get(0));
+                        if (viewGroupVehicles.get(0) instanceof Map) {
+                            Map<String, Object> firstVehicle = (Map<String, Object>) viewGroupVehicles.get(0);
+                            System.out.println("DEBUG: vehicleNumber = " + firstVehicle.get("vehicleNumber"));
+                            System.out.println("DEBUG: All keys in vehicle: " + firstVehicle.keySet());
+                        }
+                    }
+                    showViewModal = true;
+                    System.out.println("DEBUG: showViewModal = true");
+                }
+            } catch (Exception e) {
+                System.err.println("Lỗi khi load chi tiết nhóm xe: " + e.getMessage());
+                e.printStackTrace();
+            }
+        }
+        
+        model.addAttribute("viewGroup", viewGroup);
+        model.addAttribute("viewGroupVehicles", viewGroupVehicles);
+        model.addAttribute("showViewModal", showViewModal);
+        System.out.println("DEBUG: Final showViewModal = " + showViewModal);
 
         // Thiết lập các tham số cho trang
         model.addAttribute("pageTitle", "Quản Lý Nhóm Xe Đồng Sở Hữu");
@@ -82,12 +120,74 @@ public class VehicleGroupController {
     }
 
     /**
+     * Xử lý thêm nhóm xe mới
+     * @param groupId Mã nhóm xe
+     * @param name Tên nhóm xe
+     * @param vehicleCount Số lượng xe
+     * @param active Trạng thái (active/inactive)
+     * @param description Mô tả
+     * @param vehiclesJson JSON string chứa danh sách xe cần thêm (nếu có)
+     * @param redirectAttributes Để truyền thông báo sau khi redirect
+     * @return Redirect về trang staff-management với thông báo kết quả
+     */
+    @PostMapping("/admin/staff-management/add")
+    public String addVehicleGroup(@RequestParam("groupId") String groupId,
+                                  @RequestParam("name") String name,
+                                  @RequestParam(value = "vehicleCount", required = false, defaultValue = "0") Integer vehicleCount,
+                                  @RequestParam(value = "active", required = false, defaultValue = "active") String active,
+                                  @RequestParam(value = "description", required = false, defaultValue = "") String description,
+                                  @RequestParam(value = "vehicles", required = false) String vehiclesJson,
+                                  RedirectAttributes redirectAttributes) {
+        try {
+            // Tạo DTO từ các tham số
+            VehiclegroupDTO vehicleGroup = new VehiclegroupDTO();
+            vehicleGroup.setGroupId(groupId);
+            vehicleGroup.setName(name);
+            vehicleGroup.setVehicleCount(vehicleCount);
+            vehicleGroup.setActive(active);
+            vehicleGroup.setDescription(description);
+            
+            VehiclegroupDTO addedGroup = vehicleGroupRestClient.addVehicleGroup(vehicleGroup);
+            if (addedGroup != null) {
+                // Xử lý thêm xe nếu có
+                if (vehiclesJson != null && !vehiclesJson.isEmpty()) {
+                    try {
+                        com.fasterxml.jackson.databind.ObjectMapper objectMapper = new com.fasterxml.jackson.databind.ObjectMapper();
+                        List<Map<String, Object>> vehicles = objectMapper.readValue(vehiclesJson, 
+                            objectMapper.getTypeFactory().constructCollectionType(List.class, Map.class));
+                        
+                        if (vehicles != null && !vehicles.isEmpty()) {
+                            System.out.println("DEBUG: Thêm " + vehicles.size() + " xe vào nhóm mới " + addedGroup.getGroupId());
+                            vehicleGroupRestClient.addVehiclesToGroup(addedGroup.getGroupId(), vehicles);
+                            System.out.println("DEBUG: Đã thêm xe thành công");
+                        }
+                    } catch (Exception e) {
+                        System.err.println("Lỗi khi parse vehicles JSON: " + e.getMessage());
+                        e.printStackTrace();
+                    }
+                }
+                
+                redirectAttributes.addFlashAttribute("updateStatusMessage", "Nhóm xe đã được thêm thành công!");
+                redirectAttributes.addFlashAttribute("updateSuccess", true);
+            } else {
+                redirectAttributes.addFlashAttribute("updateStatusMessage", "Không thể thêm nhóm xe. Vui lòng thử lại.");
+                redirectAttributes.addFlashAttribute("updateSuccess", false);
+            }
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("updateStatusMessage", "Lỗi khi thêm nhóm xe: " + e.getMessage());
+            redirectAttributes.addFlashAttribute("updateSuccess", false);
+        }
+        return "redirect:/admin/staff-management";
+    }
+
+    /**
      * Xử lý cập nhật nhóm xe
      * @param groupId ID của nhóm xe cần cập nhật
      * @param name Tên nhóm xe
      * @param vehicleCount Số lượng xe
      * @param active Trạng thái (active/inactive)
      * @param description Mô tả
+     * @param vehicles JSON string chứa danh sách xe cần thêm (nếu có)
      * @param redirectAttributes Để truyền thông báo sau khi redirect
      * @return Redirect về trang staff-management với thông báo kết quả
      */
@@ -97,8 +197,27 @@ public class VehicleGroupController {
                                      @RequestParam(value = "vehicleCount", required = false, defaultValue = "0") Integer vehicleCount,
                                      @RequestParam("active") String active,
                                      @RequestParam(value = "description", required = false, defaultValue = "") String description,
+                                     @RequestParam(value = "vehicles", required = false) String vehiclesJson,
                                      RedirectAttributes redirectAttributes) {
         try {
+            // Xử lý thêm xe nếu có
+            if (vehiclesJson != null && !vehiclesJson.isEmpty()) {
+                try {
+                    com.fasterxml.jackson.databind.ObjectMapper objectMapper = new com.fasterxml.jackson.databind.ObjectMapper();
+                    List<Map<String, Object>> vehicles = objectMapper.readValue(vehiclesJson, 
+                        objectMapper.getTypeFactory().constructCollectionType(List.class, Map.class));
+                    
+                    if (vehicles != null && !vehicles.isEmpty()) {
+                        System.out.println("DEBUG: Thêm " + vehicles.size() + " xe vào nhóm " + groupId);
+                        vehicleGroupRestClient.addVehiclesToGroup(groupId, vehicles);
+                        System.out.println("DEBUG: Đã thêm xe thành công");
+                    }
+                } catch (Exception e) {
+                    System.err.println("Lỗi khi parse vehicles JSON: " + e.getMessage());
+                    e.printStackTrace();
+                }
+            }
+            
             // Tạo DTO từ các tham số
             VehiclegroupDTO vehicleGroup = new VehiclegroupDTO();
             vehicleGroup.setGroupId(groupId);
