@@ -45,8 +45,8 @@ CREATE TABLE vehiclehistory (
     group_id INT,
     user_id INT,
     usage_start TIMESTAMP,
-    usage_end TIMESTAMP,
-    FOREIGN KEY (group_id) REFERENCES vehiclegroup(group_id)
+    usage_end TIMESTAMP
+    -- Không có foreign key constraint để tránh lỗi khi xóa nhóm xe
 );
 
 -- ==============================
@@ -82,22 +82,6 @@ CREATE TABLE contractsignatures (
     FOREIGN KEY (contract_id) REFERENCES legalcontract(contract_id)
 );
 
--- 🔹 Bảng CheckInOutLog
-CREATE TABLE checkinoutlog (
-    checkinout_id INT AUTO_INCREMENT PRIMARY KEY,
-    vehicle_id VARCHAR(50),
-    checkin_time TIMESTAMP,
-    checkout_time TIMESTAMP,
-    status VARCHAR(50),
-    vehicle_condition_before TEXT,
-    vehicle_condition_after TEXT,
-    notes TEXT,
-    performed_by VARCHAR(100),
-    qr_scan_time TIMESTAMP,
-    signature_time TIMESTAMP,
-    signature_image_url TEXT,
-    qr_code_data VARCHAR(255)
-);
 
 
 

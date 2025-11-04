@@ -70,8 +70,24 @@
         </form>
 
         <!-- Hiển thị thông báo khi không có dữ liệu -->
-        <div th:if="${filteredGroups.isEmpty()}">
-            <p th:text="${noDataMessage}">Không tìm thấy nhóm xe phù hợp.</p>
+        <div th:if="${noDataMessage != null}">
+            <div class="alert alert-warning" th:text="${noDataMessage}">Không tìm thấy nhóm xe phù hợp.</div>
+        </div>
+
+        <!-- Hiển thị thông báo xóa nhóm xe (thành công hoặc lỗi) -->
+        <div th:if="${deleteStatusMessage != null}">
+            <div th:class="${deleteSuccess ? 'alert alert-success' : 'alert alert-danger'}" 
+                 th:text="${deleteStatusMessage}">
+                Nhóm xe đã được xóa thành công.
+            </div>
+        </div>
+
+        <!-- Hiển thị thông báo cập nhật nhóm xe (thành công hoặc lỗi) -->
+        <div th:if="${updateStatusMessage != null}">
+            <div th:class="${updateSuccess ? 'alert alert-success' : 'alert alert-danger'}" 
+                 th:text="${updateStatusMessage}">
+                Nhóm xe đã được cập nhật thành công.
+            </div>
         </div>
 
         <!-- Hiển thị nhóm xe -->
@@ -89,8 +105,7 @@
                 <tr th:each="group : ${filteredGroups}">
                     <!-- Trạng thái -->
                     <td>
-                            <span
-                                  th:text="${group.active} == 'active' ? 'Hoạt động' : 'Tạm dừng'">Hoạt động</span>
+                        <span th:text="${group.active} == 'active' ? 'Hoạt động' : 'Tạm dừng'">Hoạt động</span>
                     </td>
 
                     <!-- Tên nhóm xe -->
@@ -104,10 +119,19 @@
                         <a href="#" class="btn btn-info btn-sm">
                             <i class="fas fa-eye"></i> Xem
                         </a>
-                        <a href="#" class="btn btn-warning btn-sm">
+                        <a href="#" 
+                           class="btn btn-warning btn-sm btn-edit-group"
+                           th:data-group-id="${group.groupId}"
+                           th:data-group-name="${group.name}"
+                           th:data-vehicle-count="${group.vehicleCount}"
+                           th:data-active="${group.active}"
+                           th:data-description="${group.description != null ? group.description : ''}">
                             <i class="fas fa-edit"></i> Sửa
                         </a>
-                        <a href="#" class="btn btn-danger btn-sm" onclick="return confirm('Bạn có chắc chắn muốn xóa nhóm này?')">
+                        <a href="#"
+                           th:href="@{/admin/staff-management(deleteGroupId=${group.groupId}, searchQuery=${searchQuery}, statusFilter=${statusFilter})}"
+                           class="btn btn-danger btn-sm"
+                           onclick="return confirm('Bạn có chắc chắn muốn xóa nhóm này?')">
                             <i class="fas fa-trash"></i> Xóa
                         </a>
                     </td>
@@ -115,11 +139,235 @@
                 </tbody>
             </table>
         </div>
-        <!-- Phân trang -->
+
+        <!-- Modal Sửa Nhóm Xe -->
+        <div id="editGroupModal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3><i class="fas fa-edit"></i> Sửa Thông Tin Nhóm Xe</h3>
+                    <span class="close-modal">&times;</span>
+                </div>
+                <form id="editGroupForm" method="post" action="">
+                    <input type="hidden" id="editGroupId" name="groupId">
+                    <div class="form-group">
+                        <label><i class="fas fa-tag"></i> Tên Nhóm Xe</label>
+                        <input type="text" id="editGroupName" name="name" required placeholder="Nhập tên nhóm xe">
+                    </div>
+                    <div class="form-group">
+                        <label><i class="fas fa-car"></i> Số Lượng Xe</label>
+                        <input type="number" id="editVehicleCount" name="vehicleCount" min="0" required placeholder="Nhập số lượng xe">
+                    </div>
+                    <div class="form-group">
+                        <label><i class="fas fa-toggle-on"></i> Trạng Thái</label>
+                        <select id="editActive" name="active" required>
+                            <option value="active">Hoạt động</option>
+                            <option value="inactive">Tạm dừng</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label><i class="fas fa-file-alt"></i> Mô Tả</label>
+                        <textarea id="editDescription" name="description" rows="3" placeholder="Nhập mô tả nhóm xe"></textarea>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" id="cancelEditBtn">Hủy</button>
+                        <button type="submit" class="btn btn-primary">Lưu Thay Đổi</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Thông báo cập nhật -->
+        <div id="updateStatusMessage" style="display: none;"></div>
 
     </main>
 </div>
 
+<script>
+// Đảm bảo code chạy sau khi DOM đã load xong
+(function() {
+    console.log('Script đang chạy...');
+    
+    // Đợi một chút để đảm bảo DOM đã render xong
+    setTimeout(function() {
+        const editModal = document.getElementById('editGroupModal');
+        const editForm = document.getElementById('editGroupForm');
+        const closeModal = document.querySelector('.close-modal');
+        const cancelBtn = document.getElementById('cancelEditBtn');
+        const updateStatusMessage = document.getElementById('updateStatusMessage');
+        
+        console.log('Modal element:', editModal);
+        console.log('Edit buttons:', document.querySelectorAll('.btn-edit-group').length);
+        
+        if (!editModal) {
+            console.error('Modal không tìm thấy!');
+            return;
+        }
+        
+        // Hàm mở modal
+        function openEditModal(groupId, groupName, vehicleCount, active, description) {
+            console.log('Mở modal với dữ liệu:', {groupId, groupName, vehicleCount, active, description});
+            
+            const editGroupId = document.getElementById('editGroupId');
+            const editGroupName = document.getElementById('editGroupName');
+            const editVehicleCount = document.getElementById('editVehicleCount');
+            const editActive = document.getElementById('editActive');
+            const editDescription = document.getElementById('editDescription');
+            
+            if (editGroupId) editGroupId.value = groupId || '';
+            if (editGroupName) editGroupName.value = groupName || '';
+            if (editVehicleCount) editVehicleCount.value = vehicleCount || 0;
+            if (editActive) editActive.value = active || 'active';
+            if (editDescription) editDescription.value = description || '';
+            
+            // Hiển thị modal
+            editModal.classList.add('show');
+            editModal.style.display = 'block';
+            editModal.style.visibility = 'visible';
+            editModal.style.opacity = '1';
+            console.log('Modal đã được hiển thị');
+        }
+        
+        // Hàm đóng modal
+        function closeEditModal() {
+            if (editModal) {
+                editModal.classList.remove('show');
+                editModal.style.display = 'none';
+            }
+        }
+        
+        // Gắn event cho tất cả nút Sửa
+        const editButtons = document.querySelectorAll('.btn-edit-group');
+        console.log('Tìm thấy ' + editButtons.length + ' nút Sửa');
+        
+        editButtons.forEach(function(btn, index) {
+            console.log('Đăng ký event cho nút ' + (index + 1));
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                console.log('Nút Sửa được click!');
+                
+                const groupId = this.getAttribute('data-group-id');
+                const groupName = this.getAttribute('data-group-name');
+                const vehicleCount = this.getAttribute('data-vehicle-count');
+                const active = this.getAttribute('data-active');
+                const description = this.getAttribute('data-description') || '';
+                
+                console.log('Data attributes:', {groupId, groupName, vehicleCount, active, description});
+                
+                openEditModal(groupId, groupName, vehicleCount, active, description);
+            });
+        });
+        
+        // Đóng modal khi click nút X
+        if (closeModal) {
+            closeModal.addEventListener('click', function() {
+                closeEditModal();
+            });
+        }
+        
+        // Đóng modal khi click nút Hủy
+        if (cancelBtn) {
+            cancelBtn.addEventListener('click', function() {
+                closeEditModal();
+            });
+        }
+        
+        // Đóng modal khi click bên ngoài
+        window.addEventListener('click', function(event) {
+            if (event.target === editModal) {
+                closeEditModal();
+            }
+        });
+        
+        // Xử lý submit form bằng AJAX
+        if (editForm) {
+            editForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                console.log('Form submit event triggered');
+                
+                const groupId = document.getElementById('editGroupId').value;
+                const groupName = document.getElementById('editGroupName').value.trim();
+                const vehicleCount = parseInt(document.getElementById('editVehicleCount').value) || 0;
+                const active = document.getElementById('editActive').value;
+                const description = document.getElementById('editDescription').value.trim();
+                
+                // Validate dữ liệu
+                if (!groupId) {
+                    alert('Lỗi: Không tìm thấy ID nhóm xe!');
+                    return false;
+                }
+                
+                if (!groupName || groupName.length === 0) {
+                    alert('Vui lòng nhập tên nhóm xe!');
+                    return false;
+                }
+                
+                // Tạo form data
+                const formData = new FormData();
+                formData.append('groupId', groupId);
+                formData.append('name', groupName);
+                formData.append('vehicleCount', vehicleCount);
+                formData.append('active', active);
+                formData.append('description', description);
+                
+                console.log('Sending update request:', {
+                    groupId: groupId,
+                    name: groupName,
+                    vehicleCount: vehicleCount,
+                    active: active,
+                    description: description
+                });
+                
+                // Disable nút submit
+                const submitBtn = editForm.querySelector('button[type="submit"]');
+                const originalText = submitBtn.textContent;
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'Đang lưu...';
+                
+                // Gửi request bằng fetch
+                fetch('/admin/staff-management/update/' + groupId, {
+                    method: 'POST',
+                    body: formData,
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                })
+                .then(function(response) {
+                    console.log('Response status:', response.status);
+                    console.log('Response headers:', response.headers);
+                    
+                    if (response.ok || response.status === 302 || response.redirected) {
+                        // Redirect về trang với thông báo thành công
+                        console.log('Update successful, redirecting...');
+                        closeEditModal();
+                        // Đợi một chút để đảm bảo modal đóng
+                        setTimeout(function() {
+                            window.location.href = '/admin/staff-management';
+                        }, 100);
+                    } else {
+                        return response.text().then(function(text) {
+                            console.error('Error response:', text);
+                            throw new Error(text || 'Lỗi không xác định');
+                        });
+                    }
+                })
+                .catch(function(error) {
+                    console.error('Error:', error);
+                    alert('Lỗi khi cập nhật nhóm xe: ' + (error.message || error));
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = originalText;
+                });
+                
+                return false;
+            });
+        }
+        
+    }, 100);
+})();
+</script>
 <script src="/js/staff-script.js"></script>
 </body>
 </html>

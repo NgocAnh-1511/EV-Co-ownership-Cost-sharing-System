@@ -1,65 +1,153 @@
 document.addEventListener('DOMContentLoaded', function () {
-    // Modal Thêm nhân viên
-    document.querySelector('.btn-add-staff').addEventListener('click', function () {
-        alert('Mở modal thêm nhân viên mới!');
-        // Mở modal thêm nhân viên ở đây nếu có
-    });
+    console.log('Staff script loaded');
+    
+    const editModal = document.getElementById('editGroupModal');
+    const editForm = document.getElementById('editGroupForm');
+    const closeModal = document.querySelector('.close-modal');
+    const cancelBtn = document.getElementById('cancelEditBtn');
+    const updateStatusMessage = document.getElementById('updateStatusMessage');
 
-    // Chức năng lọc
-    document.querySelector('.btn-filter').addEventListener('click', function () {
-        alert('Áp dụng bộ lọc!');
-        // Thực hiện bộ lọc khi người dùng nhấn nút lọc
-        const groupFilter = document.querySelector('.filter-group select').value;  // Lấy giá trị lọc nhóm
-        const statusFilter = document.querySelector('.filter-group select:nth-child(4)').value;  // Lấy giá trị lọc trạng thái
+    // Kiểm tra xem các element có tồn tại không
+    if (!editModal) {
+        console.error('Modal không tìm thấy!');
+        return;
+    }
 
-        // Có thể thêm logic để lọc danh sách nhóm ở đây
-        console.log(`Lọc nhóm: ${groupFilter}, Trạng thái: ${statusFilter}`);
-    });
+    console.log('Modal found:', editModal);
+    console.log('Edit buttons found:', document.querySelectorAll('.btn-edit-group').length);
 
-    // Các nút hành động cho từng nhóm nhân viên (xem, quản lý thành viên, quản lý xe, xóa nhóm)
-    document.querySelectorAll('.btn-action').forEach(btn => {
+    // Mở modal sửa khi click nút Sửa
+    const editButtons = document.querySelectorAll('.btn-edit-group');
+    console.log('Số lượng nút Sửa:', editButtons.length);
+    
+    editButtons.forEach((btn, index) => {
+        console.log(`Đăng ký event cho nút Sửa ${index + 1}`);
         btn.addEventListener('click', function (e) {
-            const icon = this.querySelector('i').classList[1];  // Lấy tên icon để xác định hành động
-
-            switch (icon) {
-                case 'fa-eye':
-                    alert('Xem chi tiết nhóm!');
-                    // Thực hiện mở chi tiết nhóm nếu cần
-                    break;
-                case 'fa-users':
-                    alert('Quản lý thành viên!');
-                    // Thực hiện mở trang quản lý thành viên của nhóm
-                    break;
-                case 'fa-car':
-                    alert('Quản lý xe!');
-                    // Thực hiện mở trang quản lý xe của nhóm
-                    break;
-                case 'fa-trash':
-                    if (confirm('Bạn có chắc chắn muốn xóa nhóm này?')) {
-                        // Thực hiện xóa nhóm
-                        this.closest('.staff-card').style.opacity = '0.5';  // Làm mờ nhóm để cho thấy nhóm đang bị xóa
-                        this.closest('.staff-card').style.pointerEvents = 'none';  // Tắt khả năng tương tác với nhóm
-                    }
-                    break;
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('Nút Sửa được click!');
+            
+            const groupId = this.getAttribute('data-group-id');
+            const groupName = this.getAttribute('data-group-name');
+            const vehicleCount = this.getAttribute('data-vehicle-count');
+            const active = this.getAttribute('data-active');
+            const description = this.getAttribute('data-description') || '';
+            
+            console.log('Dữ liệu nhóm xe:', { groupId, groupName, vehicleCount, active, description });
+            
+            // Điền dữ liệu vào form
+            const editGroupId = document.getElementById('editGroupId');
+            const editGroupName = document.getElementById('editGroupName');
+            const editVehicleCount = document.getElementById('editVehicleCount');
+            const editActive = document.getElementById('editActive');
+            const editDescription = document.getElementById('editDescription');
+            
+            if (editGroupId) editGroupId.value = groupId || '';
+            if (editGroupName) editGroupName.value = groupName || '';
+            if (editVehicleCount) editVehicleCount.value = vehicleCount || 0;
+            if (editActive) editActive.value = active || 'active';
+            if (editDescription) editDescription.value = description || '';
+            
+            // Mở modal
+            if (editModal) {
+                editModal.classList.add('show');
+                editModal.style.display = 'block';
+                console.log('Modal đã được mở');
+            } else {
+                console.error('Không thể mở modal - editModal không tồn tại');
             }
         });
     });
 
-    // Chức năng phân trang
-    document.querySelectorAll('.pagination-buttons button:not(.prev):not(.next)').forEach(btn => {
-        btn.addEventListener('click', function () {
-            document.querySelector('.pagination-buttons .active').classList.remove('active');
-            this.classList.add('active');
-            // Thực hiện chuyển trang hoặc tải lại dữ liệu ở đây (nếu cần)
-        });
-    });
+    // Hàm đóng modal
+    function closeEditModal() {
+        if (editModal) {
+            editModal.classList.remove('show');
+            editModal.style.display = 'none';
+        }
+    }
 
-    // Chức năng tìm kiếm
-    document.querySelector('.filter-group input').addEventListener('input', function () {
-        const searchTerm = this.value.toLowerCase();  // Lấy từ khóa tìm kiếm và chuyển về chữ thường
-        document.querySelectorAll('.staff-card').forEach(card => {
-            const name = card.querySelector('.staff-name').textContent.toLowerCase();  // Lấy tên nhóm
-            card.style.display = name.includes(searchTerm) ? 'block' : 'none';  // Hiển thị nhóm nếu tên nhóm chứa từ khóa tìm kiếm
+    // Đóng modal khi click nút X hoặc Hủy
+    if (closeModal) {
+        closeModal.addEventListener('click', function () {
+            closeEditModal();
+        });
+    }
+
+    if (cancelBtn) {
+        cancelBtn.addEventListener('click', function () {
+            closeEditModal();
+        });
+    }
+
+    // Đóng modal khi click bên ngoài modal
+    if (editModal) {
+        window.addEventListener('click', function (event) {
+            if (event.target === editModal) {
+                closeEditModal();
+            }
+        });
+    }
+
+    // Xử lý submit form sửa
+    if (editForm) {
+        editForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+            
+            const groupId = document.getElementById('editGroupId').value;
+            const groupData = {
+                name: document.getElementById('editGroupName').value.trim(),
+                vehicleCount: parseInt(document.getElementById('editVehicleCount').value) || 0,
+                active: document.getElementById('editActive').value,
+                description: document.getElementById('editDescription').value.trim()
+            };
+
+            // Gọi API để cập nhật nhóm xe
+            fetch(`http://localhost:8083/api/vehicle-groups/${groupId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(groupData)
+            })
+            .then(response => {
+                if (response.ok) {
+                    return response.json();
+                } else {
+                    return response.text().then(text => {
+                        throw new Error(text);
+                    });
+                }
+            })
+            .then(data => {
+                // Hiển thị thông báo thành công
+                showUpdateMessage('Nhóm xe đã được cập nhật thành công!', 'success');
+                // Đóng modal
+                if (editModal) {
+                    editModal.classList.remove('show');
+                    editModal.style.display = 'none';
+                }
+                // Reload trang sau 1 giây
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1500);
+            })
+            .catch(error => {
+                // Hiển thị thông báo lỗi
+                showUpdateMessage('Lỗi khi cập nhật nhóm xe: ' + error.message, 'error');
         });
     });
+    }
+
+    // Hàm hiển thị thông báo
+    function showUpdateMessage(message, type) {
+        updateStatusMessage.textContent = message;
+        updateStatusMessage.className = type === 'success' ? 'alert alert-success' : 'alert alert-danger';
+        updateStatusMessage.style.display = 'block';
+        
+        // Tự động ẩn sau 5 giây
+        setTimeout(() => {
+            updateStatusMessage.style.display = 'none';
+        }, 5000);
+    }
 });

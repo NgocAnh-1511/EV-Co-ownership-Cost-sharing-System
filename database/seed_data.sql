@@ -97,27 +97,6 @@ INSERT INTO contractsignatures (contract_id, signer_id, signature_date) VALUES
 (5, 203, '2024-10-22 09:30:00'),
 (8, 204, '2024-10-11 15:00:00');
 
--- Check-in/Check-out log
-INSERT INTO checkinoutlog (vehicle_id, checkin_time, checkout_time, status, vehicle_condition_before, 
-                          vehicle_condition_after, notes, performed_by, qr_scan_time, signature_time, qr_code_data) VALUES
--- Check-in records
-('VEH001', '2024-10-20 08:00:00', NULL, 'checkin', 'Xe tốt, đầy nhiên liệu 100%, sạch sẽ', NULL, 
- 'Giao xe cho khách hàng Nguyễn Văn A', 'Admin User', '2024-10-20 08:00:00', NULL, 'VEH001'),
-
-('VEH002', '2024-10-20 09:30:00', NULL, 'checkin', 'Xe mới, không hư hỏng, giấy tờ đầy đủ', NULL,
- 'Khách hàng Trần Thị B thuê xe', 'Staff Manager', '2024-10-20 09:30:00', NULL, 'VEH002'),
-
--- Check-out records
-('VEH005', '2024-10-21 10:15:00', '2024-10-21 16:30:00', 'checkout', 'Xe tốt, sẵn sàng', 
- 'Xe trả lại trong tình trạng tốt, không hư hỏng', 'Đã trả xe đúng giờ', 'Admin User', 
- '2024-10-21 10:15:00', '2024-10-21 16:30:00', 'VEH005'),
-
-('VEH004', '2024-10-21 14:00:00', NULL, 'checkin', 'Đầy xăng, giấy tờ OK', NULL,
- 'Khách hàng Lê Văn C', 'Admin User', '2024-10-21 14:00:00', NULL, 'VEH004'),
-
-('VEH007', '2024-10-22 08:45:00', '2024-10-22 17:00:00', 'checkout', 'Xe hoàn toàn mới', 
- 'Xe sạch, không có hư hỏng, nhiên liệu đủ', 'Trả xe đúng giờ, khách hàng hài lòng', 'Staff Manager',
- '2024-10-22 08:45:00', '2024-10-22 17:00:00', 'VEH007');
 
 COMMIT;
 
