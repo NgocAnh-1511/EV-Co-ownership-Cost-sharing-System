@@ -45,3 +45,4 @@ ENTRYPOINT ["java", "-jar", "/app/app.jar"]
 # Optional: JVM tuning for container
 ENV JAVA_OPTS="-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0"
 
+
