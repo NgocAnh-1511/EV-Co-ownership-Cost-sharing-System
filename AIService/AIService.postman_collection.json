@@ -1,0 +1,218 @@
+{
+  "info": {
+    "name": "AIService API",
+    "description": "Collection để test AIService APIs",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Recommendations",
+      "item": [
+        {
+          "name": "Get All Recommendations",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8083/api/ai/recommendations",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8083",
+              "path": ["api", "ai", "recommendations"]
+            },
+            "description": "Lấy tất cả các gợi ý từ AI"
+          }
+        },
+        {
+          "name": "Get Recommendation by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8083/api/ai/recommendations/1",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8083",
+              "path": ["api", "ai", "recommendations", "1"]
+            },
+            "description": "Lấy gợi ý theo ID"
+          }
+        },
+        {
+          "name": "Get Recommendations by Group",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8083/api/ai/recommendations/group/1",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8083",
+              "path": ["api", "ai", "recommendations", "group", "1"]
+            },
+            "description": "Lấy các gợi ý cho một nhóm cụ thể"
+          }
+        },
+        {
+          "name": "Get Recommendations by User",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8083/api/ai/recommendations/user/1",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8083",
+              "path": ["api", "ai", "recommendations", "user", "1"]
+            },
+            "description": "Lấy các gợi ý cho một user cụ thể"
+          }
+        },
+        {
+          "name": "Update Recommendation Status",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8083/api/ai/recommendations/1/status?status=READ",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8083",
+              "path": ["api", "ai", "recommendations", "1", "status"],
+              "query": [
+                {
+                  "key": "status",
+                  "value": "READ",
+                  "description": "Status: ACTIVE, READ, RESOLVED, DISMISSED"
+                }
+              ]
+            },
+            "description": "Cập nhật trạng thái của gợi ý"
+          }
+        },
+        {
+          "name": "Delete Recommendation",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8083/api/ai/recommendations/1",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8083",
+              "path": ["api", "ai", "recommendations", "1"]
+            },
+            "description": "Xóa một gợi ý"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Analysis",
+      "item": [
+        {
+          "name": "Analyze Fairness - 7 Days",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"groupId\": 1,\n  \"vehicleId\": 1,\n  \"periodDays\": 7\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8083/api/ai/analyze",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8083",
+              "path": ["api", "ai", "analyze"]
+            },
+            "description": "Phân tích công bằng trong 7 ngày qua"
+          }
+        },
+        {
+          "name": "Analyze Fairness - 30 Days",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"groupId\": 1,\n  \"vehicleId\": 1,\n  \"periodDays\": 30\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8083/api/ai/analyze",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8083",
+              "path": ["api", "ai", "analyze"]
+            },
+            "description": "Phân tích công bằng trong 30 ngày qua"
+          }
+        },
+        {
+          "name": "Analyze Fairness - 90 Days",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"groupId\": 1,\n  \"vehicleId\": 1,\n  \"periodDays\": 90\n}"
+            },
+            "url": {
+              "raw": "http://localhost:8083/api/ai/analyze",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8083",
+              "path": ["api", "ai", "analyze"]
+            },
+            "description": "Phân tích công bằng trong 90 ngày qua"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Health Check",
+      "item": [
+        {
+          "name": "Service Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "http://localhost:8083/actuator/health",
+              "protocol": "http",
+              "host": ["localhost"],
+              "port": "8083",
+              "path": ["actuator", "health"]
+            },
+            "description": "Kiểm tra trạng thái service"
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8083",
+      "type": "string"
+    }
+  ]
+}
+
+
+
