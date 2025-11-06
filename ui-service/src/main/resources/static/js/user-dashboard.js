@@ -10,7 +10,7 @@ const API = {
     FUND: '/api/fund'
 };
 
-// Current User - get from URL parameter or default to 1
+// Current User - get from URL parameter or default to 4
 const urlParams = new URLSearchParams(window.location.search);
 const CURRENT_USER_ID = parseInt(urlParams.get('userId')) || 2;
 
@@ -1450,7 +1450,9 @@ async function loadPendingVoteRequests() {
                     
                     const isWithdraw = transactionType === 'Withdraw' || transactionType === 'WITHDRAW';
                     const isPending = status === 'Pending' || status === 'PENDING';
-                    const isNotMyRequest = userId !== CURRENT_USER_ID && userId !== parseInt(CURRENT_USER_ID);
+                    const isNotMyRequest = userId != CURRENT_USER_ID && parseInt(userId) != parseInt(CURRENT_USER_ID);
+                    
+                    console.log(`  📝 Request: userId=${userId}, type=${transactionType}, status=${status}, isWithdraw=${isWithdraw}, isPending=${isPending}, isNotMyRequest=${isNotMyRequest}`);
                     
                     if (isWithdraw && isPending && isNotMyRequest) {
                         allPendingRequests.push({
@@ -1506,17 +1508,26 @@ function updatePendingVoteDisplay(requests) {
         return;
     }
     
+    // Luôn hiển thị section để user biết có phần này
+    voteSection.style.display = 'block';
+    
     // Cập nhật badge
     voteBadge.textContent = requests.length;
     
-    // Hiển thị/ẩn section
+    // Render danh sách yêu cầu hoặc message trống
     if (requests.length === 0) {
-        voteSection.style.display = 'none';
+        voteBody.innerHTML = `
+            <tr>
+                <td colspan="6" class="empty-table">
+                    <div class="empty-state">
+                        <i class="fas fa-check-circle"></i>
+                        <p>Không có yêu cầu nào cần bỏ phiếu</p>
+                    </div>
+                </td>
+            </tr>
+        `;
         return;
     }
-    
-    // Hiển thị section
-    voteSection.style.display = 'block';
     
     // Render danh sách yêu cầu
     voteBody.innerHTML = requests.map(req => {

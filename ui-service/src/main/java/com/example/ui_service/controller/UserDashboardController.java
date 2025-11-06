@@ -21,7 +21,7 @@ public class UserDashboardController {
      */
     @GetMapping
     public String userDashboard(
-            @RequestParam(value = "userId", required = false, defaultValue = "1") Long userId,
+            @RequestParam(value = "userId", required = false, defaultValue = "4") Long userId,
             Model model) {
         
         // Add user info to model
