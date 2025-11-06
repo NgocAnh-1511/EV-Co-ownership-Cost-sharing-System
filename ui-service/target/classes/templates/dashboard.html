@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Dashboard - EV Co-ownership System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container">
+            <a class="navbar-brand" href="/">
+                <i class="fas fa-car me-2"></i>
+                EV Co-ownership System
+            </a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link" href="/groups">Groups</a>
+                <a class="nav-link" href="/costs">Costs</a>
+                <a class="nav-link" href="/health">Health</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container mt-4">
+        <!-- Alert Messages -->
+        <div th:if="${success}" class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="fas fa-check-circle me-2"></i>
+            <span th:text="${success}"></span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        
+        <div th:if="${error}" class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="fas fa-exclamation-circle me-2"></i>
+            <span th:text="${error}"></span>
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+
+        <!-- Dashboard Header -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <h1 class="display-4 text-primary">
+                    <i class="fas fa-tachometer-alt me-3"></i>
+                    Dashboard
+                </h1>
+                <p class="lead text-muted">Tổng quan hệ thống quản lý đồng sở hữu xe điện</p>
+            </div>
+        </div>
+
+        <!-- Statistics Cards -->
+        <div class="row mb-4">
+            <div class="col-md-3 mb-3">
+                <div class="card bg-primary text-white">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h4 class="card-title" th:text="${stats.totalGroups} ?: 0">0</h4>
+                                <p class="card-text">Tổng số nhóm</p>
+                            </div>
+                            <div class="align-self-center">
+                                <i class="fas fa-users fa-2x"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-3 mb-3">
+                <div class="card bg-success text-white">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h4 class="card-title" th:text="${stats.activeGroups} ?: 0">0</h4>
+                                <p class="card-text">Nhóm hoạt động</p>
+                            </div>
+                            <div class="align-self-center">
+                                <i class="fas fa-check-circle fa-2x"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-3 mb-3">
+                <div class="card bg-warning text-white">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h4 class="card-title" th:text="${stats.totalCosts} ?: 0">0</h4>
+                                <p class="card-text">Tổng chi phí</p>
+                            </div>
+                            <div class="align-self-center">
+                                <i class="fas fa-dollar-sign fa-2x"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-3 mb-3">
+                <div class="card bg-info text-white">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <h4 class="card-title" th:text="${stats.pendingCosts} ?: 0">0</h4>
+                                <p class="card-text">Chi phí chờ xử lý</p>
+                            </div>
+                            <div class="align-self-center">
+                                <i class="fas fa-clock fa-2x"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Financial Summary -->
+        <div class="row mb-4">
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header bg-success text-white">
+                        <h5 class="mb-0">
+                            <i class="fas fa-money-bill-wave me-2"></i>
+                            Tổng thu nhập
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <h3 class="text-success" th:text="${#numbers.formatDecimal(stats.totalAmount ?: 0, 0, 'COMMA', 0, 'POINT')} + ' VND'">0 VND</h3>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="mb-0">
+                            <i class="fas fa-check me-2"></i>
+                            Đã thanh toán
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <h3 class="text-primary" th:text="${#numbers.formatDecimal(stats.paidAmount ?: 0, 0, 'COMMA', 0, 'POINT')} + ' VND'">0 VND</h3>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header bg-warning text-white">
+                        <h5 class="mb-0">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            Chưa thanh toán
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <h3 class="text-warning" th:text="${#numbers.formatDecimal(stats.outstandingAmount ?: 0, 0, 'COMMA', 0, 'POINT')} + ' VND'">0 VND</h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Groups -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">
+                            <i class="fas fa-users me-2"></i>
+                            Nhóm đồng sở hữu gần đây
+                        </h5>
+                        <a href="/groups" class="btn btn-primary btn-sm">
+                            <i class="fas fa-plus me-1"></i>
+                            Xem tất cả
+                        </a>
+                    </div>
+                    <div class="card-body">
+                        <div th:if="${groups != null and !groups.empty}" class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Tên nhóm</th>
+                                        <th>Xe</th>
+                                        <th>Admin</th>
+                                        <th>Trạng thái</th>
+                                        <th>Thành viên</th>
+                                        <th>Hành động</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr th:each="group : ${groups}">
+                                        <td th:text="${group.groupName}">Group Name</td>
+                                        <td th:text="${group.vehicleId}">Vehicle ID</td>
+                                        <td th:text="${group.groupAdminId}">Admin ID</td>
+                                        <td>
+                                            <span th:if="${group.status == 'ACTIVE'}" class="badge bg-success">Hoạt động</span>
+                                            <span th:if="${group.status == 'INACTIVE'}" class="badge bg-secondary">Không hoạt động</span>
+                                            <span th:if="${group.status == 'SUSPENDED'}" class="badge bg-warning">Tạm dừng</span>
+                                        </td>
+                                        <td th:text="${group.members != null ? group.members.size() : 0}">0</td>
+                                        <td>
+                                            <a th:href="@{/groups/{id}(id=${group.id})}" class="btn btn-sm btn-outline-primary">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div th:if="${groups == null or groups.empty}" class="text-center text-muted">
+                            <i class="fas fa-users fa-3x mb-3"></i>
+                            <p>Chưa có nhóm nào được tạo</p>
+                            <a href="/groups/create" class="btn btn-primary">
+                                <i class="fas fa-plus me-1"></i>
+                                Tạo nhóm đầu tiên
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Costs -->
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">
+                            <i class="fas fa-dollar-sign me-2"></i>
+                            Chi phí gần đây
+                        </h5>
+                        <a href="/costs" class="btn btn-primary btn-sm">
+                            <i class="fas fa-plus me-1"></i>
+                            Xem tất cả
+                        </a>
+                    </div>
+                    <div class="card-body">
+                        <div th:if="${costs != null and !costs.empty}" class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Tiêu đề</th>
+                                        <th>Nhóm</th>
+                                        <th>Số tiền</th>
+                                        <th>Trạng thái</th>
+                                        <th>Ngày tạo</th>
+                                        <th>Hành động</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr th:each="cost : ${costs}">
+                                        <td th:text="${cost.title}">Cost Title</td>
+                                        <td th:text="${cost.groupId}">Group ID</td>
+                                        <td th:text="${#numbers.formatDecimal(cost.totalAmount, 0, 'COMMA', 0, 'POINT')} + ' VND'">Amount</td>
+                                        <td>
+                                            <span th:if="${cost.status == 'PENDING'}" class="badge bg-warning">Chờ xử lý</span>
+                                            <span th:if="${cost.status == 'APPROVED'}" class="badge bg-info">Đã duyệt</span>
+                                            <span th:if="${cost.status == 'PAID'}" class="badge bg-success">Đã thanh toán</span>
+                                            <span th:if="${cost.status == 'OVERDUE'}" class="badge bg-danger">Quá hạn</span>
+                                        </td>
+                                        <td th:text="${#temporals.format(cost.createdAt, 'dd/MM/yyyy')}">Date</td>
+                                        <td>
+                                            <a th:href="@{/costs/{id}(id=${cost.id})}" class="btn btn-sm btn-outline-primary">
+                                                <i class="fas fa-eye"></i>
+                                            </a>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div th:if="${costs == null or costs.empty}" class="text-center text-muted">
+                            <i class="fas fa-dollar-sign fa-3x mb-3"></i>
+                            <p>Chưa có chi phí nào được tạo</p>
+                            <a href="/costs/create" class="btn btn-primary">
+                                <i class="fas fa-plus me-1"></i>
+                                Tạo chi phí đầu tiên
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
