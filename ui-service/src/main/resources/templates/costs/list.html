@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản lý Chi phí - CarShare Manager</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link th:href="@{/css/layout.css}" rel="stylesheet">
+    <link th:href="@{/css/cost-management.css}" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Layout Container -->
+    <div class="layout-container">
+        <!-- Include Sidebar Fragment -->
+        <div th:replace="fragments/sidebar :: sidebar"></div>
+        
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Top Bar -->
+            <div class="top-bar">
+                <div class="top-bar-left">
+                    <button class="mobile-menu-toggle" id="mobileMenuToggle">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <div class="page-info">
+                        <h1 class="page-title">Quản lý Chi phí</h1>
+                        <p class="page-subtitle">Theo dõi và quản lý các khoản chi phí trong nhóm sở hữu chung</p>
+                    </div>
+                </div>
+                <div class="top-bar-actions">
+                    <button class="btn btn-outline" onclick="exportCosts()">
+                        <i class="fas fa-download"></i>
+                        Xuất báo cáo
+                    </button>
+                    <a href="/costs/create" class="btn btn-primary">
+                        <i class="fas fa-plus"></i>
+                        Thêm chi phí mới
+                    </a>
+                </div>
+            </div>
+            
+            <!-- Content Area -->
+            <div class="content-area">
+
+        <!-- Statistics Cards -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i class="fas fa-chart-line"></i>
+                </div>
+                <div class="stat-content">
+                    <div class="stat-value" th:text="${totalCosts ?: '0'}">0</div>
+                    <div class="stat-label">Tổng chi phí</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                <div class="stat-content">
+                    <div class="stat-value" th:text="${paidCosts ?: '0'}">0</div>
+                    <div class="stat-label">Đã thanh toán</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i class="fas fa-clock"></i>
+                </div>
+                <div class="stat-content">
+                    <div class="stat-value" th:text="${pendingCosts ?: '0'}">0</div>
+                    <div class="stat-label">Chờ thanh toán</div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </div>
+                <div class="stat-content">
+                    <div class="stat-value" th:text="${overdueCosts ?: '0'}">0</div>
+                    <div class="stat-label">Quá hạn</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Search and Filter Section -->
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">Tìm kiếm & Lọc</h3>
+            </div>
+            <div class="card-body">
+                <div class="search-filter-grid">
+                    <div class="search-box">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="searchInput" placeholder="Tìm kiếm chi phí...">
+                    </div>
+                    <div class="filter-group">
+                        <select id="statusFilter" class="filter-select">
+                            <option value="">Tất cả trạng thái</option>
+                            <option value="paid">Đã thanh toán</option>
+                            <option value="pending">Chờ thanh toán</option>
+                            <option value="overdue">Quá hạn</option>
+                        </select>
+                    </div>
+                    <div class="filter-group">
+                        <select id="typeFilter" class="filter-select">
+                            <option value="">Tất cả loại</option>
+                            <option value="electricity">Điện</option>
+                            <option value="maintenance">Bảo trì</option>
+                            <option value="insurance">Bảo hiểm</option>
+                            <option value="other">Khác</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-primary" onclick="applyFilters()">
+                        <i class="fas fa-filter"></i>
+                        Áp dụng lọc
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Costs List -->
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title">Danh sách Chi phí</h3>
+                <div class="card-actions">
+                    <a href="/costs/sharing" class="btn btn-outline">
+                        <i class="fas fa-share-alt"></i>
+                        Chia sẻ chi phí
+                    </a>
+                </div>
+            </div>
+            <div class="card-body">
+                <div th:if="${costs != null and !costs.empty}" class="costs-grid">
+                    <div th:each="cost : ${costs}" class="cost-card">
+                        <div class="cost-header">
+                            <div class="cost-type">
+                                <span class="type-badge" th:text="${cost.type}">Điện</span>
+                            </div>
+                            <div class="cost-amount">
+                                <span th:text="${#numbers.formatDecimal(cost.amount, 0, 'COMMA', 0, 'POINT')} + ' VNĐ'">1,500,000 VNĐ</span>
+                            </div>
+                        </div>
+                        <div class="cost-content">
+                            <h4 class="cost-description" th:text="${cost.description}">Chi phí điện tháng 12</h4>
+                            <div class="cost-details">
+                                <div class="detail-item">
+                                    <i class="fas fa-user"></i>
+                                    <span th:text="${cost.createdBy}">Nguyễn Văn A</span>
+                                </div>
+                                <div class="detail-item">
+                                    <i class="fas fa-calendar"></i>
+                                    <span th:text="${#temporals.format(cost.createdAt, 'dd/MM/yyyy')}">15/12/2023</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="cost-footer">
+                            <div class="cost-status">
+                                <span class="status-badge status-paid" th:if="${cost.status == 'PAID'}">
+                                    <i class="fas fa-check"></i> Đã thanh toán
+                                </span>
+                                <span class="status-badge status-pending" th:if="${cost.status == 'PENDING'}">
+                                    <i class="fas fa-clock"></i> Chờ thanh toán
+                                </span>
+                                <span class="status-badge status-overdue" th:if="${cost.status == 'OVERDUE'}">
+                                    <i class="fas fa-exclamation-triangle"></i> Quá hạn
+                                </span>
+                            </div>
+                            <div class="cost-actions">
+                                <button class="btn btn-sm btn-view" th:onclick="'viewCost(' + ${cost.id} + ')'" title="Xem chi tiết">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                                <button class="btn btn-sm btn-edit" th:onclick="'editCost(' + ${cost.id} + ')'" title="Chỉnh sửa">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button class="btn btn-sm btn-delete" th:onclick="'deleteCost(' + ${cost.id} + ')'" title="Xóa">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Empty State -->
+                <div th:if="${costs == null or costs.empty}" class="empty-state">
+                    <div class="empty-icon">
+                        <i class="fas fa-receipt"></i>
+                    </div>
+                    <h3>Chưa có chi phí nào</h3>
+                    <p>Bắt đầu bằng cách thêm chi phí đầu tiên của bạn</p>
+                    <a href="/costs/create" class="btn btn-primary">
+                        <i class="fas fa-plus"></i>
+                        Thêm chi phí mới
+                    </a>
+                </div>
+            </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Layout JavaScript -->
+    <script th:src="@{/js/layout.js}"></script>
+    
+    <!-- Custom JavaScript -->
+    <script>
+        // Search functionality
+        document.getElementById('searchInput').addEventListener('input', function() {
+            const searchTerm = this.value.toLowerCase();
+            const cards = document.querySelectorAll('.cost-card');
+            
+            cards.forEach(card => {
+                const text = card.textContent.toLowerCase();
+                card.style.display = text.includes(searchTerm) ? '' : 'none';
+            });
+        });
+
+        // Filter functionality
+        function applyFilters() {
+            const statusFilter = document.getElementById('statusFilter').value;
+            const typeFilter = document.getElementById('typeFilter').value;
+            const cards = document.querySelectorAll('.cost-card');
+            
+            cards.forEach(card => {
+                let showCard = true;
+                
+                if (statusFilter) {
+                    const statusBadge = card.querySelector('.status-badge');
+                    if (!statusBadge || !statusBadge.classList.contains('status-' + statusFilter)) {
+                        showCard = false;
+                    }
+                }
+                
+                if (typeFilter && showCard) {
+                    const typeBadge = card.querySelector('.type-badge');
+                    if (!typeBadge || !typeBadge.textContent.toLowerCase().includes(typeFilter)) {
+                        showCard = false;
+                    }
+                }
+                
+                card.style.display = showCard ? '' : 'none';
+            });
+        }
+
+        // Cost actions
+        function viewCost(costId) {
+            window.location.href = '/costs/' + costId;
+        }
+
+        function editCost(costId) {
+            window.location.href = '/costs/' + costId + '/edit';
+        }
+
+        function deleteCost(costId) {
+            if (confirm('Bạn có chắc chắn muốn xóa chi phí này?')) {
+                fetch('/api/costs/' + costId, {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                })
+                .then(response => {
+                    if (response.ok) {
+                        location.reload();
+                    } else {
+                        alert('Có lỗi xảy ra khi xóa chi phí');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Có lỗi xảy ra khi xóa chi phí');
+                });
+            }
+        }
+
+        function exportCosts() {
+            // Implement export functionality
+            alert('Tính năng xuất báo cáo đang được phát triển');
+        }
+
+        // Auto-refresh every 30 seconds
+        setInterval(function() {
+            // You can implement auto-refresh here if needed
+        }, 30000);
+    </script>
+</body>
+</html>

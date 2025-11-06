@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kết Quả Chia Chi Phí - CarShare Manager</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link th:href="@{/css/layout.css}" rel="stylesheet">
+    <link th:href="@{/css/cost-management.css}" rel="stylesheet">
+</head>
+<body>
+    <!-- Layout Container -->
+    <div class="layout-container">
+        <!-- Include Sidebar -->
+        <div th:replace="fragments/sidebar :: sidebar"></div>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Top Bar -->
+            <div class="top-bar">
+                <div class="top-bar-left">
+                    <button class="mobile-menu-toggle" id="mobileMenuToggle">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <div class="page-info">
+                        <h1 class="page-title">📊 Kết Quả Chia Chi Phí</h1>
+                        <p class="page-subtitle">Chi tiết phân chia chi phí tự động</p>
+                    </div>
+                </div>
+                <div class="top-bar-actions">
+                    <a href="/costs" class="btn btn-outline">
+                        <i class="fas fa-arrow-left"></i>
+                        Quay lại
+                    </a>
+                    <button class="btn btn-primary" onclick="window.print()">
+                        <i class="fas fa-print"></i>
+                        In kết quả
+                    </button>
+                </div>
+            </div>
+
+            <!-- Content Area -->
+            <div class="content-area">
+                <!-- Cost Information -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3>
+                            <i class="fas fa-receipt"></i>
+                            Thông tin chi phí
+                        </h3>
+                        <span class="badge badge-success" id="splitMethodBadge">Đã chia tự động</span>
+                    </div>
+                    <div class="card-content">
+                        <div class="info-grid">
+                            <div class="info-item">
+                                <div class="info-label">Mã chi phí</div>
+                                <div class="info-value" id="costId">#123</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">Loại chi phí</div>
+                                <div class="info-value" id="costType">
+                                    <span class="badge badge-info">⚡ Sạc điện</span>
+                                </div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">Tổng số tiền</div>
+                                <div class="info-value" id="totalAmount">1,000,000 VNĐ</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">Phương thức chia</div>
+                                <div class="info-value" id="splitMethod">
+                                    <span class="badge badge-primary">🛣️ Theo km đã chạy</span>
+                                </div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">Xe</div>
+                                <div class="info-value" id="vehicleInfo">Vehicle 1 - Tesla Model 3</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">Ngày tạo</div>
+                                <div class="info-value" id="createdAt">2024-10-30</div>
+                            </div>
+                            <div class="info-item" style="grid-column: 1 / -1;">
+                                <div class="info-label">Mô tả</div>
+                                <div class="info-value" id="description">Chi phí sạc điện tháng 10/2024</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Split Statistics -->
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-users"></i>
+                        </div>
+                        <div class="stat-content">
+                            <div class="stat-value" id="totalMembers">0</div>
+                            <div class="stat-label">Số thành viên</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-check-circle"></i>
+                        </div>
+                        <div class="stat-content">
+                            <div class="stat-value" id="paidMembers">0</div>
+                            <div class="stat-label">Đã thanh toán</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-clock"></i>
+                        </div>
+                        <div class="stat-content">
+                            <div class="stat-value" id="pendingMembers">0</div>
+                            <div class="stat-label">Chưa thanh toán</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">
+                            <i class="fas fa-dollar-sign"></i>
+                        </div>
+                        <div class="stat-content">
+                            <div class="stat-value" id="totalPaid">0 VNĐ</div>
+                            <div class="stat-label">Tổng đã thu</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Split Details -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3>
+                            <i class="fas fa-list-alt"></i>
+                            Chi tiết phân chia
+                        </h3>
+                    </div>
+                    <div class="card-content">
+                        <div class="table-responsive">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Thành viên</th>
+                                        <th>Phần trăm</th>
+                                        <th>Số tiền</th>
+                                        <th>Trạng thái</th>
+                                        <th>Ngày tính toán</th>
+                                        <th>Thao tác</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="splitTableBody">
+                                    <!-- Will be populated by JS -->
+                                    <tr>
+                                        <td>
+                                            <div class="user-info">
+                                                <i class="fas fa-user-circle"></i>
+                                                <strong>User 1</strong>
+                                            </div>
+                                        </td>
+                                        <td><span class="badge badge-primary">60%</span></td>
+                                        <td><strong>600,000 VNĐ</strong></td>
+                                        <td><span class="badge badge-success">Đã thanh toán</span></td>
+                                        <td>2024-10-30</td>
+                                        <td>
+                                            <button class="btn btn-sm btn-primary" onclick="markAsPaid(1)">
+                                                <i class="fas fa-check"></i>
+                                            </button>
+                                            <button class="btn btn-sm btn-outline" onclick="sendReminder(1)">
+                                                <i class="fas fa-bell"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Chart Visualization -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3>
+                            <i class="fas fa-chart-pie"></i>
+                            Biểu đồ phân chia
+                        </h3>
+                    </div>
+                    <div class="card-content">
+                        <div class="chart-container" style="max-height: 400px;">
+                            <canvas id="splitChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Scripts -->
+    <script th:src="@{/js/layout.js}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+        // Get costId from URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const costId = urlParams.get('costId') || getCostIdFromPath();
+
+        function getCostIdFromPath() {
+            const path = window.location.pathname;
+            const match = path.match(/\/costs\/(\d+)\/split-result/);
+            return match ? match[1] : null;
+        }
+
+        // Load data on page load
+        document.addEventListener('DOMContentLoaded', async function() {
+            if (costId) {
+                await loadCostDetails();
+                await loadSplitResults();
+            }
+            setActiveNavItem();
+        });
+
+        // Load cost details
+        async function loadCostDetails() {
+            try {
+                const response = await fetch(`/api/costs/${costId}`);
+                if (!response.ok) throw new Error('Failed to fetch cost');
+
+                const cost = await response.json();
+                displayCostInfo(cost);
+            } catch (error) {
+                console.error('Error loading cost:', error);
+            }
+        }
+
+        // Display cost information
+        function displayCostInfo(cost) {
+            document.getElementById('costId').textContent = '#' + cost.costId;
+            document.getElementById('costType').innerHTML = `<span class="badge badge-info">${getCostTypeIcon(cost.costType)} ${getCostTypeLabel(cost.costType)}</span>`;
+            document.getElementById('totalAmount').textContent = formatMoney(cost.amount);
+            document.getElementById('splitMethod').innerHTML = cost.splitMethod ? 
+                `<span class="badge badge-primary">${getSplitMethodLabel(cost.splitMethod)}</span>` : 
+                '<span class="badge badge-secondary">Chưa chia</span>';
+            document.getElementById('vehicleInfo').textContent = cost.vehicleId ? `Vehicle ${cost.vehicleId}` : '-';
+            document.getElementById('createdAt').textContent = formatDate(cost.createdAt);
+            document.getElementById('description').textContent = cost.description || '-';
+        }
+
+        // Load split results
+        async function loadSplitResults() {
+            try {
+                const response = await fetch(`/api/costs/${costId}/shares`);
+                if (!response.ok) throw new Error('Failed to fetch split results');
+
+                const shares = await response.json();
+                displaySplitResults(shares);
+                updateStatistics(shares);
+                displayChart(shares);
+            } catch (error) {
+                console.error('Error loading split results:', error);
+            }
+        }
+
+        // Display split results
+        function displaySplitResults(shares) {
+            const tbody = document.getElementById('splitTableBody');
+            
+            if (!shares || shares.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="text-center">
+                            <div class="empty-state">
+                                <i class="fas fa-inbox"></i>
+                                <p>Chưa có dữ liệu phân chia</p>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tbody.innerHTML = shares.map(share => `
+                <tr>
+                    <td>
+                        <div class="user-info">
+                            <i class="fas fa-user-circle"></i>
+                            <strong>User ${share.userId}</strong>
+                        </div>
+                    </td>
+                    <td><span class="badge badge-primary">${share.percent.toFixed(2)}%</span></td>
+                    <td><strong>${formatMoney(share.amountShare)}</strong></td>
+                    <td>${getStatusBadge(share.status || 'PENDING')}</td>
+                    <td>${formatDate(share.calculatedAt)}</td>
+                    <td>
+                        <button class="btn btn-sm btn-success" onclick="markAsPaid(${share.shareId})" title="Đánh dấu đã thanh toán">
+                            <i class="fas fa-check"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline" onclick="sendReminder(${share.userId})" title="Gửi nhắc nhở">
+                            <i class="fas fa-bell"></i>
+                        </button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // Update statistics
+        function updateStatistics(shares) {
+            const total = shares.length;
+            const paid = shares.filter(s => s.status === 'PAID').length;
+            const pending = shares.filter(s => s.status !== 'PAID').length;
+            const totalPaidAmount = shares.filter(s => s.status === 'PAID')
+                .reduce((sum, s) => sum + s.amountShare, 0);
+
+            document.getElementById('totalMembers').textContent = total;
+            document.getElementById('paidMembers').textContent = paid;
+            document.getElementById('pendingMembers').textContent = pending;
+            document.getElementById('totalPaid').textContent = formatMoney(totalPaidAmount);
+        }
+
+        // Display chart
+        function displayChart(shares) {
+            const ctx = document.getElementById('splitChart');
+            
+            const labels = shares.map(s => `User ${s.userId}`);
+            const data = shares.map(s => s.amountShare);
+            const colors = [
+                'rgba(59, 130, 246, 0.8)',
+                'rgba(16, 185, 129, 0.8)',
+                'rgba(245, 158, 11, 0.8)',
+                'rgba(239, 68, 68, 0.8)',
+                'rgba(139, 92, 246, 0.8)'
+            ];
+
+            new Chart(ctx, {
+                type: 'pie',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        data: data,
+                        backgroundColor: colors,
+                        borderWidth: 2,
+                        borderColor: '#fff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'right'
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const label = context.label || '';
+                                    const value = formatMoney(context.parsed);
+                                    const percent = shares[context.dataIndex].percent.toFixed(2);
+                                    return `${label}: ${value} (${percent}%)`;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Actions
+        async function markAsPaid(shareId) {
+            if (confirm('Xác nhận đánh dấu đã thanh toán?')) {
+                alert('Đã đánh dấu thanh toán cho Share #' + shareId);
+                // TODO: Call API to update status
+                await loadSplitResults();
+            }
+        }
+
+        function sendReminder(userId) {
+            alert('Đã gửi nhắc nhở thanh toán tới User ' + userId);
+            // TODO: Call API to send reminder
+        }
+
+        // Helper functions
+        function getCostTypeIcon(costType) {
+            const icons = {
+                'ElectricCharge': '⚡',
+                'Maintenance': '🔧',
+                'Insurance': '🛡️',
+                'Inspection': '📋',
+                'Cleaning': '🧽',
+                'Other': '📦'
+            };
+            return icons[costType] || '📦';
+        }
+
+        function getCostTypeLabel(costType) {
+            const labels = {
+                'ElectricCharge': 'Sạc điện',
+                'Maintenance': 'Bảo dưỡng',
+                'Insurance': 'Bảo hiểm',
+                'Inspection': 'Đăng kiểm',
+                'Cleaning': 'Vệ sinh',
+                'Other': 'Khác'
+            };
+            return labels[costType] || costType;
+        }
+
+        function getSplitMethodLabel(method) {
+            const labels = {
+                'BY_OWNERSHIP': '📊 Theo sở hữu',
+                'BY_USAGE': '🛣️ Theo km',
+                'EQUAL': '➗ Chia đều',
+                'CUSTOM': '✏️ Tùy chỉnh'
+            };
+            return labels[method] || method;
+        }
+
+        function getStatusBadge(status) {
+            const badges = {
+                'PAID': '<span class="badge badge-success">Đã thanh toán</span>',
+                'PENDING': '<span class="badge badge-warning">Chờ thanh toán</span>',
+                'OVERDUE': '<span class="badge badge-danger">Quá hạn</span>',
+                'CANCELLED': '<span class="badge badge-secondary">Đã hủy</span>'
+            };
+            return badges[status] || badges['PENDING'];
+        }
+
+        function formatMoney(value) {
+            return new Intl.NumberFormat('vi-VN').format(value) + ' VNĐ';
+        }
+
+        function formatDate(dateString) {
+            if (!dateString) return '-';
+            const date = new Date(dateString);
+            return date.toLocaleDateString('vi-VN');
+        }
+    </script>
+
+    <style>
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .info-item {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .info-label {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        .info-value {
+            font-size: 1.1rem;
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .user-info i {
+            font-size: 1.5rem;
+            color: var(--primary-color);
+        }
+
+        @media print {
+            .sidebar, .top-bar-actions, .btn {
+                display: none !important;
+            }
+        }
+    </style>
+</body>
+</html>
+
