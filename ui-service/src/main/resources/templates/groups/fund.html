@@ -32,6 +32,13 @@
                     </div>
                 </div>
                 <div class="top-bar-actions">
+                    <!-- Notification Badge cho requests cần vote -->
+                    <div class="notification-badge-container" style="position: relative; margin-right: 1rem;">
+                        <button class="btn btn-outline-primary" onclick="scrollToPendingVoteSection()" title="Yêu cầu cần bỏ phiếu">
+                            <i class="fas fa-bell"></i>
+                            <span id="pendingVoteBadgeHeader" class="badge badge-danger" style="position: absolute; top: -8px; right: -8px; display: none;">0</span>
+                        </button>
+                    </div>
                     <button class="btn btn-success" onclick="openDepositModal()">
                         <i class="fas fa-arrow-up"></i>
                         Nạp tiền
@@ -84,6 +91,9 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Pending Vote Requests Section (Tự động tạo bởi JS) -->
+                <!-- Section này sẽ được tạo động trong updatePendingVoteDisplay() -->
 
                 <!-- My Pending Requests -->
                 <div class="card" id="myPendingCard">

@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -210,38 +211,92 @@ public class FundRestController {
 
     /**
      * Lấy tất cả giao dịch
-     * GET /api/fund/transactions?status=...
+     * GET /api/fund/transactions?status=...&userId=...
+     * Nếu có userId, lấy transactions của user đó từ tất cả funds
+     * Nếu không có userId, trả về empty list (backward compatibility)
      */
     @GetMapping("/transactions")
     public ResponseEntity<?> getAllTransactions(
-        @RequestParam(required = false) String status
+        @RequestParam(required = false) String status,
+        @RequestParam(required = false) Integer userId
     ) {
         try {
-            String url = costPaymentServiceUrl + "/api/funds/1/transactions"; // fundId=1 for demo
+            List<Map<String, Object>> transactions = null;
+            
+            // Nếu có userId, lấy transactions của user từ tất cả funds
+            if (userId != null) {
+                String url = costPaymentServiceUrl + "/api/funds/transactions/user/" + userId;
+                
+                try {
+                    // Sử dụng LinkedHashMap để RestTemplate có thể deserialize JSON objects thành Map
+                    ResponseEntity<List<LinkedHashMap<String, Object>>> response = restTemplate.exchange(
+                        url,
+                        HttpMethod.GET,
+                        null,
+                        new ParameterizedTypeReference<List<LinkedHashMap<String, Object>>>() {}
+                    );
+                    
+                    if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                        // Convert LinkedHashMap sang Map<String, Object>
+                        List<LinkedHashMap<String, Object>> rawList = response.getBody();
+                        transactions = rawList.stream()
+                            .map(item -> (Map<String, Object>) new HashMap<>(item))
+                            .collect(java.util.stream.Collectors.toList());
+                    } else {
+                        transactions = java.util.Collections.emptyList();
+                    }
+                } catch (Exception e) {
+                    logger.error("Error calling backend service for userId={}: {}", userId, e.getMessage(), e);
+                    // Fallback: trả về empty list thay vì throw error
+                    transactions = java.util.Collections.emptyList();
+                }
+            } else {
+                // Backward compatibility: trả về empty list nếu không có userId
+                logger.warn("No userId provided to /api/fund/transactions, returning empty list");
+                transactions = java.util.Collections.emptyList();
+            }
+            
+            // Filter by status if provided
+            if (status != null && transactions != null && !transactions.isEmpty()) {
+                transactions = transactions.stream()
+                    .filter(t -> {
+                        if (t != null && t instanceof Map) {
+                            Object tStatus = ((Map<?, ?>) t).get("status");
+                            return status.equals(tStatus) || status.equalsIgnoreCase(String.valueOf(tStatus));
+                        }
+                        return false;
+                    })
+                    .collect(java.util.stream.Collectors.toList());
+            }
+            
+            return ResponseEntity.ok(transactions != null ? transactions : java.util.Collections.emptyList());
+        } catch (Exception e) {
+            logger.error("Error getting transactions: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    /**
+     * Lấy giao dịch theo userId
+     * GET /api/fund/transactions/user/{userId}
+     */
+    @GetMapping("/transactions/user/{userId}")
+    public ResponseEntity<?> getTransactionsByUser(@PathVariable Integer userId) {
+        try {
+            String url = costPaymentServiceUrl + "/api/funds/transactions/user/" + userId;
             
             ResponseEntity<List> response = restTemplate.exchange(
                 url,
                 HttpMethod.GET,
                 null,
-                List.class
+                new ParameterizedTypeReference<List>() {}
             );
             
             List transactions = response.getBody();
-            
-            // Filter by status if provided
-            if (status != null && transactions != null) {
-                transactions = transactions.stream()
-                    .filter(t -> {
-                        if (t instanceof Map) {
-                            return status.equals(((Map<?, ?>) t).get("status"));
-                        }
-                        return false;
-                    })
-                    .toList();
-            }
-            
-            return ResponseEntity.ok(transactions);
+            return ResponseEntity.ok(transactions != null ? transactions : java.util.Collections.emptyList());
         } catch (Exception e) {
+            logger.error("Error getting transactions for userId={}: {}", userId, e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(Map.of("error", e.getMessage()));
         }
@@ -473,15 +528,82 @@ public class FundRestController {
     }
 
     /**
-     * Xóa giao dịch
-     * DELETE /api/fund/transactions/{transactionId}
+     * User vote cho withdrawal request (approve hoặc reject)
+     * POST /api/fund/transactions/{transactionId}/vote
+     */
+    @PostMapping("/transactions/{transactionId}/vote")
+    public ResponseEntity<?> voteOnWithdrawRequest(
+        @PathVariable Integer transactionId,
+        @RequestBody Map<String, Object> body
+    ) {
+        try {
+            String url = costPaymentServiceUrl + "/api/funds/transactions/" + transactionId + "/vote";
+            
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, headers);
+            
+            ResponseEntity<Map> response = restTemplate.exchange(
+                url,
+                HttpMethod.POST,
+                entity,
+                Map.class
+            );
+            
+            return ResponseEntity.ok(response.getBody());
+        } catch (Exception e) {
+            logger.error("Error voting on withdraw request {}: {}", transactionId, e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    /**
+     * Lấy danh sách withdrawal requests cần vote của user
+     * GET /api/fund/pending-vote-requests/user/{userId}
+     */
+    @GetMapping("/pending-vote-requests/user/{userId}")
+    public ResponseEntity<?> getPendingVoteRequestsForUser(@PathVariable Integer userId) {
+        try {
+            String url = costPaymentServiceUrl + "/api/funds/pending-vote-requests/user/" + userId;
+            
+            ResponseEntity<List<Map<String, Object>>> response = restTemplate.exchange(
+                url,
+                HttpMethod.GET,
+                null,
+                new ParameterizedTypeReference<List<Map<String, Object>>>() {}
+            );
+            
+            return ResponseEntity.ok(response.getBody());
+        } catch (Exception e) {
+            logger.error("Error getting pending vote requests for user {}: {}", userId, e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    /**
+     * User hủy yêu cầu rút tiền của chính mình
+     * DELETE /api/fund/transactions/{transactionId}?userId={userId}
      */
     @DeleteMapping("/transactions/{transactionId}")
-    public ResponseEntity<?> deleteTransaction(@PathVariable Integer transactionId) {
+    public ResponseEntity<?> deleteTransaction(
+        @PathVariable Integer transactionId,
+        @RequestParam Integer userId
+    ) {
         try {
-            // For now, return success (implement actual deletion if needed)
-            return ResponseEntity.ok(Map.of("success", true, "message", "Đã xóa giao dịch"));
+            String url = costPaymentServiceUrl + "/api/funds/transactions/" + transactionId + "?userId=" + userId;
+            
+            ResponseEntity<Map> response = restTemplate.exchange(
+                url,
+                HttpMethod.DELETE,
+                null,
+                Map.class
+            );
+            
+            return ResponseEntity.ok(response.getBody());
         } catch (Exception e) {
+            logger.error("Error cancelling transaction {}: {}", transactionId, e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(Map.of("error", e.getMessage()));
         }

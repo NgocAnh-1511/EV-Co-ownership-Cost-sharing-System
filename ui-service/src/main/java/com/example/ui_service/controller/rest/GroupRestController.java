@@ -154,15 +154,25 @@ public class GroupRestController {
     @PostMapping("/{groupId}/members")
     public ResponseEntity<Map<String, Object>> addGroupMember(@PathVariable Integer groupId, @RequestBody Map<String, Object> memberData) {
         try {
+            System.out.println("🔵 [GroupRestController] POST /api/groups/" + groupId + "/members");
+            System.out.println("Request data: " + memberData);
+            
             Map<String, Object> createdMember = groupManagementClient.addGroupMemberAsMap(groupId, memberData);
             if (createdMember != null) {
+                System.out.println("✅ [GroupRestController] Member added successfully: " + createdMember);
                 return ResponseEntity.ok(createdMember);
             } else {
-                return ResponseEntity.internalServerError().build();
+                System.err.println("❌ [GroupRestController] addGroupMemberAsMap returned null");
+                return ResponseEntity.status(500).body(Map.of("error", "Failed to add member", "message", "Group member service returned null"));
             }
+        } catch (RuntimeException e) {
+            System.err.println("❌ [GroupRestController] Error adding group member: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(500).body(Map.of("error", "Failed to add member", "message", e.getMessage()));
         } catch (Exception e) {
-            System.err.println("Error adding group member: " + e.getMessage());
-            return ResponseEntity.internalServerError().build();
+            System.err.println("❌ [GroupRestController] Unexpected error adding group member: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(500).body(Map.of("error", "Failed to add member", "message", e.getMessage()));
         }
     }
 

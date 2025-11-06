@@ -87,6 +87,31 @@ public interface FundService {
      */
     FundTransaction rejectWithdrawRequest(ApproveRequestDto request);
 
+    /**
+     * User hủy yêu cầu rút tiền của chính mình
+     * - Chỉ có thể hủy khi status = Pending
+     * - Chỉ người tạo yêu cầu mới có thể hủy
+     */
+    FundTransaction cancelWithdrawRequest(Integer transactionId, Integer userId);
+
+    // ========================================
+    // USER VOTE CHO WITHDRAWAL REQUEST
+    // ========================================
+
+    /**
+     * User vote cho withdrawal request (approve hoặc reject)
+     * - User trong cùng nhóm có thể vote
+     * - Nếu vote reject: Transaction sẽ bị reject ngay
+     * - Nếu vote approve: Transaction chuyển sang Approved (chờ admin xác nhận cuối cùng)
+     */
+    FundTransaction voteOnWithdrawRequest(VoteRequestDto request);
+
+    /**
+     * Lấy danh sách withdrawal requests cần vote của user
+     * (các requests từ user khác trong cùng nhóm)
+     */
+    List<FundTransaction> getPendingVoteRequestsForUser(Integer userId);
+
     // ========================================
     // LỊCH SỬ GIAO DỊCH
     // ========================================

@@ -72,7 +72,21 @@ CREATE TABLE FundTransaction (
     FOREIGN KEY (`fundId`) REFERENCES GroupFund(`fundId`) ON DELETE CASCADE
 );
 
--- 6. Theo dõi km (THÊM MỚI - Cho chức năng chia theo km)
+-- 6. Bỏ phiếu giao dịch quỹ
+CREATE TABLE IF NOT EXISTS transactionvote (
+    voteId INT AUTO_INCREMENT PRIMARY KEY,
+    transactionId INT NOT NULL,
+    userId INT NOT NULL,
+    approve BOOLEAN NOT NULL COMMENT 'true = đồng ý, false = từ chối',
+    note VARCHAR(500),
+    votedAt DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY unique_transaction_user (transactionId, userId),
+    INDEX idx_transaction (transactionId),
+    INDEX idx_user (userId),
+    FOREIGN KEY (transactionId) REFERENCES fundtransaction(transactionId) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 7. Theo dõi km (THÊM MỚI - Cho chức năng chia theo km)
 CREATE TABLE UsageTracking (
     `usageId` INT AUTO_INCREMENT PRIMARY KEY,
     `groupId` INT NOT NULL,

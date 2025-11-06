@@ -192,10 +192,18 @@ public class GroupManagementClient {
 
     public Map<String, Object> addGroupMemberAsMap(Integer groupId, Map<String, Object> memberData) {
         try {
-            return restTemplate.postForObject(groupManagementUrl + "/api/groups/" + groupId + "/members", memberData, Map.class);
+            System.out.println("🔵 [GroupManagementClient] Adding member to group " + groupId + ": " + memberData);
+            Map<String, Object> result = restTemplate.postForObject(groupManagementUrl + "/api/groups/" + groupId + "/members", memberData, Map.class);
+            System.out.println("✅ [GroupManagementClient] Member added successfully: " + result);
+            return result;
+        } catch (org.springframework.web.client.HttpClientErrorException e) {
+            System.err.println("❌ [GroupManagementClient] HTTP Error adding group member: " + e.getStatusCode() + " - " + e.getResponseBodyAsString());
+            e.printStackTrace();
+            throw new RuntimeException("Failed to add member: " + e.getResponseBodyAsString(), e);
         } catch (Exception e) {
-            System.err.println("Error adding group member: " + e.getMessage());
-            return null;
+            System.err.println("❌ [GroupManagementClient] Error adding group member: " + e.getMessage());
+            e.printStackTrace();
+            throw new RuntimeException("Failed to add member: " + e.getMessage(), e);
         }
     }
 

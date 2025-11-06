@@ -40,6 +40,10 @@
                         <i class="fas fa-piggy-bank"></i>
                         <span>Quỹ Chung</span>
                     </a>
+                    <a href="#" class="nav-item" data-page="browse-groups">
+                        <i class="fas fa-search"></i>
+                        <span>Tìm nhóm</span>
+                    </a>
                 </nav>
             </div>
             <div class="header-right">
@@ -128,6 +132,9 @@
                 <div class="section-card">
                     <div class="card-header">
                         <h2><i class="fas fa-users"></i> Nhóm của tôi</h2>
+                        <button class="btn btn-primary btn-sm" onclick="openCreateGroupModal()">
+                            <i class="fas fa-plus"></i> Tạo nhóm mới
+                        </button>
                     </div>
                     <div class="card-body">
                         <div class="groups-list" id="my-groups-list">
@@ -364,7 +371,7 @@
                 </div>
 
                 <!-- My Pending Requests -->
-                <div class="section-card">
+                <div class="section-card" id="myPendingCard">
                     <div class="card-header">
                         <h2>
                             <i class="fas fa-vote-yea"></i>
@@ -391,6 +398,43 @@
                                             <div class="empty-state">
                                                 <i class="fas fa-check-circle"></i>
                                                 <p>Không có phiếu nào đang chờ</p>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Pending Vote Requests (Requests from other members) -->
+                <div class="section-card" id="pendingVoteSection" style="display: none;">
+                    <div class="card-header">
+                        <h2>
+                            <i class="fas fa-bell"></i>
+                            Yêu cầu rút tiền cần bỏ phiếu
+                        </h2>
+                        <span class="badge badge-primary" id="pendingVoteBadge">0</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-container">
+                            <table class="data-table">
+                                <thead>
+                                    <tr>
+                                        <th>Người yêu cầu</th>
+                                        <th>Ngày tạo</th>
+                                        <th>Số tiền</th>
+                                        <th>Mục đích</th>
+                                        <th>Nhóm</th>
+                                        <th>Thao tác</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="pendingVoteBody">
+                                    <tr>
+                                        <td colspan="6" class="empty-table">
+                                            <div class="empty-state">
+                                                <i class="fas fa-check-circle"></i>
+                                                <p>Không có yêu cầu nào cần bỏ phiếu</p>
                                             </div>
                                         </td>
                                     </tr>
@@ -503,6 +547,41 @@
                                 </tbody>
                             </table>
                         </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- BROWSE GROUPS PAGE -->
+            <div id="browse-groups-page" class="page">
+                <div class="page-header">
+                    <div>
+                        <h1><i class="fas fa-search"></i> Tìm nhóm tham gia</h1>
+                        <p>Khám phá và tham gia các nhóm sở hữu xe điện</p>
+                    </div>
+                    <button class="btn btn-primary" onclick="openCreateGroupModal()">
+                        <i class="fas fa-plus"></i> Tạo nhóm mới
+                    </button>
+                </div>
+
+                <!-- Search and Filter -->
+                <div class="filter-bar">
+                    <div class="search-box">
+                        <i class="fas fa-search"></i>
+                        <input type="text" id="group-search" placeholder="Tìm kiếm nhóm theo tên...">
+                    </div>
+                    <select id="group-status-filter">
+                        <option value="all">Tất cả nhóm</option>
+                        <option value="Active">Đang hoạt động</option>
+                        <option value="Inactive">Tạm ngưng</option>
+                    </select>
+                </div>
+
+                <!-- Groups Grid -->
+                <div class="groups-grid" id="browse-groups-grid">
+                    <!-- Groups loaded dynamically -->
+                    <div class="loading-state">
+                        <i class="fas fa-spinner fa-spin"></i>
+                        <p>Đang tải danh sách nhóm...</p>
                     </div>
                 </div>
             </div>
@@ -621,6 +700,167 @@
     <div id="toast" class="toast">
         <div class="toast-icon"></div>
         <div class="toast-message"></div>
+    </div>
+
+    <!-- Join Group Modal -->
+    <div id="joinGroupModal" class="modal-overlay">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>
+                    <i class="fas fa-user-plus"></i>
+                    Tham gia nhóm
+                </h3>
+                <button class="modal-close" onclick="closeJoinGroupModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <form id="joinGroupForm" class="modal-body" novalidate>
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i>
+                    <div>
+                        <strong>Thông tin nhóm:</strong>
+                        <div id="join-group-info" style="margin-top: 0.5rem;">
+                            <!-- Group info loaded dynamically -->
+                        </div>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="joinOwnershipPercent">Tỷ lệ sở hữu của bạn (%)</label>
+                    <input type="number" id="joinOwnershipPercent" name="ownershipPercent" 
+                           min="0" max="100" step="0.01" 
+                           placeholder="VD: 25.5">
+                    <small class="form-text">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        Vui lòng nhập tỷ lệ sở hữu của bạn trong nhóm này. 
+                        Tổng tỷ lệ sở hữu của tất cả thành viên không được vượt quá 100%.
+                    </small>
+                </div>
+                <input type="hidden" id="join-group-id" name="groupId">
+                <input type="hidden" id="join-user-id" name="userId">
+            </form>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeJoinGroupModal()">
+                    Hủy
+                </button>
+                <button type="button" id="joinGroupSubmitBtn" class="btn btn-primary">
+                    <i class="fas fa-check"></i>
+                    Tham gia nhóm
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Group Modal -->
+    <div id="createGroupModal" class="modal-overlay">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>
+                    <i class="fas fa-plus-circle"></i>
+                    Tạo nhóm mới
+                </h3>
+                <button class="modal-close" onclick="closeCreateGroupModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <form id="createGroupForm" class="modal-body" novalidate>
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i>
+                    <span>Khi tạo nhóm mới, bạn sẽ tự động trở thành Admin của nhóm đó.</span>
+                </div>
+                <div class="form-group">
+                    <label for="createGroupName">Tên nhóm <span class="required">*</span></label>
+                    <input type="text" id="createGroupName" name="groupName" 
+                           required placeholder="VD: Nhóm đồng sở hữu Tesla Model 3">
+                    <small class="form-text">Tên nhóm sẽ hiển thị cho tất cả thành viên</small>
+                </div>
+                <div class="form-group">
+                    <label for="createGroupVehicleId">Vehicle ID (Tùy chọn)</label>
+                    <input type="number" id="createGroupVehicleId" name="vehicleId" 
+                           min="1" placeholder="VD: 1">
+                    <small class="form-text">ID của xe điện trong hệ thống (nếu có)</small>
+                </div>
+                <div class="form-group">
+                    <label for="createGroupOwnershipPercent">Tỷ lệ sở hữu của bạn (%)</label>
+                    <input type="number" id="createGroupOwnershipPercent" name="ownershipPercent" 
+                           min="0" max="100" step="0.01" placeholder="VD: 50.00">
+                    <small class="form-text">Tỷ lệ sở hữu của bạn trong nhóm (0-100%). Có thể để trống hoặc cập nhật sau.</small>
+                </div>
+                <div class="form-group">
+                    <label for="createGroupStatus">Trạng thái</label>
+                    <select id="createGroupStatus" name="status">
+                        <option value="Active">Đang hoạt động</option>
+                        <option value="Inactive">Tạm ngưng</option>
+                    </select>
+                </div>
+            </form>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeCreateGroupModal()">
+                    Hủy
+                </button>
+                <button type="button" id="createGroupSubmitBtn" class="btn btn-primary">
+                    <i class="fas fa-check"></i>
+                    Tạo nhóm
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Manage Group Modal -->
+    <div id="manageGroupModal" class="modal-overlay">
+        <div class="modal modal-large">
+            <div class="modal-header">
+                <h3>
+                    <i class="fas fa-users-cog"></i>
+                    Quản lý nhóm: <span id="manage-group-name"></span>
+                </h3>
+                <button class="modal-close" onclick="closeManageGroupModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <div class="modal-body">
+                <!-- Add Member Section -->
+                <div class="manage-section">
+                    <h4><i class="fas fa-user-plus"></i> Thêm thành viên</h4>
+                    <form id="addMemberForm" class="form-inline">
+                        <div class="form-group">
+                            <label for="newMemberUserId">User ID:</label>
+                            <input type="number" id="newMemberUserId" name="userId" 
+                                   min="1" required placeholder="Nhập User ID">
+                        </div>
+                        <div class="form-group">
+                            <label for="newMemberOwnership">Tỷ lệ sở hữu (%):</label>
+                            <input type="number" id="newMemberOwnership" name="ownershipPercent" 
+                                   min="0" max="100" step="0.01" required placeholder="VD: 25.5">
+                        </div>
+                        <div class="form-group">
+                            <label for="newMemberRole">Quyền:</label>
+                            <select id="newMemberRole" name="role">
+                                <option value="Member">Thành viên</option>
+                                <option value="Admin">Admin</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-plus"></i> Thêm
+                        </button>
+                    </form>
+                </div>
+
+                <!-- Members List Section -->
+                <div class="manage-section">
+                    <h4><i class="fas fa-users"></i> Danh sách thành viên</h4>
+                    <div id="members-list-container">
+                        <div class="loading-spinner">
+                            <i class="fas fa-spinner fa-spin"></i> Đang tải...
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeManageGroupModal()">
+                    Đóng
+                </button>
+            </div>
+        </div>
     </div>
 
     <!-- Scripts -->

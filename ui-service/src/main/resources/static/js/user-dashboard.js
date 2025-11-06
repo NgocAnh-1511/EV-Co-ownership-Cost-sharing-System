@@ -12,10 +12,12 @@ const API = {
 
 // Current User - get from URL parameter or default to 1
 const urlParams = new URLSearchParams(window.location.search);
-const CURRENT_USER_ID = parseInt(urlParams.get('userId')) || 1;
+const CURRENT_USER_ID = parseInt(urlParams.get('userId')) || 2;
 
 // Global State
 let currentPage = 'home';
+let fundAutoRefreshInterval = null;
+let lastPendingVoteCount = 0;
 
 // Initialize on DOM load
 document.addEventListener('DOMContentLoaded', function() {
@@ -49,6 +51,11 @@ function initNavigation() {
 }
 
 function switchPage(page) {
+    // Dừng auto-refresh nếu không ở trang Fund
+    if (page !== 'fund') {
+        stopFundAutoRefresh();
+    }
+    
     // Update nav
     document.querySelectorAll('.nav-item').forEach(item => {
         item.classList.remove('active');
@@ -79,6 +86,9 @@ function switchPage(page) {
             break;
         case 'fund':
             loadFundPage();
+            break;
+        case 'browse-groups':
+            loadBrowseGroupsPage();
             break;
     }
 }
@@ -113,32 +123,87 @@ async function loadQuickStats() {
     }
 }
 
+// Store user role for each group
+let userGroupRoles = {}; // { groupId: 'Admin' | 'Member' }
+
 async function loadMyGroups() {
     try {
-        const response = await fetch(API.GROUPS);
+        const response = await fetch(`${API.GROUPS}/user/${CURRENT_USER_ID}`);
+        if (!response.ok) throw new Error('Failed to load groups');
+        
         const groups = await response.json();
         
         const container = document.getElementById('my-groups-list');
-        container.innerHTML = groups.map(group => `
-            <div class="group-item">
-                <h3>${group.groupName}</h3>
+        if (!container) return;
+        
+        if (groups.length === 0) {
+            container.innerHTML = '<p style="text-align: center; color: var(--text-light);">Bạn chưa tham gia nhóm nào</p>';
+            return;
+        }
+        
+        // Fetch user role for each group
+        for (const group of groups) {
+            try {
+                const membersResponse = await fetch(`${API.GROUPS}/${group.groupId}/members`);
+                if (membersResponse.ok) {
+                    const members = await membersResponse.json();
+                    const userMember = members.find(m => m.userId === CURRENT_USER_ID);
+                    if (userMember) {
+                        userGroupRoles[group.groupId] = userMember.role || 'Member';
+                    } else {
+                        userGroupRoles[group.groupId] = 'Member';
+                    }
+                }
+            } catch (e) {
+                console.warn(`Failed to fetch role for group ${group.groupId}:`, e);
+                userGroupRoles[group.groupId] = 'Member';
+            }
+        }
+        
+        container.innerHTML = groups.map(group => {
+            const isAdmin = userGroupRoles[group.groupId] === 'Admin';
+            return `
+            <div class="group-item" data-group-id="${group.groupId}">
+                <div class="group-item-header">
+                    <h3>${escapeHtml(group.groupName)}</h3>
+                    ${isAdmin ? '<span class="badge badge-admin"><i class="fas fa-crown"></i> Admin</span>' : ''}
+                </div>
                 <p>Quản lý bởi: User #${group.adminId}</p>
                 <div class="group-stats">
                     <div class="group-stat">
                         <i class="fas fa-users"></i>
-                        <span>${group.members ? group.members.length : 0} thành viên</span>
+                        <span>${group.memberCount || 0} thành viên</span>
                     </div>
                     <div class="group-stat">
                         <i class="fas fa-car"></i>
-                        <span>Xe #${group.vehicleId}</span>
+                        <span>Xe #${group.vehicleId || 'N/A'}</span>
                     </div>
                 </div>
+                ${isAdmin ? `
+                <div class="group-actions">
+                    <button class="btn btn-primary btn-sm manage-group-btn" data-group-id="${group.groupId}" data-group-name="${escapeHtml(group.groupName)}">
+                        <i class="fas fa-cog"></i> Quản lý nhóm
+                    </button>
             </div>
-        `).join('');
+                ` : ''}
+            </div>
+        `}).join('');
+        
+        // Bind click handlers for manage group buttons
+        document.querySelectorAll('.manage-group-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const groupId = parseInt(this.getAttribute('data-group-id'));
+                const groupName = this.getAttribute('data-group-name');
+                openManageGroupModal(groupId, groupName);
+            });
+        });
         
     } catch (error) {
         console.error('Error loading groups:', error);
-        document.getElementById('my-groups-list').innerHTML = '<p style="text-align: center; color: var(--text-light);">Không có dữ liệu</p>';
+        const container = document.getElementById('my-groups-list');
+        if (container) {
+            container.innerHTML = '<p style="text-align: center; color: var(--text-light);">Không có dữ liệu</p>';
+        }
     }
 }
 
@@ -997,10 +1062,39 @@ async function loadFundPage() {
         await loadFundGroups();
         await loadFundStats();
         await loadMyPendingRequests();
+        await loadPendingVoteRequests(); // Load các yêu cầu cần vote
         await loadRecentTransactions();
         await loadTransactionHistory();
+        
+        // Bắt đầu auto-refresh mỗi 15 giây khi ở trang Fund
+        startFundAutoRefresh();
     } catch (error) {
         console.error('Error loading fund page:', error);
+    }
+}
+
+// Auto-refresh cho trang Fund (kiểm tra yêu cầu mới mỗi 15 giây)
+function startFundAutoRefresh() {
+    // Dừng interval cũ nếu có
+    if (fundAutoRefreshInterval) {
+        clearInterval(fundAutoRefreshInterval);
+    }
+    
+    // Chỉ auto-refresh khi đang ở trang Fund
+    fundAutoRefreshInterval = setInterval(() => {
+        if (currentPage === 'fund') {
+            console.log('🔄 Auto-refreshing fund data...');
+            loadPendingVoteRequests(); // Kiểm tra yêu cầu mới cần vote
+            loadMyPendingRequests(); // Kiểm tra yêu cầu của mình
+            loadFundStats(); // Cập nhật stats
+        }
+    }, 15000); // 15 giây
+}
+
+function stopFundAutoRefresh() {
+    if (fundAutoRefreshInterval) {
+        clearInterval(fundAutoRefreshInterval);
+        fundAutoRefreshInterval = null;
     }
 }
 
@@ -1076,9 +1170,15 @@ async function loadFundGroups() {
                             ...group,
                             fundId: fund.fundId
                         };
+                    } else if (fundResponse.status === 404) {
+                        // Group chưa có fund là bình thường, không cần log warning
+                        // console.debug(`Group ${group.groupId} chưa có fund`);
                     }
                 } catch (e) {
-                    console.warn(`No fund found for group ${group.groupId}`);
+                    // Ignore 404 errors (group chưa có fund)
+                    if (e.message && !e.message.includes('404')) {
+                        console.debug(`Error checking fund for group ${group.groupId}:`, e.message);
+                    }
                 }
                 return group;
             })
@@ -1153,18 +1253,29 @@ async function loadFundStats() {
 
 async function loadMyPendingRequests() {
     try {
-        const response = await fetch(`${API.FUND}/transactions?status=Pending`);
+        const response = await fetch(`${API.FUND}/transactions?status=Pending&userId=${CURRENT_USER_ID}`);
         if (!response.ok) throw new Error('Failed to load pending requests');
         
         const transactions = await response.json();
+        if (!Array.isArray(transactions)) {
+            console.warn('⚠️ Expected array but got:', transactions);
+            updateMyPendingDisplay([]);
+            return;
+        }
         
-        // Filter only my requests
-        const myRequests = transactions.filter(t => t.createdBy === CURRENT_USER_ID);
+        // Filter only my withdrawal requests (deposits don't need approval)
+        const myRequests = transactions.filter(t => {
+            const userId = t.userId || t.user_id || t.createdBy || t.created_by;
+            const transactionType = t.transactionType || t.transaction_type || t.type;
+            return userId === CURRENT_USER_ID && 
+                   (transactionType === 'Withdraw' || transactionType === 'WITHDRAW');
+        });
         
         updateMyPendingDisplay(myRequests);
         
     } catch (error) {
         console.error('Error loading my pending requests:', error);
+        updateMyPendingDisplay([]);
     }
 }
 
@@ -1227,16 +1338,23 @@ function updateMyPendingDisplay(requests) {
 
 async function loadRecentTransactions() {
     try {
-        const response = await fetch(`${API.FUND}/transactions?status=Completed`);
+        const response = await fetch(`${API.FUND}/transactions?status=Completed&userId=${CURRENT_USER_ID}`);
         if (!response.ok) throw new Error('Failed to load transactions');
         
         const transactions = await response.json();
+        if (!Array.isArray(transactions)) {
+            console.warn('⚠️ Expected array but got:', transactions);
+            transactions = [];
+        }
         
         // Take only last 5
         const recent = transactions.slice(0, 5);
         
         const container = document.getElementById('recentTransactions');
-        if (!container) return;
+        if (!container) {
+            console.warn('⚠️ Container #recentTransactions not found');
+            return;
+        }
         
         if (recent.length === 0) {
             container.innerHTML = `
@@ -1248,23 +1366,246 @@ async function loadRecentTransactions() {
             return;
         }
         
-        container.innerHTML = recent.map(t => `
+        container.innerHTML = recent.map(t => {
+            const transactionType = t.transactionType || t.transaction_type || t.type;
+            const date = t.date || t.createdAt || t.created_at;
+            const isWithdraw = transactionType === 'Withdraw' || transactionType === 'WITHDRAW';
+            
+            return `
             <div class="transaction-item">
-                <div class="transaction-icon ${t.type === 'Withdraw' ? 'expense' : 'income'}">
-                    <i class="fas fa-${t.type === 'Withdraw' ? 'arrow-down' : 'arrow-up'}"></i>
+                <div class="transaction-icon ${isWithdraw ? 'expense' : 'income'}">
+                    <i class="fas fa-${isWithdraw ? 'arrow-down' : 'arrow-up'}"></i>
                 </div>
                 <div class="transaction-info">
                     <div class="transaction-title">${t.purpose || 'Không có mục đích'}</div>
-                    <div class="transaction-date">${formatFundDate(t.createdAt)}</div>
+                    <div class="transaction-date">${formatFundDate(date)}</div>
                 </div>
-                <div class="transaction-amount ${t.type === 'Withdraw' ? 'negative' : 'positive'}">
-                    ${t.type === 'Withdraw' ? '-' : '+'} ${formatFundCurrency(t.amount)}
+                <div class="transaction-amount ${isWithdraw ? 'negative' : 'positive'}">
+                    ${isWithdraw ? '-' : '+'} ${formatFundCurrency(t.amount)}
                 </div>
             </div>
-        `).join('');
+            `;
+        }).join('');
         
     } catch (error) {
         console.error('Error loading recent transactions:', error);
+        const container = document.getElementById('recentTransactions');
+        if (container) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <p>Không thể tải giao dịch</p>
+                </div>
+            `;
+        }
+    }
+}
+
+// Load các yêu cầu rút tiền cần vote (của các thành viên khác trong nhóm)
+async function loadPendingVoteRequests() {
+    try {
+        console.log('🔍 Loading pending vote requests for user:', CURRENT_USER_ID);
+        
+        // Lấy danh sách các nhóm mà user tham gia
+        const groupsResponse = await fetch(`/api/groups/user/${CURRENT_USER_ID}`);
+        if (!groupsResponse.ok) {
+            console.error('❌ Failed to load user groups');
+            updatePendingVoteDisplay([]);
+            return;
+        }
+        
+        const groups = await groupsResponse.json();
+        console.log('📋 User groups:', groups);
+        
+        const allPendingRequests = [];
+        
+        // Với mỗi nhóm, lấy fund và pending requests
+        for (const group of groups) {
+            try {
+                // Lấy fund của nhóm
+                const fundResponse = await fetch(`${API.FUND}/group/${group.groupId}`);
+                if (!fundResponse.ok) continue;
+                
+                const fund = await fundResponse.json();
+                if (!fund || !fund.fundId) continue;
+                
+                const fundId = fund.fundId;
+                
+                // Lấy pending requests của fund này
+                const pendingUrl = `/api/funds/${fundId}/pending-requests`;
+                console.log(`🔍 Fetching pending requests from: ${pendingUrl}`);
+                const requestsResponse = await fetch(pendingUrl);
+                if (!requestsResponse.ok) continue;
+                
+                const requests = await requestsResponse.json();
+                if (!Array.isArray(requests)) continue;
+                
+                console.log(`📋 Found ${requests.length} pending requests for fund ${fundId}`);
+                
+                // Filter: chỉ các withdrawal requests không phải của user này
+                requests.forEach(req => {
+                    const transactionType = req.transactionType || req.transaction_type;
+                    const status = req.status || req.transaction_status;
+                    const userId = req.userId || req.user_id || req.createdBy;
+                    
+                    const isWithdraw = transactionType === 'Withdraw' || transactionType === 'WITHDRAW';
+                    const isPending = status === 'Pending' || status === 'PENDING';
+                    const isNotMyRequest = userId !== CURRENT_USER_ID && userId !== parseInt(CURRENT_USER_ID);
+                    
+                    if (isWithdraw && isPending && isNotMyRequest) {
+                        allPendingRequests.push({
+                            ...req,
+                            groupName: group.groupName || group.group_name || `Nhóm ${group.groupId}`,
+                            groupId: group.groupId,
+                            fundId: fundId,
+                            requesterId: userId
+                        });
+                    }
+                });
+            } catch (e) {
+                console.warn(`Error loading requests for group ${group.groupId}:`, e);
+            }
+        }
+        
+        console.log('✅ Pending vote requests:', allPendingRequests);
+        
+        // Kiểm tra xem có yêu cầu mới không (so với lần trước)
+        // Chỉ hiển thị thông báo nếu:
+        // 1. Có yêu cầu mới (số lượng tăng) và đã có yêu cầu trước đó - để tránh thông báo khi lần đầu load trang
+        // HOẶC đang ở trang Fund và có yêu cầu (để user biết ngay khi vào trang)
+        if (allPendingRequests.length > lastPendingVoteCount) {
+            if (lastPendingVoteCount > 0) {
+                // Có yêu cầu mới được tạo
+                const newCount = allPendingRequests.length - lastPendingVoteCount;
+                showToast(`🔔 Có ${newCount} yêu cầu rút tiền mới cần bạn bỏ phiếu!`, 'info');
+            } else if (allPendingRequests.length > 0 && currentPage === 'fund') {
+                // Lần đầu vào trang Fund và có yêu cầu đang chờ
+                showToast(`🔔 Có ${allPendingRequests.length} yêu cầu rút tiền đang chờ bạn bỏ phiếu!`, 'info');
+            }
+        }
+        lastPendingVoteCount = allPendingRequests.length;
+        
+        updatePendingVoteDisplay(allPendingRequests);
+        
+    } catch (error) {
+        console.error('❌ Error loading pending vote requests:', error);
+        updatePendingVoteDisplay([]);
+    }
+}
+
+/**
+ * Hiển thị danh sách các withdrawal requests cần vote
+ */
+function updatePendingVoteDisplay(requests) {
+    const voteSection = document.getElementById('pendingVoteSection');
+    const voteBadge = document.getElementById('pendingVoteBadge');
+    const voteBody = document.getElementById('pendingVoteBody');
+    
+    if (!voteSection || !voteBadge || !voteBody) {
+        console.warn('⚠️ Pending vote section elements not found');
+        return;
+    }
+    
+    // Cập nhật badge
+    voteBadge.textContent = requests.length;
+    
+    // Hiển thị/ẩn section
+    if (requests.length === 0) {
+        voteSection.style.display = 'none';
+        return;
+    }
+    
+    // Hiển thị section
+    voteSection.style.display = 'block';
+    
+    // Render danh sách yêu cầu
+    voteBody.innerHTML = requests.map(req => {
+        const date = req.date || req.createdAt || req.created_at;
+        const transactionId = req.transactionId || req.transaction_id;
+        const amount = req.amount || 0;
+        const purpose = req.purpose || '-';
+        const requesterId = req.requesterId || req.userId || req.user_id;
+        const groupName = req.groupName || `Nhóm ${req.groupId}`;
+        const fundId = req.fundId;
+        
+        return `
+        <tr>
+            <td>
+                <strong>User #${requesterId}</strong>
+            </td>
+            <td>${formatFundDate(date)}</td>
+            <td class="amount negative">
+                ${formatFundCurrency(amount)}
+            </td>
+            <td>${purpose}</td>
+            <td>${groupName}</td>
+            <td>
+                <div style="display: flex; gap: 0.5rem;">
+                    <button class="btn btn-sm btn-success" onclick="voteOnWithdrawRequest(${transactionId}, ${fundId}, true)" title="Đồng ý">
+                        <i class="fas fa-check"></i> Đồng ý
+                    </button>
+                    <button class="btn btn-sm btn-danger" onclick="voteOnWithdrawRequest(${transactionId}, ${fundId}, false)" title="Từ chối">
+                        <i class="fas fa-times"></i> Từ chối
+                    </button>
+                </div>
+            </td>
+        </tr>
+        `;
+    }).join('');
+}
+
+/**
+ * Vote cho withdrawal request (approve hoặc reject)
+ */
+async function voteOnWithdrawRequest(transactionId, fundId, approve) {
+    if (!confirm(approve 
+        ? 'Bạn có chắc chắn muốn đồng ý yêu cầu rút tiền này không?'
+        : 'Bạn có chắc chắn muốn từ chối yêu cầu rút tiền này không?')) {
+        return;
+    }
+    
+    try {
+        const url = `${API.FUND}/transactions/${transactionId}/vote`;
+        
+        console.log(`🗳️ Voting ${approve ? 'approve' : 'reject'} for transaction ${transactionId}`);
+        
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                transactionId: transactionId,
+                userId: CURRENT_USER_ID,
+                approve: approve
+            })
+        });
+        
+        if (!response.ok) {
+            let errorData;
+            try {
+                errorData = await response.json();
+            } catch (e) {
+                const errorText = await response.text();
+                errorData = { error: errorText };
+            }
+            throw new Error(errorData.error || 'Failed to vote');
+        }
+        
+        const result = await response.json();
+        console.log('✅ Vote result:', result);
+        
+        showToast(approve 
+            ? '✅ Bạn đã đồng ý yêu cầu rút tiền này'
+            : '❌ Bạn đã từ chối yêu cầu rút tiền này', 'success');
+        
+        // Reload data
+        loadPendingVoteRequests();
+        loadFundStats();
+        loadMyPendingRequests();
+        loadTransactionHistory();
+        
+    } catch (error) {
+        console.error('Error voting:', error);
+        showToast('❌ Lỗi: ' + error.message, 'error');
     }
 }
 
@@ -1275,9 +1616,9 @@ async function loadTransactionHistory() {
         const status = statusEl ? statusEl.value : '';
         const type = typeEl ? typeEl.value : '';
         
-        let url = `${API.FUND}/transactions?`;
-        if (status) url += `status=${status}&`;
-        if (type) url += `type=${type}`;
+        let url = `${API.FUND}/transactions?userId=${CURRENT_USER_ID}`;
+        if (status) url += `&status=${status}`;
+        if (type) url += `&type=${type}`;
         
         const response = await fetch(url);
         if (!response.ok) throw new Error('Failed to load transactions');
@@ -1550,12 +1891,25 @@ async function cancelRequest(transactionId) {
     if (!confirm('Bạn có chắc muốn hủy yêu cầu này?')) return;
     
     try {
-        const response = await fetch(`${API.FUND}/transactions/${transactionId}`, {
+        // Đảm bảo userId luôn có giá trị
+        const userId = CURRENT_USER_ID || 1;
+        const url = `${API.FUND}/transactions/${transactionId}?userId=${userId}`;
+        
+        console.log('🗑️ Cancelling transaction:', { transactionId, userId, url });
+        
+        const response = await fetch(url, {
             method: 'DELETE'
         });
         
-        if (!response.ok) throw new Error('Failed to cancel request');
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            const errorText = await response.text().catch(() => '');
+            console.error('❌ Delete failed:', { status: response.status, errorData, errorText });
+            throw new Error(errorData.error || errorData.message || errorText || 'Failed to cancel request');
+        }
         
+        const result = await response.json();
+        console.log('✅ Cancel success:', result);
         showToast('✅ Đã hủy yêu cầu', 'success');
         
         // Reload data
@@ -1616,4 +1970,975 @@ function formatFundDate(dateString) {
         minute: '2-digit'
     });
 }
+
+// ============ BROWSE GROUPS PAGE ============
+let allGroups = [];
+let myGroupIds = [];
+
+async function loadBrowseGroupsPage() {
+    try {
+        // Load all groups and user's groups
+        await Promise.all([
+            loadAllGroups(),
+            loadUserGroups()
+        ]);
+        
+        // Initialize search and filter
+        initBrowseGroupsFilters();
+        
+        // Render groups
+        renderBrowseGroups();
+        
+    } catch (error) {
+        console.error('Error loading browse groups page:', error);
+        showToast('Lỗi khi tải danh sách nhóm', 'error');
+    }
+}
+
+async function loadAllGroups() {
+    try {
+        const response = await fetch(API.GROUPS);
+        if (!response.ok) throw new Error('Failed to load groups');
+        
+        allGroups = await response.json();
+        console.log(`📦 Loaded ${allGroups.length} groups:`, allGroups);
+        
+    } catch (error) {
+        console.error('Error loading all groups:', error);
+        allGroups = [];
+    }
+}
+
+async function loadUserGroups() {
+    try {
+        const response = await fetch(`${API.GROUPS}/user/${CURRENT_USER_ID}`);
+        if (!response.ok) throw new Error('Failed to load user groups');
+        
+        const userGroups = await response.json();
+        myGroupIds = userGroups.map(g => g.groupId);
+        console.log(`👤 User ${CURRENT_USER_ID} is member of groups:`, myGroupIds);
+        
+    } catch (error) {
+        console.error('Error loading user groups:', error);
+        myGroupIds = [];
+    }
+}
+
+function initBrowseGroupsFilters() {
+    const searchInput = document.getElementById('group-search');
+    const statusFilter = document.getElementById('group-status-filter');
+    
+    if (searchInput) {
+        searchInput.addEventListener('input', renderBrowseGroups);
+    }
+    
+    if (statusFilter) {
+        statusFilter.addEventListener('change', renderBrowseGroups);
+    }
+}
+
+function renderBrowseGroups() {
+    const container = document.getElementById('browse-groups-grid');
+    if (!container) return;
+    
+    const searchTerm = document.getElementById('group-search')?.value.toLowerCase() || '';
+    const statusFilter = document.getElementById('group-status-filter')?.value || 'all';
+    
+    // Filter groups
+    let filteredGroups = allGroups.filter(group => {
+        // Search filter
+        const matchesSearch = !searchTerm || 
+            group.groupName.toLowerCase().includes(searchTerm);
+        
+        // Status filter
+        const matchesStatus = statusFilter === 'all' || 
+            group.status === statusFilter;
+        
+        return matchesSearch && matchesStatus;
+    });
+    
+    // Render groups
+    if (filteredGroups.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state" style="grid-column: 1 / -1;">
+                <i class="fas fa-search"></i>
+                <p>Không tìm thấy nhóm nào</p>
+            </div>
+        `;
+        return;
+    }
+    
+    container.innerHTML = filteredGroups.map(group => {
+        const isMember = myGroupIds.includes(group.groupId);
+        const statusBadge = group.status === 'Active' 
+            ? '<span class="badge badge-success">Đang hoạt động</span>'
+            : '<span class="badge badge-warning">Tạm ngưng</span>';
+        
+        return `
+            <div class="group-card">
+                <div class="group-card-header">
+                    <h3>${escapeHtml(group.groupName)}</h3>
+                    ${statusBadge}
+                </div>
+                <div class="group-card-body">
+                    <div class="group-info-item">
+                        <i class="fas fa-user-shield"></i>
+                        <span>Quản lý bởi: User #${group.adminId}</span>
+                    </div>
+                    <div class="group-info-item">
+                        <i class="fas fa-users"></i>
+                        <span>${group.memberCount || 0} thành viên</span>
+                    </div>
+                    <div class="group-info-item">
+                        <i class="fas fa-car"></i>
+                        <span>Xe #${group.vehicleId || 'N/A'}</span>
+                    </div>
+                    <div class="group-info-item">
+                        <i class="fas fa-vote-yea"></i>
+                        <span>${group.voteCount || 0} phiếu bỏ phiếu</span>
+                    </div>
+                    ${group.createdAt ? `
+                    <div class="group-info-item">
+                        <i class="fas fa-calendar"></i>
+                        <span>Thành lập: ${formatDate(group.createdAt)}</span>
+                    </div>
+                    ` : ''}
+                </div>
+                <div class="group-card-footer">
+                    ${isMember ? `
+                        <button class="btn btn-success" disabled>
+                            <i class="fas fa-check"></i> Đã tham gia
+                        </button>
+                    ` : `
+                        <button class="btn btn-primary join-group-btn" data-group-id="${group.groupId}">
+                            <i class="fas fa-user-plus"></i> Tham gia nhóm
+                        </button>
+                    `}
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function openJoinGroupModal(groupId) {
+    console.log('openJoinGroupModal called with groupId:', groupId, 'type:', typeof groupId);
+    console.log('allGroups:', allGroups);
+    
+    // Convert to number if needed
+    const id = typeof groupId === 'string' ? parseInt(groupId) : groupId;
+    
+    const group = allGroups.find(g => g.groupId === id || g.groupId === groupId);
+    if (!group) {
+        console.error('Group not found. ID:', id, 'Available groups:', allGroups.map(g => g.groupId));
+        showToast('Không tìm thấy thông tin nhóm', 'error');
+        return;
+    }
+    
+    console.log('Found group:', group);
+    
+    // Set hidden fields
+    const groupIdInput = document.getElementById('join-group-id');
+    const userIdInput = document.getElementById('join-user-id');
+    
+    if (!groupIdInput || !userIdInput) {
+        console.error('Modal inputs not found');
+        showToast('Lỗi: Không tìm thấy form', 'error');
+        return;
+    }
+    
+    groupIdInput.value = id;
+    userIdInput.value = CURRENT_USER_ID;
+    
+    // Set group info
+    const infoDiv = document.getElementById('join-group-info');
+    if (infoDiv) {
+        infoDiv.innerHTML = `
+            <div><strong>Tên nhóm:</strong> ${escapeHtml(group.groupName)}</div>
+            <div><strong>Thành viên hiện tại:</strong> ${group.memberCount || 0}</div>
+            <div><strong>Trạng thái:</strong> ${group.status === 'Active' ? 'Đang hoạt động' : 'Tạm ngưng'}</div>
+        `;
+    }
+    
+    // Reset form
+    const ownershipInput = document.getElementById('joinOwnershipPercent');
+    if (ownershipInput) {
+        ownershipInput.value = '';
+    }
+    
+    // Show modal
+    const modal = document.getElementById('joinGroupModal');
+    if (modal) {
+        modal.classList.add('active');
+        console.log('Modal opened');
+        
+        // Ensure submit button handler is bound
+        const submitBtn = document.getElementById('joinGroupSubmitBtn');
+        if (submitBtn) {
+            console.log('🔵 Binding submit button handler');
+            
+            // Remove all existing click listeners by replacing the button
+            // Create a temporary marker to identify old listeners
+            const oldBtn = submitBtn;
+            const newBtn = oldBtn.cloneNode(true);
+            
+            // Replace the button
+            oldBtn.parentNode.replaceChild(newBtn, oldBtn);
+            
+            // Get the new button reference
+            const button = document.getElementById('joinGroupSubmitBtn');
+            
+            // Ensure button is enabled
+            button.disabled = false;
+            button.style.pointerEvents = 'auto';
+            button.style.cursor = 'pointer';
+            
+            // Bind click handler with detailed logging
+            // Handle both button click and icon click
+            const clickHandler = function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('🔵 Submit button clicked!');
+                console.log('🔵 Event details:', {
+                    type: e.type,
+                    target: e.target,
+                    currentTarget: e.currentTarget,
+                    buttonId: e.currentTarget.id,
+                    clickedElement: e.target.tagName,
+                    clickedElementClass: e.target.className
+                });
+                
+                // If clicked on icon, find the button parent
+                let targetButton = e.target;
+                if (targetButton.tagName === 'I' || targetButton.tagName === 'SPAN') {
+                    targetButton = targetButton.closest('button');
+                }
+                
+                if (!targetButton || targetButton.id !== 'joinGroupSubmitBtn') {
+                    console.warn('⚠️ Click not on button, ignoring');
+                    return;
+                }
+                
+                console.log('🔵 Calling handleJoinGroup...');
+                
+                // Try to trigger form submit as primary method
+                const form = document.getElementById('joinGroupForm');
+                if (form) {
+                    console.log('🔵 Triggering form submit...');
+                    // Create and dispatch submit event
+                    const submitEvent = new Event('submit', { bubbles: true, cancelable: true });
+                    form.dispatchEvent(submitEvent);
+                } else {
+                    // Fallback to direct handler call
+                    console.log('🔵 Form not found, calling handleJoinGroup directly...');
+                    handleJoinGroup(e);
+                }
+            };
+            
+            // Set onclick attribute directly as primary method (most reliable)
+            button.onclick = function(e) {
+                console.log('🔵 onclick attribute triggered!');
+                clickHandler(e);
+            };
+            
+            // Add click listener to button as backup
+            button.addEventListener('click', clickHandler, { once: false, capture: false });
+            
+            // Also add mousedown/pointerdown as backup
+            button.addEventListener('mousedown', function(e) {
+                console.log('🔵 Button mousedown event');
+            });
+            
+            // Add click listener to icon if exists
+            const icon = button.querySelector('i');
+            if (icon) {
+                console.log('🔵 Found icon, adding click handler to icon too');
+                icon.addEventListener('click', function(e) {
+                    console.log('🔵 Icon clicked!');
+                    clickHandler(e);
+                }, { once: false, capture: false });
+                icon.style.pointerEvents = 'auto';
+                icon.style.cursor = 'pointer';
+            }
+            
+            // Also try to trigger via form submit as backup
+            const form = document.getElementById('joinGroupForm');
+            if (form) {
+                console.log('🔵 Also binding form submit handler');
+                const formSubmitHandler = function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('🔵 Form submit triggered');
+                    handleJoinGroup(e);
+                };
+                form.addEventListener('submit', formSubmitHandler, { once: false });
+            }
+            
+            console.log('✅ Submit button handler bound successfully');
+            console.log('✅ Button state:', {
+                id: button.id,
+                disabled: button.disabled,
+                type: button.type,
+                hasOnclick: !!button.onclick
+            });
+            
+            // Debug: Check button visibility and clickability
+            setTimeout(() => {
+                const btn = document.getElementById('joinGroupSubmitBtn');
+                if (btn) {
+                    const styles = window.getComputedStyle(btn);
+                    const rect = btn.getBoundingClientRect();
+                    console.log('🔍 Button debug info:', {
+                        display: styles.display,
+                        visibility: styles.visibility,
+                        pointerEvents: styles.pointerEvents,
+                        opacity: styles.opacity,
+                        zIndex: styles.zIndex,
+                        position: styles.position,
+                        top: rect.top,
+                        left: rect.left,
+                        width: rect.width,
+                        height: rect.height,
+                        visible: rect.width > 0 && rect.height > 0
+                    });
+                    
+                    // Check if button is covered by another element
+                    const elementAtPoint = document.elementFromPoint(
+                        rect.left + rect.width / 2,
+                        rect.top + rect.height / 2
+                    );
+                    console.log('🔍 Element at button center:', {
+                        tagName: elementAtPoint?.tagName,
+                        id: elementAtPoint?.id,
+                        className: elementAtPoint?.className,
+                        isButton: elementAtPoint === btn || btn.contains(elementAtPoint)
+                    });
+                }
+            }, 100);
+            
+            // Test click programmatically after a short delay
+            setTimeout(() => {
+                const btn = document.getElementById('joinGroupSubmitBtn');
+                if (btn) {
+                    console.log('🧪 Testing programmatic click...');
+                    // Don't actually trigger, just log that we can access it
+                    console.log('✅ Button accessible for programmatic click');
+                }
+            }, 200);
+        } else {
+            console.warn('⚠️ Submit button not found when opening modal');
+        }
+    } else {
+        console.error('Modal not found');
+    }
+}
+
+function closeJoinGroupModal() {
+    document.getElementById('joinGroupModal').classList.remove('active');
+    document.getElementById('joinGroupForm').reset();
+}
+
+// Initialize join group form handler
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('🔵 DOMContentLoaded - Initializing join group form...');
+    
+    const joinGroupForm = document.getElementById('joinGroupForm');
+    console.log('Form found:', joinGroupForm ? 'YES' : 'NO');
+    
+    if (joinGroupForm) {
+        // Bind form submit handler
+        joinGroupForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            console.log('🔵 Form submit event triggered');
+            handleJoinGroup(e);
+        });
+        console.log('✅ Form submit event listener added');
+        
+        // Also bind directly to submit button as backup
+        const submitBtn = document.getElementById('joinGroupSubmitBtn');
+        if (submitBtn) {
+            console.log('✅ Submit button found');
+            submitBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log('🔵 Submit button clicked (backup handler)');
+                handleJoinGroup(e);
+            });
+        } else {
+            console.warn('⚠️ Submit button not found');
+        }
+    } else {
+        console.error('❌ joinGroupForm not found in DOM');
+    }
+    
+    // Event delegation for join group buttons (handles dynamically created buttons)
+    document.addEventListener('click', function(event) {
+        // Skip if clicking on submit button or inside modal footer
+        const submitBtn = event.target.closest('#joinGroupSubmitBtn');
+        const modalFooter = event.target.closest('.modal-footer');
+        if (submitBtn || (modalFooter && event.target.closest('button'))) {
+            // Let the button's own handlers handle this
+            return;
+        }
+        
+        // Check if clicked element is a join group button or inside one
+        const joinBtn = event.target.closest('.join-group-btn');
+        if (joinBtn) {
+            event.preventDefault();
+            const groupId = joinBtn.getAttribute('data-group-id');
+            if (groupId) {
+                console.log('Join button clicked, groupId:', groupId);
+                openJoinGroupModal(parseInt(groupId));
+            }
+        }
+        
+        // Close modal when clicking outside
+        if (event.target.id === 'joinGroupModal') {
+            closeJoinGroupModal();
+        }
+    });
+});
+
+// Flag to prevent duplicate calls
+let isJoiningGroup = false;
+
+async function handleJoinGroup(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // Prevent duplicate calls
+    if (isJoiningGroup) {
+        console.log('⚠️ handleJoinGroup already in progress, ignoring duplicate call');
+        return;
+    }
+    
+    isJoiningGroup = true;
+    console.log('🔵 handleJoinGroup called');
+    
+    const groupIdInput = document.getElementById('join-group-id');
+    const userIdInput = document.getElementById('join-user-id');
+    const ownershipInput = document.getElementById('joinOwnershipPercent');
+    
+    console.log('Form inputs:', {
+        groupIdInput: groupIdInput ? groupIdInput.value : 'NOT FOUND',
+        userIdInput: userIdInput ? userIdInput.value : 'NOT FOUND',
+        ownershipInput: ownershipInput ? ownershipInput.value : 'NOT FOUND'
+    });
+    
+    const groupId = parseInt(groupIdInput?.value);
+    const userId = parseInt(userIdInput?.value);
+    const ownershipPercent = parseFloat(ownershipInput?.value);
+    
+    console.log('Parsed values:', { groupId, userId, ownershipPercent });
+    
+    // Validation
+    if (!groupId || isNaN(groupId) || groupId <= 0) {
+        console.error('❌ Validation failed: Invalid groupId', { groupId });
+        showToast('Lỗi: Không tìm thấy thông tin nhóm', 'error');
+        isJoiningGroup = false;
+        return;
+    }
+    
+    if (!userId || isNaN(userId) || userId <= 0) {
+        console.error('❌ Validation failed: Invalid userId', { userId });
+        showToast('Lỗi: Không tìm thấy thông tin người dùng', 'error');
+        isJoiningGroup = false;
+        return;
+    }
+    
+    if (!ownershipInput || !ownershipInput.value || isNaN(ownershipPercent)) {
+        console.error('❌ Validation failed: Invalid ownershipPercent', { ownershipPercent, inputValue: ownershipInput?.value });
+        showToast('Vui lòng nhập tỷ lệ sở hữu (từ 0.01% đến 100%)', 'error');
+        isJoiningGroup = false;
+        return;
+    }
+    
+    if (ownershipPercent <= 0 || ownershipPercent > 100) {
+        console.error('❌ Ownership percent out of range:', ownershipPercent);
+        showToast('Tỷ lệ sở hữu phải từ 0.01% đến 100%', 'error');
+        isJoiningGroup = false;
+        return;
+    }
+    
+    try {
+        console.log('📡 Checking current group members...');
+        // Check current ownership total
+        const membersUrl = `${API.GROUPS}/${groupId}/members`;
+        console.log('Fetching:', membersUrl);
+        
+        const membersResponse = await fetch(membersUrl);
+        console.log('Members response status:', membersResponse.status, membersResponse.ok);
+        
+        if (!membersResponse.ok) {
+            const errorText = await membersResponse.text();
+            console.error('❌ Failed to load group members:', errorText);
+            throw new Error('Failed to load group members');
+        }
+        
+        const currentMembers = await membersResponse.json();
+        console.log('Current members:', currentMembers);
+        
+        // Check if user is already a member
+        const existingMember = currentMembers.find(m => m.userId === userId);
+        if (existingMember) {
+            console.log('⚠️ User is already a member:', existingMember);
+            console.log('⚠️ Existing ownership:', existingMember.ownershipPercent);
+            console.log('⚠️ New ownership request:', ownershipPercent);
+            
+            // If user is already a member with same ownership, just show success
+            if (existingMember.ownershipPercent === ownershipPercent) {
+                console.log('✅ User already has same ownership, treating as success');
+                showToast('Bạn đã là thành viên của nhóm này với tỷ lệ sở hữu này rồi', 'info');
+                closeJoinGroupModal();
+                await loadBrowseGroupsPage();
+                isJoiningGroup = false;
+                return;
+            }
+            
+            // If user wants to update ownership, allow it (backend will handle)
+            console.log('⚠️ User wants to update ownership, proceeding...');
+        }
+        
+        // Calculate total ownership excluding current user (if already a member)
+        const currentTotal = currentMembers
+            .filter(m => m.userId !== userId) // Exclude current user's existing ownership
+            .reduce((sum, m) => sum + (m.ownershipPercent || 0), 0);
+        console.log('Current total ownership (excluding current user):', currentTotal);
+        console.log('Requested ownership:', ownershipPercent);
+        console.log('Total would be:', currentTotal + ownershipPercent);
+        
+        if (currentTotal + ownershipPercent > 100) {
+            console.error('❌ Total ownership exceeds 100%');
+            showToast(`Tổng tỷ lệ sở hữu không được vượt quá 100%. Hiện tại: ${currentTotal.toFixed(2)}%`, 'error');
+            isJoiningGroup = false; // Reset flag
+            return;
+        }
+        
+        // Join group
+        const joinData = {
+            userId: userId,
+            role: 'Member',
+            ownershipPercent: ownershipPercent
+        };
+        
+        console.log('📤 Sending join request:', joinData);
+        const joinUrl = `${API.GROUPS}/${groupId}/members`;
+        console.log('POST URL:', joinUrl);
+        
+        const response = await fetch(joinUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(joinData)
+        });
+        
+        console.log('Join response status:', response.status, response.ok);
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('❌ Join failed. Status:', response.status);
+            console.error('❌ Response body:', errorText);
+            
+            let errorMessage = 'Không thể tham gia nhóm';
+            
+            // Try to parse error response as JSON
+            try {
+                const errorData = JSON.parse(errorText);
+                // Check multiple possible error message fields
+                errorMessage = errorData.message || errorData.error || errorData.details || errorMessage;
+                console.error('Parsed error data:', errorData);
+            } catch (e) {
+                // If not JSON, use text directly
+                if (errorText && errorText.trim().length > 0) {
+                    errorMessage = errorText;
+                }
+            }
+            
+            // Map specific status codes to user-friendly messages
+            if (response.status === 404) {
+                errorMessage = errorMessage || 'Không tìm thấy nhóm';
+            } else if (response.status === 400) {
+                if (!errorMessage || errorMessage === 'Không thể tham gia nhóm') {
+                    errorMessage = 'Bạn đã là thành viên của nhóm này rồi hoặc dữ liệu không hợp lệ';
+                }
+            } else if (response.status === 500) {
+                errorMessage = errorMessage || 'Lỗi server, vui lòng thử lại sau';
+            }
+            
+            throw new Error(errorMessage);
+        }
+        
+        const result = await response.json();
+        console.log('✅ Successfully joined group:', result);
+        
+        showToast('Tham gia nhóm thành công!', 'success');
+        closeJoinGroupModal();
+        
+        // Reload page to update groups list
+        await loadBrowseGroupsPage();
+        
+    } catch (error) {
+        console.error('❌ Error joining group:', error);
+        console.error('Error stack:', error.stack);
+        showToast(error.message || 'Có lỗi xảy ra khi tham gia nhóm', 'error');
+    } finally {
+        // Reset flag after completion
+        isJoiningGroup = false;
+    }
+}
+
+function formatDate(dateString) {
+    if (!dateString) return '-';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('vi-VN', { 
+        year: 'numeric', 
+        month: '2-digit', 
+        day: '2-digit'
+    });
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// ============ GROUP MANAGEMENT FUNCTIONS ============
+
+let currentManagingGroupId = null;
+
+function openManageGroupModal(groupId, groupName) {
+    currentManagingGroupId = groupId;
+    document.getElementById('manage-group-name').textContent = groupName;
+    document.getElementById('manageGroupModal').classList.add('active');
+    loadGroupMembers(groupId);
+    
+    // Reset add member form
+    document.getElementById('addMemberForm').reset();
+}
+
+function closeManageGroupModal() {
+    document.getElementById('manageGroupModal').classList.remove('active');
+    currentManagingGroupId = null;
+}
+
+async function loadGroupMembers(groupId) {
+    const container = document.getElementById('members-list-container');
+    container.innerHTML = '<div class="loading-spinner"><i class="fas fa-spinner fa-spin"></i> Đang tải...</div>';
+    
+    try {
+        const response = await fetch(`${API.GROUPS}/${groupId}/members`);
+        if (!response.ok) throw new Error('Failed to load members');
+        
+        const members = await response.json();
+        
+        if (members.length === 0) {
+            container.innerHTML = '<p style="text-align: center; color: var(--text-light);">Chưa có thành viên nào</p>';
+            return;
+        }
+        
+        // Calculate total ownership
+        const totalOwnership = members.reduce((sum, m) => sum + (m.ownershipPercent || 0), 0);
+        
+        container.innerHTML = `
+            <div class="members-summary">
+                <span><strong>Tổng thành viên:</strong> ${members.length}</span>
+                <span><strong>Tổng tỷ lệ sở hữu:</strong> ${totalOwnership.toFixed(2)}%</span>
+            </div>
+            <div class="members-table">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>User ID</th>
+                            <th>Quyền</th>
+                            <th>Tỷ lệ sở hữu</th>
+                            <th>Ngày tham gia</th>
+                            <th>Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${members.map(member => `
+                            <tr>
+                                <td>User #${member.userId}</td>
+                                <td>
+                                    <span class="badge ${member.role === 'Admin' ? 'badge-admin' : 'badge-member'}">
+                                        ${member.role === 'Admin' ? '<i class="fas fa-crown"></i> Admin' : '<i class="fas fa-user"></i> Thành viên'}
+                                    </span>
+                                </td>
+                                <td>${(member.ownershipPercent || 0).toFixed(2)}%</td>
+                                <td>${member.joinedAt ? formatDate(member.joinedAt) : 'N/A'}</td>
+                                <td>
+                                    <div class="member-actions">
+                                        ${member.userId !== CURRENT_USER_ID ? `
+                                            <button class="btn btn-sm btn-primary" onclick="changeMemberRole(${groupId}, ${member.memberId}, '${member.role === 'Admin' ? 'Member' : 'Admin'}')" title="${member.role === 'Admin' ? 'Hạ quyền' : 'Thăng quyền'}">
+                                                <i class="fas fa-${member.role === 'Admin' ? 'arrow-down' : 'arrow-up'}"></i>
+                                                ${member.role === 'Admin' ? 'Hạ quyền' : 'Thăng Admin'}
+                                            </button>
+                                            <button class="btn btn-sm btn-danger" onclick="removeMember(${groupId}, ${member.memberId}, ${member.userId})" title="Xóa thành viên">
+                                                <i class="fas fa-trash"></i> Xóa
+                                            </button>
+                                        ` : `
+                                            <span class="text-muted">Bạn</span>
+                                        `}
+                                    </div>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
+        
+    } catch (error) {
+        console.error('Error loading group members:', error);
+        container.innerHTML = '<div class="alert alert-danger"><i class="fas fa-exclamation-circle"></i> Lỗi khi tải danh sách thành viên</div>';
+    }
+}
+
+// Initialize add member form handler
+document.addEventListener('DOMContentLoaded', function() {
+    const addMemberForm = document.getElementById('addMemberForm');
+    if (addMemberForm) {
+        addMemberForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            await addMember();
+        });
+    }
+    
+    // Close modal when clicking outside
+    const manageGroupModal = document.getElementById('manageGroupModal');
+    if (manageGroupModal) {
+        manageGroupModal.addEventListener('click', function(e) {
+            if (e.target === manageGroupModal) {
+                closeManageGroupModal();
+            }
+        });
+    }
+});
+
+async function addMember() {
+    if (!currentManagingGroupId) return;
+    
+    const userId = parseInt(document.getElementById('newMemberUserId').value);
+    const ownershipPercent = parseFloat(document.getElementById('newMemberOwnership').value);
+    const role = document.getElementById('newMemberRole').value;
+    
+    if (!userId || isNaN(ownershipPercent)) {
+        showToast('Vui lòng điền đầy đủ thông tin', 'error');
+        return;
+    }
+    
+    try {
+        const response = await fetch(`${API.GROUPS}/${currentManagingGroupId}/members`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                currentUserId: CURRENT_USER_ID, // Thêm currentUserId để kiểm tra quyền Admin
+                userId: userId,
+                ownershipPercent: ownershipPercent,
+                role: role
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(result.message || result.error || 'Failed to add member');
+        }
+        
+        showToast(`Đã thêm User #${userId} vào nhóm thành công`, 'success');
+        document.getElementById('addMemberForm').reset();
+        await loadGroupMembers(currentManagingGroupId);
+        
+        // Reload groups list to update member count
+        await loadMyGroups();
+        
+    } catch (error) {
+        console.error('Error adding member:', error);
+        showToast(error.message || 'Lỗi khi thêm thành viên', 'error');
+    }
+}
+
+async function removeMember(groupId, memberId, userId) {
+    if (!confirm(`Bạn có chắc chắn muốn xóa User #${userId} khỏi nhóm này?`)) {
+        return;
+    }
+    
+    try {
+        // Thêm currentUserId vào query parameter để kiểm tra quyền Admin
+        const response = await fetch(`${API.GROUPS}/${groupId}/members/${memberId}?currentUserId=${CURRENT_USER_ID}`, {
+            method: 'DELETE'
+        });
+        
+        const result = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(result.message || result.error || 'Failed to remove member');
+        }
+        
+        showToast(`Đã xóa User #${userId} khỏi nhóm`, 'success');
+        await loadGroupMembers(groupId);
+        
+        // Reload groups list to update member count
+        await loadMyGroups();
+        
+    } catch (error) {
+        console.error('Error removing member:', error);
+        showToast(error.message || 'Lỗi khi xóa thành viên', 'error');
+    }
+}
+
+async function changeMemberRole(groupId, memberId, newRole) {
+    const roleText = newRole === 'Admin' ? 'thăng làm Admin' : 'hạ xuống thành viên';
+    if (!confirm(`Bạn có chắc chắn muốn ${roleText}?`)) {
+        return;
+    }
+    
+    try {
+        // First, get current member data
+        const membersResponse = await fetch(`${API.GROUPS}/${groupId}/members`);
+        if (!membersResponse.ok) throw new Error('Failed to fetch members');
+        
+        const members = await membersResponse.json();
+        const member = members.find(m => m.memberId === memberId);
+        
+        if (!member) {
+            throw new Error('Member not found');
+        }
+        
+        // Update member with new role
+        const response = await fetch(`${API.GROUPS}/${groupId}/members/${memberId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                currentUserId: CURRENT_USER_ID, // Thêm currentUserId để kiểm tra quyền Admin
+                userId: member.userId,
+                role: newRole,
+                ownershipPercent: member.ownershipPercent
+            })
+        });
+        
+        const result = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(result.message || result.error || 'Failed to update member role');
+        }
+        
+        showToast(`Đã ${newRole === 'Admin' ? 'thăng' : 'hạ'} quyền thành công`, 'success');
+        await loadGroupMembers(groupId);
+        
+        // Update user role cache if it's current user
+        if (member.userId === CURRENT_USER_ID) {
+            userGroupRoles[groupId] = newRole;
+        }
+        
+        // Reload groups list to update UI
+        await loadMyGroups();
+        
+    } catch (error) {
+        console.error('Error changing member role:', error);
+        showToast('Lỗi khi thay đổi quyền', 'error');
+    }
+}
+
+// ============ CREATE GROUP FUNCTIONS ============
+
+function openCreateGroupModal() {
+    // Reset form
+    document.getElementById('createGroupForm').reset();
+    document.getElementById('createGroupStatus').value = 'Active';
+    
+    // Show modal
+    document.getElementById('createGroupModal').classList.add('active');
+}
+
+function closeCreateGroupModal() {
+    document.getElementById('createGroupModal').classList.remove('active');
+    document.getElementById('createGroupForm').reset();
+}
+
+// Initialize create group form submit handler
+document.addEventListener('DOMContentLoaded', function() {
+    const createGroupSubmitBtn = document.getElementById('createGroupSubmitBtn');
+    const createGroupForm = document.getElementById('createGroupForm');
+    
+    if (createGroupSubmitBtn) {
+        createGroupSubmitBtn.addEventListener('click', async function() {
+            // Validate form
+            if (!createGroupForm.checkValidity()) {
+                createGroupForm.reportValidity();
+                return;
+            }
+            
+            const groupName = document.getElementById('createGroupName').value.trim();
+            const vehicleId = document.getElementById('createGroupVehicleId').value;
+            const ownershipPercent = document.getElementById('createGroupOwnershipPercent').value;
+            const status = document.getElementById('createGroupStatus').value;
+            
+            if (!groupName) {
+                showToast('Vui lòng nhập tên nhóm', 'error');
+                return;
+            }
+            
+            // Validate ownershipPercent nếu có nhập
+            if (ownershipPercent) {
+                const ownershipValue = parseFloat(ownershipPercent);
+                if (isNaN(ownershipValue) || ownershipValue < 0 || ownershipValue > 100) {
+                    showToast('Tỷ lệ sở hữu phải là số từ 0 đến 100', 'error');
+                    return;
+                }
+            }
+            
+            try {
+                // Tự động set adminId = CURRENT_USER_ID (người tạo nhóm)
+                const groupData = {
+                    groupName: groupName,
+                    adminId: CURRENT_USER_ID, // ⭐ QUAN TRỌNG: User tạo nhóm tự động trở thành Admin
+                    vehicleId: vehicleId ? parseInt(vehicleId) : null,
+                    ownershipPercent: ownershipPercent ? parseFloat(ownershipPercent) : null, // Tỷ lệ sở hữu của Admin
+                    status: status
+                };
+                
+                const response = await fetch(API.GROUPS, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(groupData)
+                });
+                
+                const result = await response.json();
+                
+                if (!response.ok) {
+                    throw new Error(result.message || result.error || 'Failed to create group');
+                }
+                
+                showToast(`Đã tạo nhóm "${groupName}" thành công! Bạn đã trở thành Admin của nhóm này.`, 'success');
+                closeCreateGroupModal();
+                
+                // Reload groups list để hiển thị nhóm mới
+                await loadMyGroups();
+                
+            } catch (error) {
+                console.error('Error creating group:', error);
+                showToast(error.message || 'Lỗi khi tạo nhóm', 'error');
+            }
+        });
+    }
+    
+    // Close modal when clicking outside
+    const createGroupModal = document.getElementById('createGroupModal');
+    if (createGroupModal) {
+        createGroupModal.addEventListener('click', function(e) {
+            if (e.target === createGroupModal) {
+                closeCreateGroupModal();
+            }
+        });
+    }
+});
 

@@ -293,6 +293,57 @@ public class FundController {
     }
 
     // ========================================
+    // USER VOTE CHO WITHDRAWAL REQUEST
+    // ========================================
+
+    /**
+     * User vote cho withdrawal request (approve hoặc reject)
+     * POST /api/funds/transactions/{transactionId}/vote
+     * Body: { userId, approve: true/false, note? }
+     */
+    @PostMapping("/transactions/{transactionId}/vote")
+    public ResponseEntity<?> voteOnWithdrawRequest(
+        @PathVariable Integer transactionId,
+        @Valid @RequestBody VoteRequestDto request
+    ) {
+        try {
+            request.setTransactionId(transactionId);
+            FundTransaction transaction = fundService.voteOnWithdrawRequest(request);
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", request.getApprove() 
+                ? "✅ Bạn đã đồng ý yêu cầu rút tiền này" 
+                : "❌ Bạn đã từ chối yêu cầu rút tiền này");
+            response.put("transaction", transaction);
+            return ResponseEntity.ok(response);
+        } catch (IllegalStateException e) {
+            logger.warn("Cannot vote: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            logger.error("Error voting on withdraw request: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    /**
+     * Lấy danh sách withdrawal requests cần vote của user
+     * GET /api/funds/pending-vote-requests/user/{userId}
+     */
+    @GetMapping("/pending-vote-requests/user/{userId}")
+    public ResponseEntity<?> getPendingVoteRequestsForUser(@PathVariable Integer userId) {
+        try {
+            List<FundTransaction> requests = fundService.getPendingVoteRequestsForUser(userId);
+            return ResponseEntity.ok(requests);
+        } catch (Exception e) {
+            logger.error("Error getting pending vote requests for user {}: {}", userId, e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    // ========================================
     // LỊCH SỬ GIAO DỊCH
     // ========================================
 
@@ -380,6 +431,34 @@ public class FundController {
                 .orElse(ResponseEntity.notFound().build());
         } catch (Exception e) {
             logger.error("Error getting transaction: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    /**
+     * User hủy yêu cầu rút tiền của chính mình
+     * DELETE /api/funds/transactions/{transactionId}
+     * Query param: userId
+     */
+    @DeleteMapping("/transactions/{transactionId}")
+    public ResponseEntity<?> cancelTransaction(
+        @PathVariable Integer transactionId,
+        @RequestParam Integer userId
+    ) {
+        try {
+            FundTransaction transaction = fundService.cancelWithdrawRequest(transactionId, userId);
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "✅ Đã hủy yêu cầu rút tiền");
+            response.put("transaction", transaction);
+            return ResponseEntity.ok(response);
+        } catch (IllegalStateException e) {
+            logger.warn("Cannot cancel transaction: {}", e.getMessage());
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            logger.error("Error cancelling transaction: {}", e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(Map.of("error", e.getMessage()));
         }
