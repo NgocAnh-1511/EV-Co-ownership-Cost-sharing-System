@@ -1,7 +1,7 @@
 // user-onboarding.js
+// (File user-guard.js đã được chèn vào <head> để bảo vệ)
 
 document.addEventListener('DOMContentLoaded', function() {
-    // Lưu ý: Cần đảm bảo file auth-utils.js đã được load để sử dụng hàm logout()
 
     const form = document.getElementById('onboardingForm');
     const statusMessage = document.getElementById('status-message');
@@ -11,44 +11,11 @@ document.addEventListener('DOMContentLoaded', function() {
     const PROFILE_API_URL = "http://localhost:8081/api/users/profile";
     const UPLOAD_API_URL = "http://localhost:8081/api/users/profile/upload";
 
-    // --- 1. KIỂM TRA XÁC THỰC KHI TẢI TRANG ---
-    if (!token) {
-        if (typeof logout === 'function') {
-            logout(); // Gọi hàm logout từ auth-utils.js
-        } else {
-            // Dự phòng nếu auth-utils chưa tải kịp
-            localStorage.removeItem('jwtToken');
-            localStorage.removeItem('userName');
-            localStorage.removeItem('userRole');
-            window.location.href = '/login';
-        }
-        return;
-    }
-
-    // --- HÀM MỚI: Dùng để hiển thị ảnh đã tải lên ---
-    function displayUploadedImage(elementId, url) {
-        // elementId là ID của input file (ví dụ: 'file-cmnd-front')
-        const fileInput = document.getElementById(elementId);
-        if (!fileInput) return;
-
-        // Tìm đến .drop-zone (là cha của input, hoặc container)
-        const dropZone = fileInput.closest('.drop-zone');
-        if (!dropZone) return;
-
-        if (url) {
-            // Nếu có URL ảnh, xóa nội dung cũ và chèn ảnh
-            // Giả định URL trả về từ server là /uploads/filename.jpg
-            // và server có cấu hình để phục vụ file tĩnh từ /uploads
-            dropZone.innerHTML = `<img src="${url}" alt="Ảnh đã tải lên">`;
-            // Thêm class để CSS biết là đã có ảnh
-            dropZone.classList.add('has-image');
-        }
-        // Nếu không có URL, giữ nguyên nội dung HTML gốc (Kéo thả...)
-    }
-
+    // --- (Lệnh gọi checkAuthAndLoadUser() đã được XÓA khỏi đây) ---
+    // (File auth-utils.js sẽ tự động chạy)
 
     /**
-     * TẢI DỮ LIỆU: (Đã nâng cấp)
+     * TẢI DỮ LIỆU: Gọi API GET /profile để điền vào form.
      */
     async function loadUserProfile() {
         try {
@@ -73,11 +40,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 document.getElementById('licenseIssueDate').value = user.licenseIssueDate || '';
                 document.getElementById('licenseExpiryDate').value = user.licenseExpiryDate || '';
 
-                // 2. Hiển thị tên
+                // 2. Cập nhật tên User trên Header (Nếu auth-utils chưa kịp chạy)
                 const userNameDisplay = document.getElementById('userNameDisplay');
                 if(userNameDisplay) userNameDisplay.textContent = user.fullName || user.email;
 
-                // 3. NÂNG CẤP: Hiển thị ảnh đã tải lên
+                // 3. Hiển thị ảnh đã tải lên
                 displayUploadedImage('file-cmnd-front', user.idCardFrontUrl);
                 displayUploadedImage('file-cmnd-back', user.idCardBackUrl);
                 displayUploadedImage('file-license', user.licenseImageUrl);
@@ -94,6 +61,19 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
+    // Hàm hiển thị ảnh đã tải lên
+    function displayUploadedImage(elementId, url) {
+        const fileInput = document.getElementById(elementId);
+        if (!fileInput) return;
+        const dropZone = fileInput.closest('.drop-zone');
+        if (!dropZone) return;
+
+        if (url) {
+            dropZone.innerHTML = `<img src="${url}" alt="Ảnh đã tải lên">`;
+            dropZone.classList.add('has-image');
+        }
+    }
+
     // Gọi hàm tải dữ liệu
     loadUserProfile();
 
@@ -102,10 +82,7 @@ document.addEventListener('DOMContentLoaded', function() {
      */
     async function uploadImage(fileId) {
         const fileInput = document.getElementById(fileId);
-        if (fileInput.files.length === 0) {
-            // Nếu không chọn file mới, trả về null (Backend sẽ không cập nhật)
-            return null;
-        }
+        if (fileInput.files.length === 0) return null;
 
         const file = fileInput.files[0];
         const formData = new FormData();
@@ -140,7 +117,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Validation Số điện thoại
         const phoneNumber = document.getElementById('phoneNumber').value;
-        const phoneRegex = /^0[0-9]{9}$/; // 10 số, bắt đầu bằng 0
+        const phoneRegex = /^0[0-9]{9}$/;
         if (!phoneRegex.test(phoneNumber)) {
             statusMessage.classList.add('error');
             statusMessage.textContent = 'Số điện thoại không hợp lệ. Vui lòng nhập 10 chữ số bắt đầu bằng 0.';
@@ -153,8 +130,6 @@ document.addEventListener('DOMContentLoaded', function() {
             statusMessage.textContent = 'Đang tải lên ảnh và cập nhật hồ sơ...';
             statusMessage.style.display = 'block';
 
-            // 1. Xử lý tải ảnh (Thực tế)
-            // (Lưu ý: Nếu người dùng không chọn file mới, hàm uploadImage sẽ trả về null)
             const [idCardFrontUrl, idCardBackUrl, licenseImageUrl, portraitImageUrl] = await Promise.all([
                 uploadImage('file-cmnd-front'),
                 uploadImage('file-cmnd-back'),
@@ -162,7 +137,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 uploadImage('file-portrait')
             ]);
 
-            // 2. Chuẩn bị dữ liệu cập nhật
             const updateData = {
                 fullName: document.getElementById('fullName').value,
                 phoneNumber: phoneNumber,
@@ -174,27 +148,23 @@ document.addEventListener('DOMContentLoaded', function() {
                 licenseClass: document.getElementById('licenseClass').value,
                 licenseIssueDate: document.getElementById('licenseIssueDate').value,
                 licenseExpiryDate: document.getElementById('licenseExpiryDate').value,
-
-                // Gửi URL mới (nếu có) hoặc null (nếu không chọn file mới)
                 idCardFrontUrl: idCardFrontUrl,
                 idCardBackUrl: idCardBackUrl,
                 licenseImageUrl: licenseImageUrl,
                 portraitImageUrl: portraitImageUrl,
             };
 
-            // Lọc ra các giá trị null (để Backend không ghi đè null vào ảnh cũ)
             const filteredUpdateData = Object.fromEntries(
                 Object.entries(updateData).filter(([_, v]) => v != null)
             );
 
-            // 3. Gọi API Backend (PUT request)
             const response = await fetch(PROFILE_API_URL, {
                 method: 'PUT',
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`
                 },
-                body: JSON.stringify(filteredUpdateData) // Chỉ gửi các trường có giá trị
+                body: JSON.stringify(filteredUpdateData)
             });
 
             const result = await response.json();
@@ -208,13 +178,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 setTimeout(() => {
                     window.location.href = '/user/profile-status';
                 }, 2000);
-
             } else {
                 statusMessage.classList.add('error');
                 statusMessage.textContent = 'Đăng ký thất bại: ' + (result.message || JSON.stringify(result));
                 statusMessage.style.display = 'block';
             }
-
         } catch (error) {
             statusMessage.classList.add('error');
             statusMessage.textContent = 'Lỗi kết nối hoặc xử lý: ' + error.message;

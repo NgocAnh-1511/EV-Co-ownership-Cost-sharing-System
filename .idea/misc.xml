@@ -19,6 +19,7 @@
       <set>
         <option value="$PROJECT_DIR$/CheckInOutService/pom.xml" />
         <option value="$PROJECT_DIR$/DisputeResolutionService/pom.xml" />
+        <option value="$PROJECT_DIR$/eureka-server/pom.xml" />
       </set>
     </option>
   </component>

@@ -29,7 +29,6 @@
         <processorPath useClasspath="false">
           <entry name="$MAVEN_REPOSITORY$/org/projectlombok/lombok/1.18.36/lombok-1.18.36.jar" />
         </processorPath>
-        <module name="eureka-server" />
       </profile>
       <profile name="Annotation profile for user-account-service" enabled="true">
         <sourceOutputDir name="target/generated-sources/annotations" />
@@ -46,6 +45,7 @@
     <bytecodeTargetLevel>
       <module name="CheckInOutService" target="21" />
       <module name="DisputeResolutionService" target="21" />
+      <module name="eureka-server" target="21" />
       <module name="LegalContractService" target="21" />
     </bytecodeTargetLevel>
   </component>
