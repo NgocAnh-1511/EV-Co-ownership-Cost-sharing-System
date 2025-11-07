@@ -1,3 +1,8 @@
+<head>: Chèn user-guard.js (hoặc admin-guard.js).
+Cuối <body>: Chèn auth-utils.js (sẽ tự động cập nhật Header) 
+và file JS riêng của trang đó (page-specific.js).
+
+
 # Dự án: EV Co-ownership & Cost-sharing System (Hệ thống Đồng sở hữu Xe điện)
 
 Đây là dự án microservice (sử dụng Spring Boot) để quản lý việc đồng sở hữu và chia sẻ chi phí xe điện.

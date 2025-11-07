@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script th:src="@{/js/admin/admin-guard.js}"></script>
     <title th:text="${pageTitle} + ' - CarShare'"></title>
 
     <link rel="stylesheet" th:href="@{/css/admin-layout.css}">
@@ -135,5 +136,7 @@
 </div>
 <script th:src="@{/js/auth-utils.js}"></script>
 <script src="/js/staff-script.js"></script>
+
+<script th:src="@{/js/admin/admin-auth.js}"></script>
 </body>
 </html>

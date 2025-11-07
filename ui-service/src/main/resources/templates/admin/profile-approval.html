@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script th:src="@{/js/admin/admin-guard.js}"></script>
     <title>Duyệt Hồ Sơ</title>
-
     <link rel="stylesheet" th:href="@{/css/admin-layout.css}">
-
-    <link rel="stylesheet" th:href="@{/css/admin/profile-approval.css}">
+    <link rel="stylesheet" th:href="@{/css/profile-approval.css}">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+
 </head>
 <body>
 <div class="admin-layout-container">
@@ -25,10 +25,8 @@
                     <th>Họ và Tên</th>
                     <th>Email</th>
                     <th>Số điện thoại</th>
-                    <th>Số CCCD</th>
                     <th>Trạng thái</th>
-                    <th>Hành động</th>
-                </tr>
+                    <th>Hành động</th> </tr>
                 </thead>
                 <tbody id="user-list-body">
                 </tbody>
@@ -38,6 +36,17 @@
     </main>
 </div>
 
+<div id="profileModal" class="modal-backdrop">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2>Chi Tiết Hồ Sơ</h2>
+            <span class="modal-close" id="modalCloseButton">&times;</span>
+        </div>
+        <div class="modal-body" id="modalBodyContent">
+            <p>Đang tải dữ liệu...</p>
+        </div>
+    </div>
+</div>
 <script th:src="@{/js/auth-utils.js}"></script>
 <script th:src="@{/js/admin/profile-approval.js}"></script>
 </body>
