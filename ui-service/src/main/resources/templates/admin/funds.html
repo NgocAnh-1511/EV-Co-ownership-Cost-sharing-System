@@ -1,0 +1,119 @@
+<div xmlns:th="http://www.thymeleaf.org" th:fragment="content">
+<!-- FUND MANAGEMENT SECTION -->
+<section id="fund-management-section" class="content-section">
+    <!-- Stats Cards -->
+    <div class="stats-grid">
+        <div class="stat-card primary">
+            <div class="stat-icon">
+                <i class="fas fa-wallet"></i>
+            </div>
+            <div class="stat-details">
+                <div class="stat-label">Tổng số dư quỹ</div>
+                <div class="stat-value" id="total-fund-balance">0 ₫</div>
+                <div class="stat-trend" id="total-fund-balance-trend">
+                    <i class="fas fa-info-circle"></i> <span id="total-funds-count">0</span> quỹ
+                </div>
+            </div>
+        </div>
+
+        <div class="stat-card success">
+            <div class="stat-icon">
+                <i class="fas fa-arrow-down"></i>
+            </div>
+            <div class="stat-details">
+                <div class="stat-label">Tổng nạp tiền</div>
+                <div class="stat-value" id="total-deposits">0 ₫</div>
+                <div class="stat-trend" id="total-deposits-trend">
+                    <i class="fas fa-calendar-alt"></i> Tháng này
+                </div>
+            </div>
+        </div>
+
+        <div class="stat-card warning">
+            <div class="stat-icon">
+                <i class="fas fa-arrow-up"></i>
+            </div>
+            <div class="stat-details">
+                <div class="stat-label">Tổng rút tiền</div>
+                <div class="stat-value" id="total-withdraws">0 ₫</div>
+                <div class="stat-trend" id="total-withdraws-trend">
+                    <i class="fas fa-calendar-alt"></i> Tháng này
+                </div>
+            </div>
+        </div>
+
+        <div class="stat-card danger">
+            <div class="stat-icon">
+                <i class="fas fa-hourglass-half"></i>
+            </div>
+            <div class="stat-details">
+                <div class="stat-label">Yêu cầu chờ duyệt</div>
+                <div class="stat-value" id="pending-requests-count">0</div>
+                <div class="stat-trend" id="pending-requests-trend">
+                    <i class="fas fa-info-circle"></i> Cần xử lý
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters and Actions -->
+    <div class="section-header">
+        <div class="filter-group">
+            <select id="fund-group-filter" onchange="window.loadFundManagementData && window.loadFundManagementData()">
+                <option value="">Tất cả nhóm</option>
+            </select>
+            <select id="fund-status-filter" onchange="window.loadFundManagementData && window.loadFundManagementData()">
+                <option value="">Tất cả trạng thái</option>
+                <option value="ACTIVE">Hoạt động</option>
+                <option value="INACTIVE">Không hoạt động</option>
+            </select>
+            <input type="text" id="fund-search-input" placeholder="Tìm kiếm nhóm..." 
+                   style="padding: 0.5rem; border: 1px solid var(--border); border-radius: 6px;">
+            <button class="btn btn-secondary" onclick="window.loadFundManagementData && window.loadFundManagementData()">
+                <i class="fas fa-search"></i> Tìm
+            </button>
+        </div>
+        <button class="btn btn-success" onclick="exportFundReport()">
+            <i class="fas fa-file-excel"></i> Xuất báo cáo
+        </button>
+    </div>
+
+    <!-- Funds List -->
+    <div class="data-table">
+        <table id="funds-table">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Nhóm</th>
+                    <th>Số dư hiện tại</th>
+                    <th>Tổng nạp</th>
+                    <th>Tổng rút</th>
+                    <th>Giao dịch</th>
+                    <th>Trạng thái</th>
+                    <th>Thao tác</th>
+                </tr>
+            </thead>
+            <tbody id="funds-tbody">
+                <tr>
+                    <td colspan="8" style="text-align: center; padding: 2rem;">
+                        <i class="fas fa-spinner fa-spin"></i> Đang tải dữ liệu...
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Pending Requests Section -->
+    <div class="pending-requests-section" style="margin-top: 2rem;">
+        <div class="card-header">
+            <h3><i class="fas fa-hourglass-half"></i> Yêu cầu rút tiền chờ duyệt</h3>
+            <button class="btn btn-secondary btn-sm" onclick="window.loadPendingWithdrawRequests && window.loadPendingWithdrawRequests()">
+                <i class="fas fa-sync"></i> Làm mới
+            </button>
+        </div>
+        <div id="pending-requests-list" class="pending-requests-list">
+            <!-- Pending requests will be loaded here -->
+        </div>
+    </div>
+</section>
+</div>

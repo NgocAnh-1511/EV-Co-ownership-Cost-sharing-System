@@ -218,12 +218,17 @@ public class PaymentServiceImpl implements PaymentService {
                 payment.put("method", row[5]);
                 payment.put("status", row[6]);
                 
-                // Handle payment date
+                // Handle payment date - convert to ISO-8601 string format for JSON serialization
                 if (row[7] != null) {
+                    LocalDateTime dateTime = null;
                     if (row[7] instanceof java.sql.Timestamp) {
-                        payment.put("paymentDate", ((java.sql.Timestamp) row[7]).toLocalDateTime());
+                        dateTime = ((java.sql.Timestamp) row[7]).toLocalDateTime();
                     } else if (row[7] instanceof LocalDateTime) {
-                        payment.put("paymentDate", row[7]);
+                        dateTime = (LocalDateTime) row[7];
+                    }
+                    if (dateTime != null) {
+                        // Convert to ISO-8601 string format (e.g., "2024-01-15T10:30:00")
+                        payment.put("paymentDate", dateTime.toString());
                     }
                 }
                 

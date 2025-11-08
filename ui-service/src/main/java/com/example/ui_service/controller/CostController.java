@@ -270,12 +270,6 @@ public class CostController {
             return "error: " + e.getMessage();
         }
     }
-    
-    @GetMapping("/reports")
-    public String costReports(Model model) {
-        return "costs/reports";
-    }
-
 
     @GetMapping("/{id}")
     public String viewCost(@PathVariable Integer id, Model model) {

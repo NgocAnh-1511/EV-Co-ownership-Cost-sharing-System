@@ -167,9 +167,18 @@
                 <!-- Filters -->
                 <div class="filter-bar">
                     <select id="user-cost-filter">
-                        <option value="all">Tất cả</option>
+                        <option value="all">Tất cả trạng thái</option>
                         <option value="pending">Chưa thanh toán</option>
                         <option value="paid">Đã thanh toán</option>
+                    </select>
+                    <select id="user-cost-type-filter">
+                        <option value="all">Tất cả loại</option>
+                        <option value="ElectricCharge">Sạc điện</option>
+                        <option value="Maintenance">Bảo dưỡng</option>
+                        <option value="Insurance">Bảo hiểm</option>
+                        <option value="Inspection">Đăng kiểm</option>
+                        <option value="Cleaning">Vệ sinh</option>
+                        <option value="Other">Khác</option>
                     </select>
                     <select id="user-month-filter">
                         <option value="">Tất cả tháng</option>
@@ -197,22 +206,55 @@
             <!-- USAGE PAGE -->
             <div id="usage-page" class="page">
                 <div class="page-header">
-                    <h1><i class="fas fa-road"></i> Nhập số km đã chạy</h1>
-                    <p>Cập nhật số km bạn đã sử dụng xe trong tháng</p>
+                    <h1><i class="fas fa-bolt"></i> Nhập số km đã chạy</h1>
+                    <p>Theo dõi quãng đường bạn đã sử dụng xe điện để chia sẻ chi phí công bằng</p>
                 </div>
 
+                <!-- Info Card: Logic chia chi phí -->
+                <div class="section-card info-card-gradient">
+                    <div class="card-header">
+                        <h2><i class="fas fa-info-circle"></i> Cách chia chi phí theo km</h2>
+                    </div>
+                    <div class="card-body">
+                        <div class="info-content">
+                            <div class="info-item">
+                                <i class="fas fa-calculator"></i>
+                                <div>
+                                    <strong>Công thức tính:</strong>
+                                    <p>% chi phí của bạn = (Số km bạn đã chạy / Tổng km của nhóm) × 100%</p>
+                                </div>
+                            </div>
+                            <div class="info-item">
+                                <i class="fas fa-bolt"></i>
+                                <div>
+                                    <strong>Áp dụng cho:</strong>
+                                    <p>Chi phí sạc điện, thay lốp, và các chi phí phụ thuộc vào mức độ sử dụng</p>
+                                </div>
+                            </div>
+                            <div class="info-item">
+                                <i class="fas fa-balance-scale"></i>
+                                <div>
+                                    <strong>Ví dụ:</strong>
+                                    <p>Nếu bạn chạy 300km trong tổng 1000km của nhóm → Bạn chịu 30% chi phí sạc điện</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Usage Form -->
                 <div class="usage-form-card">
                     <form id="usage-form">
                         <div class="form-row">
                             <div class="form-group">
-                                <label>Nhóm</label>
-                                <select id="usage-group" required>
+                                <label><i class="fas fa-users"></i> Nhóm xe</label>
+                                <select id="usage-group" required onchange="loadGroupUsageInfo()">
                                     <option value="">-- Chọn nhóm --</option>
                                 </select>
                             </div>
                             <div class="form-group">
-                                <label>Tháng</label>
-                                <select id="usage-month" required>
+                                <label><i class="fas fa-calendar-alt"></i> Tháng</label>
+                                <select id="usage-month" required onchange="loadGroupUsageInfo()">
                                     <option value="1">Tháng 1</option>
                                     <option value="2">Tháng 2</option>
                                     <option value="3">Tháng 3</option>
@@ -228,22 +270,82 @@
                                 </select>
                             </div>
                             <div class="form-group">
-                                <label>Năm</label>
-                                <input type="number" id="usage-year" value="2025" required>
+                                <label><i class="fas fa-calendar"></i> Năm</label>
+                                <input type="number" id="usage-year" value="2025" required onchange="loadGroupUsageInfo()">
+                            </div>
+                        </div>
+
+                        <!-- Group Usage Stats -->
+                        <div id="group-usage-stats" class="group-stats-card" style="display: none;">
+                            <div class="stats-row">
+                                <div class="stat-item">
+                                    <div class="stat-label">Tỷ lệ sở hữu của bạn</div>
+                                    <div class="stat-value" id="my-ownership-percent">-</div>
+                                </div>
+                                <div class="stat-item">
+                                    <div class="stat-label">Tổng km nhóm</div>
+                                    <div class="stat-value" id="group-total-km">0 km</div>
+                                </div>
+                                <div class="stat-item">
+                                    <div class="stat-label">Km bạn đã nhập</div>
+                                    <div class="stat-value" id="my-current-km">0 km</div>
+                                </div>
+                                <div class="stat-item">
+                                    <div class="stat-label">% sử dụng hiện tại</div>
+                                    <div class="stat-value" id="my-usage-percent">0%</div>
+                                </div>
+                            </div>
+                            <div class="comparison-bar">
+                                <div class="comparison-label">
+                                    <span>So sánh: Tỷ lệ sở hữu vs Mức sử dụng</span>
+                                </div>
+                                <div class="bar-container">
+                                    <div class="bar ownership-bar" id="ownership-bar" style="width: 0%">
+                                        <span>Sở hữu</span>
+                                    </div>
+                                    <div class="bar usage-bar" id="usage-bar" style="width: 0%">
+                                        <span>Sử dụng</span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
                         <div class="form-group">
-                            <label>Số km đã chạy</label>
+                            <label><i class="fas fa-tachometer-alt"></i> Số km đã chạy</label>
                             <div class="km-input-group">
-                                <input type="number" id="km-driven" placeholder="VD: 150" required>
+                                <input type="number" id="km-driven" placeholder="VD: 150" min="0" step="0.1" required oninput="updateUsagePreview()">
                                 <span class="unit">km</span>
                             </div>
+                            <small class="form-text">
+                                <i class="fas fa-info-circle"></i>
+                                Nhập tổng số kilomet bạn đã sử dụng xe trong tháng này
+                            </small>
                         </div>
 
                         <div class="form-group">
-                            <label>Ghi chú (tùy chọn)</label>
-                            <textarea id="usage-note" rows="3" placeholder="VD: Đi làm hàng ngày, đi chơi cuối tuần..."></textarea>
+                            <label><i class="fas fa-sticky-note"></i> Ghi chú (tùy chọn)</label>
+                            <textarea id="usage-note" rows="3" placeholder="VD: Đi làm hàng ngày, đi chơi cuối tuần, đi công tác..."></textarea>
+                        </div>
+
+                        <!-- Preview Cost Share -->
+                        <div id="cost-preview" class="cost-preview-card" style="display: none;">
+                            <div class="preview-header">
+                                <i class="fas fa-eye"></i>
+                                <span>Xem trước phân bổ chi phí</span>
+                            </div>
+                            <div class="preview-content">
+                                <p>Nếu có chi phí sạc điện <strong id="preview-cost-amount">1,000,000 VNĐ</strong> trong tháng này:</p>
+                                <div class="preview-result">
+                                    <div class="result-item">
+                                        <span class="result-label">Bạn sẽ chịu:</span>
+                                        <span class="result-value" id="preview-my-share">0 VNĐ</span>
+                                    </div>
+                                    <div class="result-item">
+                                        <span class="result-label">Tương đương:</span>
+                                        <span class="result-value" id="preview-my-percent">0%</span>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
                         <button type="submit" class="btn btn-primary btn-lg">
@@ -327,6 +429,10 @@
                             <i class="fas fa-vote-yea"></i>
                             Tạo phiếu rút tiền
                         </button>
+                        <button class="btn btn-info" onclick="openCreateDecisionModal()">
+                            <i class="fas fa-hand-paper"></i>
+                            Tạo quyết định chung
+                        </button>
                     </div>
                 </div>
 
@@ -366,6 +472,174 @@
                         <div class="stat-info">
                             <div class="stat-label">Yêu cầu của tôi</div>
                             <div class="stat-value" id="myPending">0</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Fund Categories -->
+                <div class="fund-categories-grid">
+                    <div class="section-card fund-category-card">
+                        <div class="card-header">
+                            <h3>
+                                <i class="fas fa-tools"></i>
+                                Quỹ Bảo Dưỡng
+                            </h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="fund-category-info">
+                                <div class="category-balance">
+                                    <span class="label">Số dư:</span>
+                                    <span class="value" id="maintenanceFundBalance">0 VNĐ</span>
+                                </div>
+                                <div class="category-stats">
+                                    <div class="stat-item">
+                                        <span class="stat-label">Đã chi:</span>
+                                        <span class="stat-value negative" id="maintenanceSpent">0 VNĐ</span>
+                                    </div>
+                                    <div class="stat-item">
+                                        <span class="stat-label">Đã nạp:</span>
+                                        <span class="stat-value positive" id="maintenanceDeposited">0 VNĐ</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="section-card fund-category-card">
+                        <div class="card-header">
+                            <h3>
+                                <i class="fas fa-shield-alt"></i>
+                                Phí Dự Phòng
+                            </h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="fund-category-info">
+                                <div class="category-balance">
+                                    <span class="label">Số dư:</span>
+                                    <span class="value" id="reserveFundBalance">0 VNĐ</span>
+                                </div>
+                                <div class="category-stats">
+                                    <div class="stat-item">
+                                        <span class="stat-label">Đã chi:</span>
+                                        <span class="stat-value negative" id="reserveSpent">0 VNĐ</span>
+                                    </div>
+                                    <div class="stat-item">
+                                        <span class="stat-label">Đã nạp:</span>
+                                        <span class="stat-value positive" id="reserveDeposited">0 VNĐ</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Group Decisions / Voting Section -->
+                <div class="section-card">
+                    <div class="card-header">
+                        <h2>
+                            <i class="fas fa-hand-paper"></i>
+                            Quyết định chung của nhóm
+                        </h2>
+                        <button class="btn btn-sm btn-info" onclick="openCreateDecisionModal()">
+                            <i class="fas fa-plus"></i>
+                            Tạo quyết định mới
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div class="decision-tabs">
+                            <button class="tab-btn active" data-tab="all-decisions" onclick="switchDecisionTab('all-decisions')">
+                                <i class="fas fa-list"></i> Tất cả
+                            </button>
+                            <button class="tab-btn" data-tab="pending-decisions" onclick="switchDecisionTab('pending-decisions')">
+                                <i class="fas fa-clock"></i> Đang chờ vote
+                                <span class="badge badge-warning" id="pendingDecisionsBadge">0</span>
+                            </button>
+                            <button class="tab-btn" data-tab="my-decisions" onclick="switchDecisionTab('my-decisions')">
+                                <i class="fas fa-user"></i> Quyết định của tôi
+                            </button>
+                        </div>
+                        <div class="decisions-container">
+                            <!-- All Decisions Tab -->
+                            <div id="all-decisions-tab" class="decision-tab-content active">
+                                <div class="table-container">
+                                    <table class="data-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Loại quyết định</th>
+                                                <th>Chủ đề</th>
+                                                <th>Người tạo</th>
+                                                <th>Ngày tạo</th>
+                                                <th>Trạng thái</th>
+                                                <th>Kết quả</th>
+                                                <th>Thao tác</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="allDecisionsBody">
+                                            <tr>
+                                                <td colspan="7" class="empty-table">
+                                                    <div class="empty-state">
+                                                        <i class="fas fa-vote-yea"></i>
+                                                        <p>Chưa có quyết định nào</p>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            <!-- Pending Decisions Tab -->
+                            <div id="pending-decisions-tab" class="decision-tab-content">
+                                <div class="table-container">
+                                    <table class="data-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Loại quyết định</th>
+                                                <th>Chủ đề</th>
+                                                <th>Người tạo</th>
+                                                <th>Ngày tạo</th>
+                                                <th>Tiến độ vote</th>
+                                                <th>Thao tác</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="pendingDecisionsBody">
+                                            <tr>
+                                                <td colspan="6" class="empty-table">
+                                                    <div class="empty-state">
+                                                        <i class="fas fa-check-circle"></i>
+                                                        <p>Không có quyết định nào đang chờ vote</p>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            <!-- My Decisions Tab -->
+                            <div id="my-decisions-tab" class="decision-tab-content">
+                                <div class="table-container">
+                                    <table class="data-table">
+                                        <thead>
+                                            <tr>
+                                                <th>Loại quyết định</th>
+                                                <th>Chủ đề</th>
+                                                <th>Ngày tạo</th>
+                                                <th>Trạng thái</th>
+                                                <th>Kết quả</th>
+                                                <th>Thao tác</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="myDecisionsBody">
+                                            <tr>
+                                                <td colspan="6" class="empty-table">
+                                                    <div class="empty-state">
+                                                        <i class="fas fa-user"></i>
+                                                        <p>Bạn chưa tạo quyết định nào</p>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -518,6 +792,12 @@
                                     <option value="">Tất cả loại</option>
                                     <option value="Deposit">Nạp tiền</option>
                                     <option value="Withdraw">Rút tiền</option>
+                                </select>
+                                <select id="filterCategory" class="form-select">
+                                    <option value="">Tất cả danh mục</option>
+                                    <option value="maintenance">Quỹ Bảo Dưỡng</option>
+                                    <option value="reserve">Phí Dự Phòng</option>
+                                    <option value="other">Khác</option>
                                 </select>
                             </div>
                         </div>
@@ -700,6 +980,77 @@
     <div id="toast" class="toast">
         <div class="toast-icon"></div>
         <div class="toast-message"></div>
+    </div>
+
+    <!-- Create Decision Modal (Tạo quyết định chung) -->
+    <div id="createDecisionModal" class="modal-overlay">
+        <div class="modal" style="max-width: 700px;">
+            <div class="modal-header">
+                <h3>
+                    <i class="fas fa-hand-paper"></i>
+                    Tạo quyết định chung
+                </h3>
+                <button class="modal-close" onclick="closeCreateDecisionModal()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            <form id="createDecisionForm" class="modal-body">
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i>
+                    <div>
+                        <strong>Quyết định chung:</strong> Tạo phiếu bỏ phiếu cho các quyết định quan trọng của nhóm như nâng cấp pin, bảo hiểm, bán xe, v.v.
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="decisionGroup">Nhóm</label>
+                    <select id="decisionGroup" name="groupId" required>
+                        <option value="">Đang tải...</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="decisionType">Loại quyết định</label>
+                    <select id="decisionType" name="decisionType" required>
+                        <option value="">Chọn loại quyết định</option>
+                        <option value="battery_upgrade">🔋 Nâng cấp pin</option>
+                        <option value="insurance">🛡️ Bảo hiểm</option>
+                        <option value="sell_vehicle">🚗 Bán xe</option>
+                        <option value="maintenance">🔧 Bảo dưỡng lớn</option>
+                        <option value="upgrade">⚡ Nâng cấp khác</option>
+                        <option value="other">📋 Khác</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="decisionTopic">Chủ đề quyết định</label>
+                    <input type="text" id="decisionTopic" name="topic" required 
+                           placeholder="VD: Nâng cấp pin từ 50kWh lên 75kWh" maxlength="255">
+                    <small class="form-text">Mô tả ngắn gọn về quyết định cần bỏ phiếu</small>
+                </div>
+                <div class="form-group">
+                    <label for="decisionOptionA">Lựa chọn A (Đồng ý)</label>
+                    <input type="text" id="decisionOptionA" name="optionA" required 
+                           placeholder="VD: Đồng ý nâng cấp pin" maxlength="100">
+                </div>
+                <div class="form-group">
+                    <label for="decisionOptionB">Lựa chọn B (Không đồng ý)</label>
+                    <input type="text" id="decisionOptionB" name="optionB" required 
+                           placeholder="VD: Không đồng ý nâng cấp pin" maxlength="100">
+                </div>
+                <div class="form-group">
+                    <label for="decisionDescription">Mô tả chi tiết (Tùy chọn)</label>
+                    <textarea id="decisionDescription" name="description" rows="4" 
+                              placeholder="Mô tả chi tiết về quyết định, lý do, chi phí dự kiến, v.v."></textarea>
+                </div>
+            </form>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeCreateDecisionModal()">
+                    Hủy
+                </button>
+                <button type="submit" form="createDecisionForm" class="btn btn-info">
+                    <i class="fas fa-paper-plane"></i>
+                    Tạo quyết định
+                </button>
+            </div>
+        </div>
     </div>
 
     <!-- Join Group Modal -->

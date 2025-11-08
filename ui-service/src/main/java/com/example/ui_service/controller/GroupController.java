@@ -122,13 +122,4 @@ public class GroupController {
         return "groups/fund";
     }
     
-    /**
-     * Quỹ chung - Giao diện Admin
-     */
-    @GetMapping("/fund-admin")
-    public String fundAdmin(Model model) {
-        // TODO: Check if user is admin from session
-        // If not admin, redirect to user page
-        return "groups/fund-admin";
-    }
 }

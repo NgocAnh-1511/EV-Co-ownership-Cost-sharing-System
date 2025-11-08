@@ -24,9 +24,12 @@ let currentGroupId = null;  // For group management
 let currentTimePeriod = 'month'; // today, week, month, quarter, year, custom
 let customDateRange = null; // {from: date, to: date}
 
+// Flag to indicate admin-overview.js is loaded
+window.adminOverviewLoaded = true;
+
 // Initialize on DOM load
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('Admin Dashboard initializing...');
+    console.log('Admin Overview Dashboard initializing...');
     initNavigation();
     initSplitMethodToggle();
     initAutoSplitForm();
@@ -34,19 +37,20 @@ document.addEventListener('DOMContentLoaded', function() {
     initPaymentTracking();
     loadOverviewData();
     initCharts();
-    console.log('Admin Dashboard initialized');
+    console.log('Admin Overview Dashboard initialized');
 });
 
 // ============ NAVIGATION ============
 function initNavigation() {
+    // Navigation is handled by server-side routing
+    // Links in sidebar navigate to different routes (/admin/costs, /admin/payments, etc.)
+    // No need to prevent default or handle client-side navigation
     const navLinks = document.querySelectorAll('.admin-nav .nav-link');
     
+    // Just update active state based on current page
     navLinks.forEach(link => {
-        link.addEventListener('click', function(e) {
-            e.preventDefault();
-            const section = this.getAttribute('data-section');
-            switchSection(section);
-        });
+        // Active state is set by server-side Thymeleaf (th:classappend)
+        // No additional JavaScript needed for navigation
     });
 }
 
@@ -1297,7 +1301,21 @@ async function previewSplit() {
             body: JSON.stringify(data)
         });
         
+        // Check if response is ok before parsing JSON
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            const errorMsg = errorData.error || errorData.message || `Lỗi ${response.status}: ${response.statusText}`;
+            showNotification(errorMsg, 'error');
+            return;
+        }
+        
         const result = await response.json();
+        
+        // Check if result has error field
+        if (result.error) {
+            showNotification(result.error, 'error');
+            return;
+        }
         
         const previewCard = document.getElementById('preview-result');
         const previewContent = document.getElementById('preview-content');
@@ -1315,7 +1333,7 @@ async function previewSplit() {
                     </tr>
                 </thead>
                 <tbody>
-                    ${result.shares ? result.shares.map(share => `
+                    ${result.shares && result.shares.length > 0 ? result.shares.map(share => `
                         <tr>
                             <td style="padding: 0.75rem;">User #${share.userId}</td>
                             <td style="padding: 0.75rem; text-align: right;">${share.percent}%</td>
@@ -1330,7 +1348,7 @@ async function previewSplit() {
         
     } catch (error) {
         console.error('Error previewing split:', error);
-        showNotification('Lỗi khi xem trước', 'error');
+        showNotification('Lỗi khi xem trước: ' + (error.message || 'Lỗi không xác định'), 'error');
     }
 }
 
@@ -2969,7 +2987,13 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (response.ok) {
                         showNotification('Đã phân chia chi phí thành công!', 'success');
                         closeCostSplitModal();
-                        loadCosts();
+                        // Reload costs if function exists (from admin-costs.js)
+                        if (typeof window.loadCosts === 'function') {
+                            window.loadCosts();
+                        } else {
+                            // Set flag for admin-costs.js to reload when page becomes visible
+                            localStorage.setItem('reloadCosts', 'true');
+                        }
                     } else {
                         const error = await response.text();
                         showNotification('Lỗi: ' + error, 'error');
@@ -3001,7 +3025,13 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (response.ok) {
                         showNotification('Đã tạo và phân chia chi phí thành công!', 'success');
                         closeCostSplitModal();
-                        loadCosts();
+                        // Reload costs if function exists (from admin-costs.js)
+                        if (typeof window.loadCosts === 'function') {
+                            window.loadCosts();
+                        } else {
+                            // Set flag for admin-costs.js to reload when page becomes visible
+                            localStorage.setItem('reloadCosts', 'true');
+                        }
                     } else {
                         const error = await response.text();
                         showNotification('Lỗi: ' + error, 'error');

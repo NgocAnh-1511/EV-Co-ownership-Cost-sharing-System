@@ -22,9 +22,4 @@ public class DashboardController {
     public String redirectDashboard() {
         return "redirect:/admin";
     }
-    
-    @GetMapping("/reports")
-    public String reports(Model model) {
-        return "reports/index";
-    }
 }

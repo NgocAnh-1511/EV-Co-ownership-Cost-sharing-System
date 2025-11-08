@@ -227,5 +227,24 @@ public class GroupRestController {
             return ResponseEntity.internalServerError().build();
         }
     }
+
+    /**
+     * Submit vote cho một quyết định
+     * POST /api/groups/votes/{voteId}/results
+     */
+    @PostMapping("/votes/{voteId}/results")
+    public ResponseEntity<?> submitVote(@PathVariable Integer voteId, @RequestBody Map<String, Object> voteData) {
+        try {
+            Map<String, Object> result = groupManagementClient.submitVoteAsMap(voteId, voteData);
+            if (result != null && result.containsKey("error")) {
+                return ResponseEntity.badRequest().body(result);
+            }
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            System.err.println("Error submitting vote: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(500).body(Map.of("error", "Failed to submit vote: " + e.getMessage()));
+        }
+    }
 }
 
