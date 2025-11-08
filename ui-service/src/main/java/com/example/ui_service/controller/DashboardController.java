@@ -8,11 +8,11 @@ import org.springframework.web.bind.annotation.GetMapping;
 public class DashboardController {
 
     /**
-     * Redirect root path to admin dashboard
+     * Redirect root path to auth login
      */
     @GetMapping("/")
     public String redirectRoot() {
-        return "redirect:/admin";
+        return "redirect:/auth/login";
     }
     
     /**

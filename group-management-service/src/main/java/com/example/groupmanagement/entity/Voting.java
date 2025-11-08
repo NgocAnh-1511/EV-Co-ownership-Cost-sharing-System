@@ -46,8 +46,62 @@ public class Voting {
     @Column(name = "createdAt")
     private LocalDateTime createdAt = LocalDateTime.now();
     
+    @Column(name = "deadline")
+    private LocalDateTime deadline; // Hạn chót bỏ phiếu
+    
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status")
+    private VotingStatus status = VotingStatus.OPEN; // Trạng thái bỏ phiếu
+    
+    @Column(name = "closedAt")
+    private LocalDateTime closedAt; // Thời điểm đóng bỏ phiếu
+    
+    @Column(name = "createdBy")
+    private Integer createdBy; // User ID tạo bỏ phiếu
+    
     @OneToMany(mappedBy = "voting", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @lombok.ToString.Exclude
     @lombok.EqualsAndHashCode.Exclude
     private List<VotingResult> votingResults;
+    
+    /**
+     * Kiểm tra xem bỏ phiếu đã hết hạn chưa
+     */
+    public boolean isExpired() {
+        if (deadline == null) {
+            return false; // Không có deadline thì không hết hạn
+        }
+        return LocalDateTime.now().isAfter(deadline);
+    }
+    
+    /**
+     * Kiểm tra xem bỏ phiếu có đang mở không
+     */
+    public boolean isOpen() {
+        return status == VotingStatus.OPEN && !isExpired();
+    }
+    
+    /**
+     * Đóng bỏ phiếu
+     */
+    public void close() {
+        this.status = VotingStatus.CLOSED;
+        this.closedAt = LocalDateTime.now();
+    }
+    
+    public enum VotingStatus {
+        OPEN("Đang mở"),
+        CLOSED("Đã đóng"),
+        CANCELLED("Đã hủy");
+        
+        private final String displayName;
+        
+        VotingStatus(String displayName) {
+            this.displayName = displayName;
+        }
+        
+        public String getDisplayName() {
+            return displayName;
+        }
+    }
 }

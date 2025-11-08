@@ -246,5 +246,137 @@ public class GroupRestController {
             return ResponseEntity.status(500).body(Map.of("error", "Failed to submit vote: " + e.getMessage()));
         }
     }
+
+    /**
+     * Lấy thông tin membership của user trong nhóm
+     * GET /api/groups/{groupId}/members/me/{userId}
+     */
+    @GetMapping("/{groupId}/members/me/{userId}")
+    public ResponseEntity<?> getMyMembershipInfo(@PathVariable Integer groupId, @PathVariable Integer userId) {
+        try {
+            Map<String, Object> result = groupManagementClient.getMyMembershipInfo(groupId, userId);
+            if (result != null && result.containsKey("error")) {
+                return ResponseEntity.status(404).body(result);
+            }
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            System.err.println("Error getting membership info: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(500).body(Map.of("error", "Failed to get membership info", "message", e.getMessage()));
+        }
+    }
+
+    /**
+     * Lấy danh sách thành viên trong nhóm (cho user xem)
+     * GET /api/groups/{groupId}/members/view
+     */
+    @GetMapping("/{groupId}/members/view")
+    public ResponseEntity<?> viewGroupMembers(@PathVariable Integer groupId) {
+        try {
+            Map<String, Object> result = groupManagementClient.viewGroupMembers(groupId);
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            System.err.println("Error viewing group members: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(500).body(Map.of("error", "Failed to view members", "message", e.getMessage()));
+        }
+    }
+
+    /**
+     * User tạo yêu cầu rời nhóm
+     * POST /api/groups/{groupId}/leave-request
+     */
+    @PostMapping("/{groupId}/leave-request")
+    public ResponseEntity<?> createLeaveRequest(@PathVariable Integer groupId, @RequestBody Map<String, Object> requestData) {
+        try {
+            Map<String, Object> result = groupManagementClient.createLeaveRequest(groupId, requestData);
+            if (result != null && result.containsKey("error")) {
+                return ResponseEntity.badRequest().body(result);
+            }
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            System.err.println("Error creating leave request: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(500).body(Map.of("error", "Failed to create leave request", "message", e.getMessage()));
+        }
+    }
+
+    /**
+     * Admin xem các yêu cầu rời nhóm
+     * GET /api/groups/{groupId}/leave-requests
+     */
+    @GetMapping("/{groupId}/leave-requests")
+    public ResponseEntity<?> getLeaveRequests(
+            @PathVariable Integer groupId,
+            @RequestParam(required = false) Integer currentUserId) {
+        try {
+            Map<String, Object> result = groupManagementClient.getLeaveRequests(groupId, currentUserId);
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            System.err.println("Error getting leave requests: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(500).body(Map.of("error", "Failed to get leave requests", "message", e.getMessage()));
+        }
+    }
+
+    /**
+     * Admin phê duyệt yêu cầu rời nhóm
+     * POST /api/groups/{groupId}/leave-requests/{requestId}/approve
+     */
+    @PostMapping("/{groupId}/leave-requests/{requestId}/approve")
+    public ResponseEntity<?> approveLeaveRequest(
+            @PathVariable Integer groupId,
+            @PathVariable Integer requestId,
+            @RequestBody(required = false) Map<String, Object> requestData) {
+        try {
+            Map<String, Object> result = groupManagementClient.approveLeaveRequest(groupId, requestId, requestData);
+            if (result != null && result.containsKey("error")) {
+                return ResponseEntity.badRequest().body(result);
+            }
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            System.err.println("Error approving leave request: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(500).body(Map.of("error", "Failed to approve leave request", "message", e.getMessage()));
+        }
+    }
+
+    /**
+     * Admin từ chối yêu cầu rời nhóm
+     * POST /api/groups/{groupId}/leave-requests/{requestId}/reject
+     */
+    @PostMapping("/{groupId}/leave-requests/{requestId}/reject")
+    public ResponseEntity<?> rejectLeaveRequest(
+            @PathVariable Integer groupId,
+            @PathVariable Integer requestId,
+            @RequestBody(required = false) Map<String, Object> requestData) {
+        try {
+            Map<String, Object> result = groupManagementClient.rejectLeaveRequest(groupId, requestId, requestData);
+            if (result != null && result.containsKey("error")) {
+                return ResponseEntity.badRequest().body(result);
+            }
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            System.err.println("Error rejecting leave request: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(500).body(Map.of("error", "Failed to reject leave request", "message", e.getMessage()));
+        }
+    }
+
+    /**
+     * User xem trạng thái yêu cầu rời nhóm của mình
+     * GET /api/groups/{groupId}/leave-requests/me/{userId}
+     */
+    @GetMapping("/{groupId}/leave-requests/me/{userId}")
+    public ResponseEntity<?> getMyLeaveRequestStatus(@PathVariable Integer groupId, @PathVariable Integer userId) {
+        try {
+            Map<String, Object> result = groupManagementClient.getMyLeaveRequestStatus(groupId, userId);
+            return ResponseEntity.ok(result);
+        } catch (Exception e) {
+            System.err.println("Error getting leave request status: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(500).body(Map.of("error", "Failed to get leave request status", "message", e.getMessage()));
+        }
+    }
 }
 
