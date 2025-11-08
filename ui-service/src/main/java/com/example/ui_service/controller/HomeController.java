@@ -816,9 +816,26 @@ public class HomeController {
             
             // Load danh sách xe từ bảng vehicle trong database
             // Gọi API: GET http://localhost:8083/api/vehicles
+            System.out.println("📡 [HomeController] Bắt đầu load danh sách xe...");
             List<VehicleDTO> vehicles = vehicleRestClient.getAllVehicles();
+            
+            if (vehicles == null) {
+                System.err.println("❌ [HomeController] vehicles list là null");
+                vehicles = new ArrayList<>();
+            }
+            
             model.addAttribute("vehicles", vehicles);
-            System.out.println("✅ Đã load " + vehicles.size() + " xe từ bảng vehicle");
+            System.out.println("✅ [HomeController] Đã load " + vehicles.size() + " xe từ bảng vehicle");
+            
+            // Log chi tiết để debug
+            if (vehicles.isEmpty()) {
+                System.err.println("⚠️ [HomeController] Danh sách xe rỗng! Có thể:");
+                System.err.println("   1. Backend service không chạy");
+                System.err.println("   2. Database không có dữ liệu");
+                System.err.println("   3. API không trả về dữ liệu");
+            } else {
+                System.out.println("   - Xe đầu tiên: " + vehicles.get(0).getVehicleId() + " - " + vehicles.get(0).getVehicleNumber());
+            }
             
             // Load danh sách loại dịch vụ từ cột service_type trong bảng service
             // Gọi API: GET http://localhost:8083/api/services/types

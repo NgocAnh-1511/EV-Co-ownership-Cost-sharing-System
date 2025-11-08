@@ -240,6 +240,45 @@ public class VehicleServiceAPI {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
             }
 
+            // KIỂM TRA DUPLICATE TRƯỚC KHI TẠO ENTITY
+            // Chỉ chặn nếu có dịch vụ đang chờ (pending/in_progress) chưa completed
+            System.out.println("   🔍 [CHECK DUPLICATE] Kiểm tra dịch vụ đang chờ...");
+            System.out.println("   - serviceId: " + serviceId);
+            System.out.println("   - vehicleId: " + vehicleId);
+            
+            // Kiểm tra xem có dịch vụ đang chờ (pending/in_progress) không
+            long activeCount = vehicleServiceRepository.countActiveByServiceIdAndVehicleId(serviceId, vehicleId);
+            if (activeCount > 0) {
+                System.err.println("   ⚠️ [ACTIVE SERVICE] Đã tồn tại " + activeCount + " dịch vụ đang chờ với serviceId=" + serviceId + " và vehicleId=" + vehicleId);
+                return ResponseEntity.status(HttpStatus.CONFLICT)
+                    .body("Dịch vụ này đã được đăng ký cho xe này và đang trong trạng thái chờ xử lý. Vui lòng hoàn thành dịch vụ trước đó hoặc hủy đăng ký cũ.");
+            }
+            
+            // Kiểm tra xem có bản ghi nào với composite key này không (bao gồm cả completed)
+            long totalCount = vehicleServiceRepository.countByServiceIdAndVehicleIdNative(serviceId, vehicleId);
+            if (totalCount > 0) {
+                System.out.println("   ℹ️ [EXISTING SERVICE] Đã có " + totalCount + " bản ghi (có thể đã completed), sẽ update thay vì tạo mới");
+                // Nếu đã có bản ghi completed, sẽ update lại thành pending
+                Optional<Vehicleservice> existingOpt = vehicleServiceRepository.findById_ServiceIdAndId_VehicleId(serviceId, vehicleId);
+                if (existingOpt.isPresent()) {
+                    Vehicleservice existing = existingOpt.get();
+                    String existingStatus = existing.getStatus();
+                    if ("completed".equalsIgnoreCase(existingStatus) || "Completed".equalsIgnoreCase(existingStatus)) {
+                        System.out.println("   ℹ️ [RE-REGISTER] Dịch vụ trước đó đã completed, cho phép đăng ký lại");
+                        // Xóa bản ghi cũ và tạo mới
+                        vehicleServiceRepository.deleteById_ServiceIdAndId_VehicleId(serviceId, vehicleId);
+                        vehicleServiceRepository.flush();
+                        System.out.println("   ✅ Đã xóa bản ghi cũ (completed), sẽ tạo mới");
+                    } else {
+                        // Nếu không phải completed, trả về lỗi
+                        return ResponseEntity.status(HttpStatus.CONFLICT)
+                            .body("Dịch vụ này đã được đăng ký cho xe này và đang trong trạng thái: " + existingStatus + ". Vui lòng hoàn thành dịch vụ trước đó hoặc hủy đăng ký cũ.");
+                    }
+                }
+            }
+            
+            System.out.println("   ✅ [NO CONFLICT] Không có conflict, tiếp tục tạo entity...");
+
             // Tạo entity
             String serviceDescription = (String) requestData.get("serviceDescription");
             String status = (String) requestData.get("status");
@@ -265,7 +304,12 @@ public class VehicleServiceAPI {
                 
         } catch (IllegalArgumentException e) {
             System.err.println("❌ [VALIDATION ERROR] " + e.getMessage());
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+            String errorMessage = e.getMessage();
+            // Kiểm tra nếu là lỗi duplicate
+            if (errorMessage.contains("đã được đăng ký") || errorMessage.contains("trùng lặp")) {
+                return ResponseEntity.status(HttpStatus.CONFLICT).body(errorMessage);
+            }
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorMessage);
             
         } catch (org.springframework.dao.DataIntegrityViolationException e) {
             System.err.println("❌ [DATABASE ERROR] " + e.getMessage());

@@ -53,13 +53,28 @@ public class VehicleServiceService {
             System.out.println("   - serviceId: " + serviceId);
             System.out.println("   - vehicleId: " + vehicleId);
             
-            // Kiểm tra xem đã tồn tại chưa
-            boolean exists = vehicleServiceRepository.existsById_ServiceIdAndId_VehicleId(serviceId, vehicleId);
-            if (exists) {
-                System.out.println("   - Đăng ký dịch vụ đã tồn tại, sẽ update...");
+            // Kiểm tra duplicate đã được xử lý ở controller layer
+            // Ở đây chỉ cần đảm bảo không có conflict khi save
+            System.out.println("   🔒 [SERVICE] Kiểm tra lại trước khi save...");
+            
+            // Kiểm tra xem có dịch vụ đang chờ không (double check)
+            long activeCount = vehicleServiceRepository.countActiveByServiceIdAndVehicleId(serviceId, vehicleId);
+            if (activeCount > 0) {
+                System.out.println("   ⚠️ [SAVE CHECK] Vẫn còn dịch vụ đang chờ, không thể save");
+                throw new IllegalArgumentException("Dịch vụ này đã được đăng ký cho xe này và đang trong trạng thái chờ xử lý.");
             }
             
-            // Sử dụng repository.save() - sẽ insert hoặc update tùy vào tồn tại hay không
+            System.out.println("   - Đăng ký dịch vụ mới, sẽ insert...");
+            System.out.println("   - Composite key: serviceId=" + serviceId + ", vehicleId=" + vehicleId);
+            
+            // Đảm bảo id được set đúng
+            if (vehicleService.getId() == null) {
+                VehicleServiceId compositeId = new VehicleServiceId(serviceId, vehicleId);
+                vehicleService.setId(compositeId);
+                System.out.println("   - Đã set composite key: " + compositeId);
+            }
+            
+            // Sử dụng repository.save() để insert mới
             Vehicleservice savedService = vehicleServiceRepository.save(vehicleService);
             
             // Flush để đảm bảo insert/update được thực thi

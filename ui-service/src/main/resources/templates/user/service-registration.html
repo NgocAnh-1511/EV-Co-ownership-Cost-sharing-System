@@ -216,12 +216,22 @@
                         <select id="vehicleId" name="vehicleId" required>
                             <option value="">-- Chọn xe --</option>
                             <!-- Dữ liệu được load từ bảng vehicle qua API /api/vehicles -->
-                            <option th:each="vehicle : ${vehicles}" 
+                            <option th:if="${vehicles != null and !vehicles.isEmpty()}" 
+                                    th:each="vehicle : ${vehicles}" 
                                     th:value="${vehicle.vehicleId}" 
-                                    th:text="${(vehicle.vehicleNumber != null ? vehicle.vehicleNumber : vehicle.vehicleId) + ' - ' + (vehicle.type != null ? vehicle.type : 'N/A')}">
+                                    th:text="${(vehicle.vehicleNumber != null and !vehicle.vehicleNumber.isEmpty() ? vehicle.vehicleNumber : vehicle.vehicleId) + ' - ' + (vehicle.type != null and !vehicle.type.isEmpty() ? vehicle.type : 'N/A')}">
+                            </option>
+                            <option th:if="${vehicles == null or vehicles.isEmpty()}" value="" disabled style="color: red;">
+                                Không có dữ liệu xe - Vui lòng kiểm tra backend service
                             </option>
                         </select>
-                        <small style="color: #64748b; font-size: 12px;">Dữ liệu từ bảng vehicle</small>
+                        <small style="color: #64748b; font-size: 12px;">
+                            Dữ liệu từ bảng vehicle 
+                            <span th:if="${vehicles != null and !vehicles.isEmpty()}" th:text="'(' + ${#lists.size(vehicles)} + ' xe)'" style="color: green;">(0 xe)</span>
+                            <span th:if="${vehicles == null or vehicles.isEmpty()}" style="color: red;">
+                                (Không thể tải dữ liệu - Kiểm tra log hoặc đảm bảo backend service đang chạy)
+                            </span>
+                        </small>
                     </div>
 
                     <!-- Chọn loại dịch vụ từ cột service_type trong bảng service -->

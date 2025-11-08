@@ -91,5 +91,21 @@ public interface VehicleServiceRepository extends JpaRepository<Vehicleservice, 
                    "vs.service_type, vs.request_date, vs.status, vs.completion_date " +
                    "FROM vehicle_management.vehicleservice vs", nativeQuery = true)
     List<Object[]> findAllAsNative();
+    
+    /**
+     * Kiểm tra duplicate bằng native query (để tránh vấn đề với composite key)
+     */
+    @Query(value = "SELECT COUNT(*) FROM vehicle_management.vehicleservice " +
+                   "WHERE service_id = :serviceId AND vehicle_id = :vehicleId", nativeQuery = true)
+    long countByServiceIdAndVehicleIdNative(@Param("serviceId") String serviceId, @Param("vehicleId") String vehicleId);
+    
+    /**
+     * Kiểm tra xem có dịch vụ đang chờ (pending/in_progress) không
+     * Chỉ chặn duplicate nếu dịch vụ trước đó chưa completed
+     */
+    @Query(value = "SELECT COUNT(*) FROM vehicle_management.vehicleservice " +
+                   "WHERE service_id = :serviceId AND vehicle_id = :vehicleId " +
+                   "AND status IN ('pending', 'in_progress', 'in progress')", nativeQuery = true)
+    long countActiveByServiceIdAndVehicleId(@Param("serviceId") String serviceId, @Param("vehicleId") String vehicleId);
 }
 
