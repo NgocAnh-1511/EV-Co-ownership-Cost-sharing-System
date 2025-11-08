@@ -48,3 +48,11 @@ public interface UsageAnalysisRepository extends JpaRepository<UsageAnalysis, Lo
 
 
 
+
+
+
+
+
+
+
+

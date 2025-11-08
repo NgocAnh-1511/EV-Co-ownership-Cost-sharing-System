@@ -787,10 +787,15 @@
             if (!result.isConfirmed) return;
 
             try {
-                const res = await fetch(`http://localhost:8082/api/reservations/${id}/status?status=${nextStatus}`, {
-                    method: 'PUT',
+                // Gọi qua UI Service để đảm bảo cập nhật từ bảng chính (co_ownership_booking.reservations) trước
+                // UI Service sẽ gọi Reservation Service, và Reservation Service sẽ cập nhật cả 2 bảng
+                const formData = new FormData();
+                formData.append('status', nextStatus);
+                
+                const res = await fetch(`/admin/reservations/${id}/status?status=${nextStatus}`, {
+                    method: 'POST',
                     headers: {
-                        'Authorization': 'Bearer ' + token
+                        'Content-Type': 'application/x-www-form-urlencoded'
                     }
                 });
                 if (res.ok) {

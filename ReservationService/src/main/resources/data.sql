@@ -17,32 +17,38 @@ INSERT INTO users (user_id, full_name, email, phone, username, password) VALUES
 (4, 'Phạm Thị D', 'phamthid@email.com', '0934567890', 'phamthid', 'password123'),
 (5, 'Hoàng Văn E', 'hoangvane@email.com', '0945678901', 'hoangvane', 'password123');
 
--- Tạo nhóm xe đồng sở hữu
-INSERT INTO vehicle_groups (group_id, group_name, description) VALUES
-(1, 'Nhóm Gia Đình Nguyễn', 'Nhóm dùng chung xe gia đình'),
-(2, 'Nhóm Công Ty ABC', 'Nhóm xe công ty'),
-(3, 'Nhóm Bạn Bè Hà Nội', 'Nhóm bạn bè chia sẻ xe');
+-- Tạo nhóm xe đồng sở hữu (mỗi xe có một group riêng)
+INSERT INTO vehicle_groups (group_id, group_name, description, creation_date, active) VALUES
+('GRP001', 'Nhóm Honda City 2022', 'Nhóm cho Honda City 2022', NOW(), 'active'),
+('GRP002', 'Nhóm Toyota Vios 2021', 'Nhóm cho Toyota Vios 2021', NOW(), 'active'),
+('GRP003', 'Nhóm Mazda CX-5 2023', 'Nhóm cho Mazda CX-5 2023', NOW(), 'active'),
+('GRP004', 'Nhóm Honda CR-V 2022', 'Nhóm cho Honda CR-V 2022', NOW(), 'active'),
+('GRP005', 'Nhóm Toyota Camry 2023', 'Nhóm cho Toyota Camry 2023', NOW(), 'active');
 
--- Tạo xe
+-- Tạo xe (mỗi xe có một group_id riêng)
 INSERT INTO vehicles (vehicle_id, vehicle_name, license_plate, vehicle_type, group_id, status) VALUES
-(1, 'Honda City 2022', '51A-123.45', 'Sedan', 1, 'AVAILABLE'),
-(2, 'Toyota Vios 2021', '51B-678.90', 'Sedan', 1, 'AVAILABLE'),
-(3, 'Mazda CX-5 2023', '51C-111.22', 'SUV', 2, 'AVAILABLE'),
-(4, 'Honda CR-V 2022', '51D-222.33', 'SUV', 2, 'AVAILABLE'),
-(5, 'Toyota Camry 2023', '51E-333.44', 'Sedan', 3, 'AVAILABLE');
+(1, 'Honda City 2022', '51A-123.45', 'Sedan', 'GRP001', 'AVAILABLE'),
+(2, 'Toyota Vios 2021', '51B-678.90', 'Sedan', 'GRP002', 'AVAILABLE'),
+(3, 'Mazda CX-5 2023', '51C-111.22', 'SUV', 'GRP003', 'AVAILABLE'),
+(4, 'Honda CR-V 2022', '51D-222.33', 'SUV', 'GRP004', 'AVAILABLE'),
+(5, 'Toyota Camry 2023', '51E-333.44', 'Sedan', 'GRP005', 'AVAILABLE');
 
 -- Thêm thành viên vào nhóm (với phần trăm sở hữu)
 INSERT INTO group_members (group_id, user_id, ownership_percentage) VALUES
--- Nhóm 1: Nguyễn Văn A (70%), Trần Thị B (30%)
-(1, 1, 70.0),
-(1, 2, 30.0),
--- Nhóm 2: Lê Văn C (50%), Nguyễn Văn A (25%), Phạm Thị D (25%)
-(2, 3, 50.0),
-(2, 1, 25.0),
-(2, 4, 25.0),
--- Nhóm 3: Hoàng Văn E (60%), Trần Thị B (40%)
-(3, 5, 60.0),
-(3, 2, 40.0);
+-- Nhóm GRP001 (Honda City): Nguyễn Văn A (70%), Trần Thị B (30%)
+('GRP001', 1, 70.0),
+('GRP001', 2, 30.0),
+-- Nhóm GRP002 (Toyota Vios): Lê Văn C (50%), Nguyễn Văn A (25%), Phạm Thị D (25%)
+('GRP002', 3, 50.0),
+('GRP002', 1, 25.0),
+('GRP002', 4, 25.0),
+-- Nhóm GRP003 (Mazda CX-5): Hoàng Văn E (60%), Trần Thị B (40%)
+('GRP003', 5, 60.0),
+('GRP003', 2, 40.0),
+-- Nhóm GRP004 (Honda CR-V): Lê Văn C (100%)
+('GRP004', 3, 100.0),
+-- Nhóm GRP005 (Toyota Camry): Hoàng Văn E (100%)
+('GRP005', 5, 100.0);
 
 -- Tạo lịch đặt xe mẫu
 INSERT INTO reservations (vehicle_id, user_id, start_datetime, end_datetime, purpose, status) VALUES

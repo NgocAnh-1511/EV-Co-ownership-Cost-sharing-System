@@ -26,3 +26,11 @@ public interface OwnershipInfoRepository extends JpaRepository<OwnershipInfo, Lo
 
 
 
+
+
+
+
+
+
+
+

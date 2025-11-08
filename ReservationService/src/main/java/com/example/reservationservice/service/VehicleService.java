@@ -42,7 +42,7 @@ public class VehicleService {
         List<GroupMember> userGroups = groupMemberRepo.findGroupsByUserId(userId);
         
         // Get group IDs
-        Set<Long> groupIds = userGroups.stream()
+        Set<String> groupIds = userGroups.stream()
                 .map(gm -> gm.getGroup().getGroupId())
                 .collect(Collectors.toSet());
         
@@ -74,5 +74,33 @@ public class VehicleService {
             }
         }
         return list;
+    }
+    
+    // Get group information for a specific vehicle
+    @Transactional(readOnly = true)
+    public Map<String,Object> getVehicleGroupInfo(Long vehicleId) {
+        Vehicle vehicle = vehicleRepo.findById(vehicleId)
+                .orElseThrow(() -> new RuntimeException("Vehicle not found"));
+        
+        var group = vehicle.getVehicleGroup();
+        var members = groupMemberRepo.findByGroup_GroupId(group.getGroupId());
+        
+        Map<String,Object> groupInfo = new LinkedHashMap<>();
+        groupInfo.put("groupId", group.getGroupId());
+        groupInfo.put("groupName", group.getGroupName());
+        groupInfo.put("description", group.getDescription());
+        
+        List<Map<String,Object>> memberList = new ArrayList<>();
+        for (GroupMember gm : members) {
+            Map<String,Object> member = new LinkedHashMap<>();
+            member.put("userId", gm.getUser().getUserId());
+            member.put("fullName", gm.getUser().getFullName());
+            member.put("email", gm.getUser().getEmail());
+            member.put("ownershipPercentage", gm.getOwnershipPercentage());
+            memberList.add(member);
+        }
+        groupInfo.put("members", memberList);
+        
+        return groupInfo;
     }
 }

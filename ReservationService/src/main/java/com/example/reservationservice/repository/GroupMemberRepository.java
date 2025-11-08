@@ -8,7 +8,7 @@ import org.springframework.data.repository.query.Param;
 import java.util.List;
 
 public interface GroupMemberRepository extends JpaRepository<GroupMember, Long> {
-    List<GroupMember> findByGroup_GroupId(Long groupId);
+    List<GroupMember> findByGroup_GroupId(String groupId);
     List<GroupMember> findByUser_UserId(Long userId);
     
     @Query("SELECT gm FROM GroupMember gm WHERE gm.user.userId = :userId")

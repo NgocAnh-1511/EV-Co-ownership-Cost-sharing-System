@@ -29,4 +29,16 @@ public class VehicleController {
         }
         return vehicleService.getUserVehicles(userId);
     }
+    
+    // Get vehicles for specific user by userId
+    @GetMapping("/users/{userId}/vehicles")
+    public List<Map<String,Object>> getUserVehicles(@PathVariable Long userId) {
+        return vehicleService.getUserVehicles(userId);
+    }
+    
+    // Get group information by vehicle ID
+    @GetMapping("/vehicles/{vehicleId}/group")
+    public Map<String,Object> getVehicleGroup(@PathVariable Long vehicleId) {
+        return vehicleService.getVehicleGroupInfo(vehicleId);
+    }
 }
