@@ -61,3 +61,15 @@
     height: 40px;
     border-radius: 50%;
 }
+
+.admin-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 18px;
+}

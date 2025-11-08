@@ -10,7 +10,9 @@
             <span class="badge">3</span>
         </div>
         <div class="user-profile">
-            <img src="https://via.placeholder.com/40x40/4F46E5/FFFFFF?text=AD" alt="Admin">
+            <div class="admin-avatar">
+                <i class="fas fa-user-shield"></i>
+            </div>
             <span th:text="${adminName != null ? adminName : 'Admin'}">Admin</span>
         </div>
     </div>

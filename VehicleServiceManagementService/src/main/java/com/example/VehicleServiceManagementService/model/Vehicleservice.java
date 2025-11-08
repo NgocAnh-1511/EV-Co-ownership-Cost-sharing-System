@@ -1,5 +1,6 @@
 package com.example.VehicleServiceManagementService.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
@@ -17,19 +18,19 @@ import java.time.Instant;
            @Index(name = "idx_service_id", columnList = "service_id"),
            @Index(name = "idx_status", columnList = "status")
        })
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "service", "vehicle"})
 public class Vehicleservice {
     
     @EmbeddedId
     private VehicleServiceId id;
 
-    @NotNull(message = "Service không được để trống")
-    @ManyToOne(fetch = FetchType.EAGER, optional = false)
-    @JoinColumn(name = "service_id", nullable = false, insertable = false, updatable = false, foreignKey = @ForeignKey(name = "fk_vehicleservice_service"))
+    // Thay đổi optional = true để có thể load được ngay cả khi foreign key không tồn tại
+    @ManyToOne(fetch = FetchType.LAZY, optional = true)
+    @JoinColumn(name = "service_id", nullable = false, insertable = false, updatable = false)
     private ServiceType service;
 
-    @NotNull(message = "Vehicle không được để trống")
-    @ManyToOne(fetch = FetchType.EAGER, optional = false)
-    @JoinColumn(name = "vehicle_id", nullable = false, insertable = false, updatable = false, foreignKey = @ForeignKey(name = "fk_vehicleservice_vehicle"))
+    @ManyToOne(fetch = FetchType.LAZY, optional = true)
+    @JoinColumn(name = "vehicle_id", nullable = false, insertable = false, updatable = false)
     private Vehicle vehicle;
 
     @Size(max = 255)
@@ -67,6 +68,26 @@ public class Vehicleservice {
     public void initializeId() {
         if (id == null && service != null && vehicle != null) {
             id = new VehicleServiceId(service.getServiceId(), vehicle.getVehicleId());
+        }
+    }
+    
+    // Method để đảm bảo serviceType luôn được set từ ServiceType nếu null
+    // Được gọi sau khi entity được load từ database
+    @PostLoad
+    public void ensureServiceType() {
+        // Nếu serviceType null hoặc rỗng, lấy từ ServiceType entity
+        if ((serviceType == null || serviceType.trim().isEmpty()) && service != null) {
+            String serviceTypeFromService = service.getServiceType();
+            if (serviceTypeFromService != null && !serviceTypeFromService.trim().isEmpty()) {
+                this.serviceType = serviceTypeFromService;
+            }
+        }
+        // Đảm bảo serviceName cũng được set nếu null
+        if ((serviceName == null || serviceName.trim().isEmpty()) && service != null) {
+            String serviceNameFromService = service.getServiceName();
+            if (serviceNameFromService != null && !serviceNameFromService.trim().isEmpty()) {
+                this.serviceName = serviceNameFromService;
+            }
         }
     }
 }

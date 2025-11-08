@@ -11,9 +11,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.Instant;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/vehicleservices")
@@ -28,7 +27,6 @@ public class VehicleServiceAPI {
 
     /**
      * Test endpoint để kiểm tra controller hoạt động
-     * @return Thông báo thành công
      */
     @GetMapping("/test")
     public ResponseEntity<?> testEndpoint() {
@@ -41,27 +39,96 @@ public class VehicleServiceAPI {
 
     /**
      * Lấy tất cả các đăng ký dịch vụ xe
-     * @return Danh sách tất cả đăng ký dịch vụ
+     * Sử dụng native query để đảm bảo lấy được dữ liệu
      */
     @GetMapping
-    public ResponseEntity<List<Vehicleservice>> getAllVehicleServices() {
+    public ResponseEntity<List<Map<String, Object>>> getAllVehicleServices() {
+        System.out.println("═══════════════════════════════════════════════════════");
         System.out.println("🔵 [GET] /api/vehicleservices - Lấy tất cả đăng ký dịch vụ");
+        
         try {
-            List<Vehicleservice> services = vehicleServiceRepository.findAll();
-            System.out.println("✅ Đã lấy " + services.size() + " đăng ký dịch vụ");
-            return ResponseEntity.ok(services);
+            // Sử dụng native query để lấy dữ liệu trực tiếp từ database
+            List<Object[]> nativeResults = vehicleServiceRepository.findAllAsNative();
+            System.out.println("✅ Native query trả về " + nativeResults.size() + " records");
+            
+            // Convert sang Map để trả về JSON
+            List<Map<String, Object>> result = new ArrayList<>();
+            for (Object[] row : nativeResults) {
+                Map<String, Object> serviceMap = new HashMap<>();
+                
+                // Column order: service_id, vehicle_id, service_name, service_description, 
+                //                service_type, request_date, status, completion_date
+                String serviceId = row[0] != null ? row[0].toString() : null;
+                String vehicleId = row[1] != null ? row[1].toString() : null;
+                
+                // Composite key
+                Map<String, Object> idMap = new HashMap<>();
+                idMap.put("serviceId", serviceId);
+                idMap.put("vehicleId", vehicleId);
+                serviceMap.put("id", idMap);
+                
+                // Other fields
+                serviceMap.put("serviceId", serviceId);
+                serviceMap.put("vehicleId", vehicleId);
+                
+                if (row.length > 2 && row[2] != null) {
+                    serviceMap.put("serviceName", row[2].toString());
+                }
+                if (row.length > 3 && row[3] != null) {
+                    serviceMap.put("serviceDescription", row[3].toString());
+                }
+                if (row.length > 4 && row[4] != null) {
+                    serviceMap.put("serviceType", row[4].toString());
+                }
+                if (row.length > 5 && row[5] != null) {
+                    if (row[5] instanceof java.sql.Timestamp) {
+                        serviceMap.put("requestDate", ((java.sql.Timestamp) row[5]).toInstant().toString());
+                    } else if (row[5] instanceof java.time.Instant) {
+                        serviceMap.put("requestDate", row[5].toString());
+                    } else if (row[5] instanceof java.time.LocalDateTime) {
+                        serviceMap.put("requestDate", ((java.time.LocalDateTime) row[5]).atZone(java.time.ZoneId.systemDefault()).toInstant().toString());
+                    } else {
+                        serviceMap.put("requestDate", row[5].toString());
+                    }
+                }
+                if (row.length > 6 && row[6] != null) {
+                    serviceMap.put("status", row[6].toString());
+                }
+                if (row.length > 7 && row[7] != null) {
+                    if (row[7] instanceof java.sql.Timestamp) {
+                        serviceMap.put("completionDate", ((java.sql.Timestamp) row[7]).toInstant().toString());
+                    } else if (row[7] instanceof java.time.Instant) {
+                        serviceMap.put("completionDate", row[7].toString());
+                    } else if (row[7] instanceof java.time.LocalDateTime) {
+                        serviceMap.put("completionDate", ((java.time.LocalDateTime) row[7]).atZone(java.time.ZoneId.systemDefault()).toInstant().toString());
+                    } else {
+                        serviceMap.put("completionDate", row[7].toString());
+                    }
+                }
+                
+                result.add(serviceMap);
+            }
+            
+            System.out.println("✅ Trả về " + result.size() + " services cho client");
+            System.out.println("═══════════════════════════════════════════════════════");
+            
+            return ResponseEntity.ok(result);
+            
         } catch (Exception e) {
             System.err.println("❌ Lỗi khi lấy danh sách: " + e.getMessage());
+            System.err.println("   Error Type: " + e.getClass().getName());
+            if (e.getCause() != null) {
+                System.err.println("   Cause: " + e.getCause().getMessage());
+            }
             e.printStackTrace();
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(List.of());
+            
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(new ArrayList<>());
         }
     }
 
     /**
      * Lấy đăng ký dịch vụ theo service_id và vehicle_id
-     * @param serviceId ID của dịch vụ
-     * @param vehicleId ID của xe
-     * @return ResponseEntity với Vehicleservice hoặc thông báo lỗi
      */
     @GetMapping("/service/{serviceId}/vehicle/{vehicleId}")
     public ResponseEntity<?> getVehicleServiceByServiceAndVehicle(
@@ -83,25 +150,65 @@ public class VehicleServiceAPI {
 
     /**
      * Lấy danh sách dịch vụ của một xe
-     * @param vehicleId ID của xe
-     * @return Danh sách dịch vụ của xe
      */
     @GetMapping("/vehicle/{vehicleId}")
-    public ResponseEntity<?> getVehicleServicesByVehicleId(@PathVariable String vehicleId) {
+    public ResponseEntity<List<Map<String, Object>>> getVehicleServicesByVehicleId(@PathVariable String vehicleId) {
         try {
-            List<Vehicleservice> services = vehicleServiceRepository.findByVehicle_VehicleId(vehicleId);
-            return ResponseEntity.ok(services);
+            System.out.println("🔵 [GET] /api/vehicleservices/vehicle/" + vehicleId);
+            
+            // Sử dụng native query để lấy dữ liệu
+            List<Object[]> nativeResults = vehicleServiceRepository.findAllAsNative();
+            
+            // Filter theo vehicleId
+            List<Map<String, Object>> result = nativeResults.stream()
+                    .filter(row -> row.length > 1 && row[1] != null && vehicleId.equals(row[1].toString()))
+                    .map(row -> {
+                        Map<String, Object> serviceMap = new HashMap<>();
+                        String serviceId = row[0] != null ? row[0].toString() : null;
+                        
+                        Map<String, Object> idMap = new HashMap<>();
+                        idMap.put("serviceId", serviceId);
+                        idMap.put("vehicleId", vehicleId);
+                        serviceMap.put("id", idMap);
+                        serviceMap.put("serviceId", serviceId);
+                        serviceMap.put("vehicleId", vehicleId);
+                        
+                        if (row.length > 2 && row[2] != null) serviceMap.put("serviceName", row[2].toString());
+                        if (row.length > 3 && row[3] != null) serviceMap.put("serviceDescription", row[3].toString());
+                        if (row.length > 4 && row[4] != null) serviceMap.put("serviceType", row[4].toString());
+                        if (row.length > 5 && row[5] != null) {
+                            if (row[5] instanceof java.sql.Timestamp) {
+                                serviceMap.put("requestDate", ((java.sql.Timestamp) row[5]).toInstant().toString());
+                            } else {
+                                serviceMap.put("requestDate", row[5].toString());
+                            }
+                        }
+                        if (row.length > 6 && row[6] != null) serviceMap.put("status", row[6].toString());
+                        if (row.length > 7 && row[7] != null) {
+                            if (row[7] instanceof java.sql.Timestamp) {
+                                serviceMap.put("completionDate", ((java.sql.Timestamp) row[7]).toInstant().toString());
+                            } else {
+                                serviceMap.put("completionDate", row[7].toString());
+                            }
+                        }
+                        
+                        return serviceMap;
+                    })
+                    .collect(Collectors.toList());
+            
+            System.out.println("✅ Trả về " + result.size() + " services cho vehicle " + vehicleId);
+            return ResponseEntity.ok(result);
+            
         } catch (Exception e) {
+            System.err.println("❌ Lỗi khi lấy danh sách dịch vụ: " + e.getMessage());
+            e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Đã xảy ra lỗi khi lấy danh sách dịch vụ: " + e.getMessage());
+                    .body(new ArrayList<>());
         }
     }
 
     /**
      * Đăng ký dịch vụ xe mới
-     * Controller không có @Transactional - transaction được quản lý bởi service layer
-     * @param requestData Map chứa thông tin đăng ký dịch vụ
-     * @return ResponseEntity với Vehicleservice đã được tạo
      */
     @PostMapping
     public ResponseEntity<?> registerVehicleService(@RequestBody Map<String, Object> requestData) {
@@ -110,50 +217,30 @@ public class VehicleServiceAPI {
         System.out.println("📥 Request data: " + requestData);
         
         try {
-            // ========== BƯỚC 1: VALIDATION DỮ LIỆU ĐẦU VÀO ==========
-            System.out.println("📋 [STEP 1] Validation dữ liệu đầu vào...");
-            
-            if (requestData == null) {
-                System.err.println("❌ Request data is null");
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                        .body("Request data không được để trống");
-            }
-            
+            // Validation
             String serviceId = (String) requestData.get("serviceId");
-            System.out.println("   - serviceId: " + serviceId);
             if (serviceId == null || serviceId.trim().isEmpty()) {
-                System.err.println("❌ serviceId is null or empty");
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                         .body("serviceId là bắt buộc");
             }
 
             String vehicleId = (String) requestData.get("vehicleId");
-            System.out.println("   - vehicleId: " + vehicleId);
             if (vehicleId == null || vehicleId.trim().isEmpty()) {
-                System.err.println("❌ vehicleId is null or empty");
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                         .body("vehicleId là bắt buộc");
             }
 
-            // ========== BƯỚC 2: KIỂM TRA SERVICE VÀ VEHICLE TỒN TẠI ==========
-            System.out.println("📋 [STEP 2] Kiểm tra service và vehicle tồn tại...");
-            
+            // Validate và lấy service, vehicle
             ServiceType service;
             Vehicle vehicle;
             try {
                 service = vehicleServiceService.validateAndGetService(serviceId);
-                System.out.println("   ✅ Service found: " + service.getServiceName() + " (type: " + service.getServiceType() + ")");
-                
                 vehicle = vehicleServiceService.validateAndGetVehicle(vehicleId);
-                System.out.println("   ✅ Vehicle found: " + vehicle.getVehicleNumber());
             } catch (IllegalArgumentException e) {
-                System.err.println("❌ Validation error: " + e.getMessage());
                 return ResponseEntity.status(HttpStatus.NOT_FOUND).body(e.getMessage());
             }
 
-            // ========== BƯỚC 3: TẠO ENTITY ==========
-            System.out.println("📋 [STEP 3] Tạo Vehicleservice entity...");
-            
+            // Tạo entity
             String serviceDescription = (String) requestData.get("serviceDescription");
             String status = (String) requestData.get("status");
             
@@ -163,79 +250,38 @@ public class VehicleServiceAPI {
                 serviceDescription,
                 status
             );
-            
-            System.out.println("   - status: " + vehicleService.getStatus());
-            System.out.println("   - request_date: " + vehicleService.getRequestDate());
-            System.out.println("   ✅ Entity created successfully");
 
-            // ========== BƯỚC 4: LƯU VÀO DATABASE (TRONG SERVICE LAYER VỚI TRANSACTION) ==========
-            System.out.println("📋 [STEP 4] Lưu vào database (service layer với transaction)...");
-            
-            // Gọi service method có @Transactional - exception sẽ propagate ra ngoài nếu có lỗi
+            // Lưu vào database
             Vehicleservice savedService = vehicleServiceService.saveVehicleService(vehicleService);
             
             System.out.println("✅ [SUCCESS] Đã đăng ký dịch vụ thành công!");
             System.out.println("   - Service ID: " + savedService.getServiceId());
             System.out.println("   - Vehicle ID: " + savedService.getVehicleId());
-            System.out.println("   - Service Name: " + savedService.getServiceName());
             System.out.println("═══════════════════════════════════════════════════════");
             
-            return ResponseEntity.status(HttpStatus.CREATED).body(savedService);
+            // Convert sang Map để trả về
+            Map<String, Object> response = convertToMap(savedService);
+            return ResponseEntity.status(HttpStatus.CREATED).body(response);
                 
         } catch (IllegalArgumentException e) {
-            // Validation errors từ service
-            System.err.println("❌ [VALIDATION ERROR] IllegalArgumentException:");
-            System.err.println("   Message: " + e.getMessage());
+            System.err.println("❌ [VALIDATION ERROR] " + e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
             
         } catch (org.springframework.dao.DataIntegrityViolationException e) {
-            // Database constraint violations
-            System.err.println("❌ [DATABASE ERROR] DataIntegrityViolationException:");
-            System.err.println("   Message: " + e.getMessage());
-            System.err.println("   Root Cause: " + (e.getRootCause() != null ? e.getRootCause().getMessage() : "null"));
-            e.printStackTrace();
+            System.err.println("❌ [DATABASE ERROR] " + e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                     .body("Lỗi ràng buộc dữ liệu: " + (e.getRootCause() != null ? e.getRootCause().getMessage() : e.getMessage()));
                     
-        } catch (jakarta.persistence.PersistenceException e) {
-            // JPA persistence errors
-            System.err.println("❌ [PERSISTENCE ERROR] PersistenceException:");
-            System.err.println("   Message: " + e.getMessage());
-            System.err.println("   Cause: " + (e.getCause() != null ? e.getCause().getMessage() : "null"));
-            e.printStackTrace();
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Lỗi persistence: " + e.getMessage());
-                    
-        } catch (RuntimeException e) {
-            // Runtime errors (bao gồm các lỗi từ service layer)
-            System.err.println("❌ [RUNTIME ERROR] RuntimeException:");
-            System.err.println("   Type: " + e.getClass().getName());
-            System.err.println("   Message: " + e.getMessage());
-            System.err.println("   Cause: " + (e.getCause() != null ? e.getCause().getMessage() : "null"));
-            e.printStackTrace();
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Đã xảy ra lỗi khi đăng ký dịch vụ: " + e.getMessage() + 
-                          (e.getCause() != null ? " (Cause: " + e.getCause().getMessage() + ")" : ""));
-                          
         } catch (Exception e) {
-            // Các lỗi khác
-            System.err.println("❌ [UNEXPECTED ERROR] Exception:");
-            System.err.println("   Type: " + e.getClass().getName());
-            System.err.println("   Message: " + e.getMessage());
-            System.err.println("   Cause: " + (e.getCause() != null ? e.getCause().getMessage() : "null"));
+            System.err.println("❌ [ERROR] " + e.getMessage());
             e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Đã xảy ra lỗi khi đăng ký dịch vụ: " + e.getMessage() + 
-                          (e.getCause() != null ? " (Cause: " + e.getCause().getMessage() + ")" : ""));
+                    .body("Đã xảy ra lỗi khi đăng ký dịch vụ: " + e.getMessage());
         }
     }
 
     /**
      * Cập nhật đăng ký dịch vụ
-     * @param serviceId ID của dịch vụ
-     * @param vehicleId ID của xe
-     * @param requestData Map chứa thông tin cần cập nhật
-     * @return ResponseEntity với Vehicleservice đã được cập nhật hoặc thông báo lỗi
      */
     @PutMapping("/service/{serviceId}/vehicle/{vehicleId}")
     public ResponseEntity<?> updateVehicleService(
@@ -252,9 +298,6 @@ public class VehicleServiceAPI {
 
             Vehicleservice service = serviceOpt.get();
 
-            // Lưu ý: Không thể thay đổi service_id và vehicle_id vì chúng là primary key
-            // Chỉ có thể cập nhật các thông tin khác
-            
             if (requestData.containsKey("serviceDescription")) {
                 service.setServiceDescription((String) requestData.get("serviceDescription"));
             }
@@ -264,7 +307,19 @@ public class VehicleServiceAPI {
             }
             
             if (requestData.containsKey("status")) {
-                service.setStatus((String) requestData.get("status"));
+                String newStatus = (String) requestData.get("status");
+                service.setStatus(newStatus);
+                
+                // Tự động set completionDate khi status = completed
+                if (newStatus != null && newStatus.equalsIgnoreCase("completed")) {
+                    if (service.getCompletionDate() == null) {
+                        service.setCompletionDate(Instant.now());
+                        System.out.println("✅ Tự động set completionDate = " + Instant.now());
+                    }
+                } else if (newStatus != null && (newStatus.equalsIgnoreCase("pending") || newStatus.equalsIgnoreCase("in_progress") || newStatus.equalsIgnoreCase("in progress"))) {
+                    // Reset completionDate nếu chuyển về pending/in_progress
+                    service.setCompletionDate(null);
+                }
             }
             
             if (requestData.containsKey("completionDate")) {
@@ -277,7 +332,9 @@ public class VehicleServiceAPI {
             }
 
             Vehicleservice updatedService = vehicleServiceRepository.save(service);
-            return ResponseEntity.ok(updatedService);
+            Map<String, Object> response = convertToMap(updatedService);
+            return ResponseEntity.ok(response);
+            
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -287,9 +344,6 @@ public class VehicleServiceAPI {
 
     /**
      * Xóa đăng ký dịch vụ
-     * @param serviceId ID của dịch vụ
-     * @param vehicleId ID của xe
-     * @return ResponseEntity với thông báo kết quả
      */
     @DeleteMapping("/service/{serviceId}/vehicle/{vehicleId}")
     public ResponseEntity<?> deleteVehicleService(
@@ -306,5 +360,35 @@ public class VehicleServiceAPI {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body("Đã xảy ra lỗi khi xóa dịch vụ: " + e.getMessage());
         }
+    }
+    
+    /**
+     * Helper method để convert Vehicleservice entity sang Map
+     */
+    private Map<String, Object> convertToMap(Vehicleservice vs) {
+        Map<String, Object> map = new HashMap<>();
+        
+        // Composite key
+        Map<String, Object> idMap = new HashMap<>();
+        idMap.put("serviceId", vs.getServiceId());
+        idMap.put("vehicleId", vs.getVehicleId());
+        map.put("id", idMap);
+        
+        // Other fields
+        map.put("serviceId", vs.getServiceId());
+        map.put("vehicleId", vs.getVehicleId());
+        map.put("serviceName", vs.getServiceName());
+        map.put("serviceDescription", vs.getServiceDescription());
+        map.put("serviceType", vs.getServiceType());
+        map.put("status", vs.getStatus());
+        
+        if (vs.getRequestDate() != null) {
+            map.put("requestDate", vs.getRequestDate().toString());
+        }
+        if (vs.getCompletionDate() != null) {
+            map.put("completionDate", vs.getCompletionDate().toString());
+        }
+        
+        return map;
     }
 }

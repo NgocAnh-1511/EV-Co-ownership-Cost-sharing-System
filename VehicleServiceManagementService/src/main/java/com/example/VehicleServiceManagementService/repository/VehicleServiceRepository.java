@@ -63,5 +63,33 @@ public interface VehicleServiceRepository extends JpaRepository<Vehicleservice, 
     @Transactional
     @Query("DELETE FROM Vehicleservice v WHERE v.vehicle.vehicleId = :vehicleId")
     void deleteByVehicleId(@Param("vehicleId") String vehicleId);
+    
+    /**
+     * Test query để kiểm tra dữ liệu có tồn tại không (native query)
+     */
+    @Query(value = "SELECT COUNT(*) FROM vehicle_management.vehicleservice", nativeQuery = true)
+    long countAllNative();
+    
+    /**
+     * Lấy tất cả vehicleservice bằng native query (để test)
+     */
+    @Query(value = "SELECT * FROM vehicle_management.vehicleservice", nativeQuery = true)
+    List<Object[]> findAllNative();
+    
+    /**
+     * Lấy tất cả vehicleservice với LEFT JOIN để tránh bị filter
+     * Sử dụng JPQL với LEFT JOIN để đảm bảo load được ngay cả khi foreign key có vấn đề
+     */
+    @Query("SELECT v FROM Vehicleservice v LEFT JOIN FETCH v.service LEFT JOIN FETCH v.vehicle")
+    List<Vehicleservice> findAllWithJoins();
+    
+    /**
+     * Lấy tất cả vehicleservice không cần join (chỉ lấy từ bảng vehicleservice)
+     * Sử dụng native query và build entity manually
+     */
+    @Query(value = "SELECT vs.service_id, vs.vehicle_id, vs.service_name, vs.service_description, " +
+                   "vs.service_type, vs.request_date, vs.status, vs.completion_date " +
+                   "FROM vehicle_management.vehicleservice vs", nativeQuery = true)
+    List<Object[]> findAllAsNative();
 }
 

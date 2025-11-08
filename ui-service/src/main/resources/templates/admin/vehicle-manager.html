@@ -22,7 +22,7 @@
     <!-- Main Content -->
     <main class="main-content">
         <!-- Header -->
-        <div th:replace="fragments/header :: header" th:with="pageTitle='Quản Lý Các Dịch Vụ Xe', pageDescription='Quản Lý Danh Sách xe theo trạng thái'"></div>
+        <div th:replace="fragments/header :: header" th:with="pageTitle='Quản Lý Các Dịch Vụ Xe', pageDescription='Quản lý dịch vụ bảo dưỡng, kiểm tra và sửa chữa cho xe'"></div>
 
 
         <!-- Stats Cards -->
@@ -34,18 +34,18 @@
                     <span class="stat-number" th:text="${totalVehicles}">24</span>
                 </div>
             </div>
-            <div class="stat-card available">
-                <div class="stat-icon"><i class="fas fa-check-circle"></i></div>
-                <div class="stat-info">
-                    <h3>Sẵn sàng</h3>
-                    <span class="stat-number" th:text="${availableVehicles}">18</span>
-                </div>
-            </div>
             <div class="stat-card maintenance">
                 <div class="stat-icon"><i class="fas fa-tools"></i></div>
                 <div class="stat-info">
                     <h3>Bảo dưỡng</h3>
                     <span class="stat-number" th:text="${maintenanceVehicles}">6</span>
+                </div>
+            </div>
+            <div class="stat-card inspection">
+                <div class="stat-icon"><i class="fas fa-search"></i></div>
+                <div class="stat-info">
+                    <h3>Kiểm tra</h3>
+                    <span class="stat-number" th:text="${inspectionVehicles}">0</span>
                 </div>
             </div>
             <div class="stat-card broken">
@@ -66,16 +66,16 @@
                         <input type="text" th:value="${searchQuery}" placeholder="Tìm kiếm xe...">
                     </div>
                     <div class="filter-group">
-                        <label>Tất cả trạng thái</label>
-                        <select th:value="${statusFilter}">
-                            <option>Tất cả trạng thái</option>
-                            <option>Sẵn sàng</option>
-                            <option>Bảo dưỡng</option>
-                            <option>Sửa chữa</option>
+                        <label>Lọc theo dịch vụ</label>
+                        <select id="serviceFilter" th:value="${serviceFilter}">
+                            <option value="all">Tất cả dịch vụ</option>
+                            <option value="maintenance">Bảo dưỡng</option>
+                            <option value="inspection">Kiểm tra</option>
+                            <option value="repair">Sửa chữa</option>
                         </select>
                     </div>
-                    <button class="btn-add-vehicle">
-                        <i class="fas fa-plus"></i> Thêm Xe Mới
+                    <button type="button" class="btn-filter" id="btnFilter" onclick="applyFilter()">
+                        <i class="fas fa-filter"></i> Lọc
                     </button>
                 </div>
             </div>
@@ -85,11 +85,6 @@
         <div class="table-section">
             <div class="table-header">
                 <h3>Danh Sách Xe</h3>
-                <div class="table-actions">
-                    <button class="btn-export">
-                        <i class="fas fa-file-excel"></i> Xuất Excel
-                    </button>
-                </div>
             </div>
 
             <div class="table-container">
@@ -99,13 +94,14 @@
                         <th>TÊN XE</th>
                         <th>BIỂN SỐ</th>
                         <th>LOẠI XE</th>
+                        <th>DỊCH VỤ ĐANG CHỜ</th>
                         <th>TRẠNG THÁI</th>
-                        <th>NGÀY CẬP NHẬT</th>
+                        <th>NGÀY YÊU CẦU</th>
                         <th>HÀNH ĐỘNG</th>
                     </tr>
                     </thead>
                     <tbody>
-                    <tr th:each="vehicle : ${vehicles}">
+                    <tr th:each="vehicle : ${vehicles}" th:attr="data-vehicle-id=${vehicle.vehicleId}">
                         <td>
                             <div class="vehicle-info">
                                 <div class="vehicle-icon" th:class="${vehicle.iconClass}"></div>
@@ -118,14 +114,36 @@
                         <td th:text="${vehicle.plateNumber}">30A-12345</td>
                         <td th:text="${vehicle.category}">Sedan</td>
                         <td>
-                            <span class="status" th:class="'status-' + ${vehicle.statusClass}"
-                                  th:text="${vehicle.status}">Sẵn sàng</span>
+                            <div th:if="${vehicle.services != null and !vehicle.services.isEmpty()}">
+                                <div th:each="service : ${vehicle.services}">
+                                    <span class="status" th:class="'status-' + ${service.statusClass}"
+                                          th:text="${service.serviceName}">Bảo dưỡng định kỳ</span>
+                                    <span class="service-status" th:text="'(' + ${service.status} + ')'">(pending)</span>
+                                </div>
+                            </div>
+                            <span th:if="${vehicle.services == null or vehicle.services.isEmpty()}" class="status status-available">
+                                Không có dịch vụ
+                            </span>
                         </td>
-                        <td th:text="${vehicle.updateDate}">22/10/2024</td>
+                        <td>
+                            <span th:if="${vehicle.overallStatus == 'pending'}" class="status-badge status-pending">
+                                <i class="fas fa-clock"></i> Pending
+                            </span>
+                            <span th:if="${vehicle.overallStatus == 'complete'}" class="status-badge status-complete">
+                                <i class="fas fa-check-circle"></i> Complete
+                            </span>
+                            <span th:if="${vehicle.overallStatus == 'in_progress'}" class="status-badge status-in-progress">
+                                <i class="fas fa-spinner"></i> In Progress
+                            </span>
+                        </td>
+                        <td th:text="${vehicle.formattedRequestDate}">22/10/2024 10:30:00</td>
                         <td>
                             <div class="action-buttons">
-                                <button class="btn-edit" title="Sửa"><i class="fas fa-edit"></i></button>
-                                <button class="btn-delete" title="Xóa"><i class="fas fa-trash"></i></button>
+                                <button class="btn-edit btn-view-detail" 
+                                        title="Xem chi tiết"
+                                        th:attr="data-vehicle-id=${vehicle.vehicleId}">
+                                    <i class="fas fa-eye"></i>
+                                </button>
                             </div>
                         </td>
                     </tr>
@@ -133,24 +151,342 @@
                 </table>
             </div>
 
-            <!-- Pagination -->
-            <div class="pagination">
-                <span th:text="'Hiển thị ' + ${startIndex} + '-' + ${endIndex} + ' trong tổng số ' + ${totalVehicles} + ' xe'">
-                    Hiển thị 1-4 trong tổng số 24 xe
+            <!-- Display total count -->
+            <div class="pagination" style="justify-content: center; padding: 20px;">
+                <span th:text="'Tổng số: ' + ${totalVehicles} + ' xe'">
+                    Tổng số: 0 xe
                 </span>
-                <div class="pagination-buttons">
-                    <button class="prev" th:disabled="${currentPage == 1}">
-                        <i class="fas fa-chevron-left"></i>
-                    </button>
-                    <button class="next" th:disabled="${currentPage == totalPages}">
-                        <i class="fas fa-chevron-right"></i>
-                    </button>
-                </div>
             </div>
         </div>
     </main>
 </div>
 
+<!-- Modal Chi Tiết Xe -->
+<div id="vehicleDetailModal" class="modal">
+    <div class="modal-content modal-large">
+        <div class="modal-header">
+            <h2>Chi Tiết Xe</h2>
+            <span class="modal-close" onclick="closeVehicleDetailModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <!-- Thông tin xe -->
+            <div class="detail-section">
+                <h3><i class="fas fa-car"></i> Thông Tin Xe</h3>
+                <div class="detail-grid">
+                    <div class="detail-item">
+                        <label>Mã Xe:</label>
+                        <span id="modalVehicleId">-</span>
+                    </div>
+                    <div class="detail-item">
+                        <label>Tên Xe:</label>
+                        <span id="modalVehicleName">-</span>
+                    </div>
+                    <div class="detail-item">
+                        <label>Biển Số:</label>
+                        <span id="modalPlateNumber">-</span>
+                    </div>
+                    <div class="detail-item">
+                        <label>Loại Xe:</label>
+                        <span id="modalVehicleType">-</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Danh sách dịch vụ -->
+            <div class="detail-section">
+                <h3><i class="fas fa-tools"></i> Danh Sách Dịch Vụ</h3>
+                <div id="modalServicesList" class="services-list">
+                    <div class="loading-message">Đang tải dữ liệu...</div>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn-save" onclick="saveChangesAndClose()">Lưu và Đóng</button>
+            <button type="button" class="btn-cancel" onclick="closeVehicleDetailModal()">Hủy</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    function applyFilter(event) {
+        // Ngăn chặn event bubbling và default behavior
+        if (event) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+        
+        const searchQuery = document.querySelector('.filter-group input[type="text"]').value;
+        const serviceFilter = document.getElementById('serviceFilter').value;
+        const url = new URL(window.location.href);
+        url.searchParams.set('searchQuery', searchQuery);
+        url.searchParams.set('serviceFilter', serviceFilter);
+        // Bỏ phân trang - không cần page parameter
+        url.searchParams.delete('page');
+        window.location.href = url.toString();
+    }
+    
+    // Auto-submit khi nhấn Enter trong ô tìm kiếm
+    document.addEventListener('DOMContentLoaded', function() {
+        const searchInput = document.querySelector('.filter-group input[type="text"]');
+        if (searchInput) {
+            searchInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    applyFilter(e);
+                }
+            });
+        }
+        
+        // Đảm bảo nút lọc không bị conflict với script khác
+        const filterBtn = document.getElementById('btnFilter');
+        if (filterBtn) {
+            filterBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                applyFilter(e);
+            });
+        }
+        
+        // Event listener cho nút xem chi tiết
+        document.querySelectorAll('.btn-view-detail').forEach(btn => {
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                const vehicleId = this.getAttribute('data-vehicle-id');
+                if (vehicleId) {
+                    openVehicleDetailModal(vehicleId);
+                }
+            });
+        });
+    });
+
+    // Biến lưu trữ thay đổi trạng thái
+    let statusChanges = {};
+    let currentVehicleId = null;
+
+    // Modal functions
+    function openVehicleDetailModal(vehicleId) {
+        console.log('Mở modal chi tiết cho xe: ' + vehicleId);
+        const modal = document.getElementById('vehicleDetailModal');
+        modal.style.display = 'block';
+        currentVehicleId = vehicleId;
+        statusChanges = {}; // Reset changes
+        loadVehicleDetail(vehicleId);
+    }
+
+    function closeVehicleDetailModal() {
+        // Kiểm tra nếu có thay đổi chưa lưu
+        if (Object.keys(statusChanges).length > 0) {
+            if (confirm('Bạn có thay đổi chưa lưu. Bạn có muốn lưu trước khi đóng không?')) {
+                saveChangesAndClose();
+                return;
+            }
+        }
+        const modal = document.getElementById('vehicleDetailModal');
+        modal.style.display = 'none';
+        statusChanges = {}; // Reset changes
+        currentVehicleId = null;
+    }
+
+    window.onclick = function(event) {
+        const modal = document.getElementById('vehicleDetailModal');
+        if (event.target == modal) {
+            closeVehicleDetailModal();
+        }
+    }
+
+    async function loadVehicleDetail(vehicleId) {
+        try {
+            const row = document.querySelector(`tr[data-vehicle-id="${vehicleId}"]`);
+            if (row) {
+                const vehicleName = row.querySelector('.vehicle-name')?.textContent || '-';
+                const plateNumber = row.cells[1]?.textContent || '-';
+                const vehicleType = row.cells[2]?.textContent || '-';
+                document.getElementById('modalVehicleId').textContent = vehicleId;
+                document.getElementById('modalVehicleName').textContent = vehicleName;
+                document.getElementById('modalPlateNumber').textContent = plateNumber;
+                document.getElementById('modalVehicleType').textContent = vehicleType;
+            }
+            const response = await fetch(`/admin/vehicle-manager/api/vehicle/${vehicleId}/services`);
+            const data = await response.json();
+            if (data.success && data.services) {
+                displayServices(data.services);
+                updateSaveButtonState(); // Cập nhật trạng thái nút Lưu
+            } else {
+                document.getElementById('modalServicesList').innerHTML = '<div class="error-message">Không thể tải danh sách dịch vụ</div>';
+            }
+        } catch (error) {
+            console.error('Lỗi khi load chi tiết xe:', error);
+            document.getElementById('modalServicesList').innerHTML = '<div class="error-message">Đã xảy ra lỗi khi tải dữ liệu</div>';
+        }
+    }
+
+    function displayServices(services) {
+        const servicesList = document.getElementById('modalServicesList');
+        if (!services || services.length === 0) {
+            servicesList.innerHTML = '<div class="no-data">Không có dịch vụ nào</div>';
+            return;
+        }
+        let html = '<div class="service-items">';
+        services.forEach(service => {
+            const serviceId = service.serviceId || (service.id && service.id.serviceId) || '-';
+            const vehicleId = service.vehicleId || (service.id && service.id.vehicleId) || '-';
+            const serviceName = service.serviceName || '-';
+            const serviceType = service.serviceType || '-';
+            const serviceDescription = service.serviceDescription || 'Không có mô tả';
+            const status = service.status || 'pending';
+            const requestDate = formatDate(service.requestDate);
+            const completionDate = service.completionDate ? formatDate(service.completionDate) : null;
+            const isCompleted = status === 'completed' || status === 'Completed';
+            const disabledAttr = isCompleted ? 'disabled' : '';
+            const readonlyClass = isCompleted ? 'status-readonly' : '';
+            
+            html += `<div class="service-item">
+                <div class="service-header">
+                    <h4>${serviceName}</h4>
+                    <select class="status-select ${readonlyClass}" 
+                            data-service-id="${serviceId}" 
+                            data-vehicle-id="${vehicleId}" 
+                            data-original-status="${status}"
+                            ${disabledAttr}
+                            onchange="trackStatusChange(this)">
+                        <option value="pending" ${status === 'pending' ? 'selected' : ''}>Pending</option>
+                        <option value="in_progress" ${status === 'in_progress' || status === 'in progress' ? 'selected' : ''}>In Progress</option>
+                        <option value="completed" ${status === 'completed' ? 'selected' : ''}>Completed</option>
+                    </select>
+                    ${isCompleted ? '<span class="readonly-badge">Chỉ xem</span>' : ''}
+                </div>
+                <div class="service-details">
+                    <div class="detail-row"><label>Loại dịch vụ:</label><span>${serviceType}</span></div>
+                    <div class="detail-row"><label>Mô tả:</label><span>${serviceDescription}</span></div>
+                    <div class="detail-row"><label>Ngày yêu cầu:</label><span>${requestDate}</span></div>
+                    ${completionDate ? `<div class="detail-row"><label>Ngày hoàn thành:</label><span>${completionDate}</span></div>` : ''}
+                </div>
+            </div>`;
+        });
+        html += '</div>';
+        servicesList.innerHTML = html;
+    }
+
+    function formatDate(dateString) {
+        if (!dateString) return '-';
+        try {
+            const date = new Date(dateString);
+            const day = String(date.getDate()).padStart(2, '0');
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const year = date.getFullYear();
+            const hours = String(date.getHours()).padStart(2, '0');
+            const minutes = String(date.getMinutes()).padStart(2, '0');
+            const seconds = String(date.getSeconds()).padStart(2, '0');
+            return `${day}/${month}/${year} ${hours}:${minutes}:${seconds}`;
+        } catch (e) {
+            return dateString;
+        }
+    }
+
+    // Theo dõi thay đổi trạng thái (không lưu ngay)
+    function trackStatusChange(selectElement) {
+        const serviceId = selectElement.getAttribute('data-service-id');
+        const vehicleId = selectElement.getAttribute('data-vehicle-id');
+        const originalStatus = selectElement.getAttribute('data-original-status');
+        const newStatus = selectElement.value;
+        
+        if (!serviceId || !vehicleId) {
+            return;
+        }
+        
+        const changeKey = `${serviceId}_${vehicleId}`;
+        
+        // Nếu trạng thái trở về giá trị ban đầu, xóa khỏi danh sách thay đổi
+        if (newStatus === originalStatus) {
+            delete statusChanges[changeKey];
+        } else {
+            // Lưu thay đổi vào object
+            statusChanges[changeKey] = {
+                serviceId: serviceId,
+                vehicleId: vehicleId,
+                newStatus: newStatus,
+                originalStatus: originalStatus
+            };
+        }
+        
+        // Cập nhật UI để hiển thị có thay đổi
+        updateSaveButtonState();
+    }
+    
+    // Cập nhật trạng thái nút Lưu
+    function updateSaveButtonState() {
+        const saveBtn = document.querySelector('.btn-save');
+        if (saveBtn) {
+            const hasChanges = Object.keys(statusChanges).length > 0;
+            if (hasChanges) {
+                saveBtn.style.opacity = '1';
+                saveBtn.style.cursor = 'pointer';
+                saveBtn.disabled = false;
+                saveBtn.textContent = `Lưu và Đóng (${Object.keys(statusChanges).length} thay đổi)`;
+            } else {
+                saveBtn.style.opacity = '0.6';
+                saveBtn.style.cursor = 'not-allowed';
+                saveBtn.disabled = true;
+                saveBtn.textContent = 'Lưu và Đóng';
+            }
+        }
+    }
+    
+    // Lưu tất cả thay đổi và đóng modal
+    async function saveChangesAndClose() {
+        const changes = Object.values(statusChanges);
+        
+        if (changes.length === 0) {
+            closeVehicleDetailModal();
+            return;
+        }
+        
+        // Disable nút lưu để tránh double click
+        const saveBtn = document.querySelector('.btn-save');
+        if (saveBtn) {
+            saveBtn.disabled = true;
+            saveBtn.textContent = 'Đang lưu...';
+        }
+        
+        try {
+            // Lưu từng thay đổi
+            const updatePromises = changes.map(change => {
+                return fetch(`/admin/vehicle-manager/api/service/${change.serviceId}/vehicle/${change.vehicleId}/status`, {
+                    method: 'PUT',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ status: change.newStatus })
+                });
+            });
+            
+            const responses = await Promise.all(updatePromises);
+            const results = await Promise.all(responses.map(r => r.json()));
+            
+            // Kiểm tra kết quả
+            const failed = results.filter(r => !r.success);
+            if (failed.length > 0) {
+                alert('Có lỗi xảy ra khi lưu một số thay đổi. Vui lòng thử lại.');
+                if (saveBtn) {
+                    saveBtn.disabled = false;
+                    updateSaveButtonState();
+                }
+                return;
+            }
+            
+            // Lưu thành công, reload trang và đóng modal
+            statusChanges = {};
+            window.location.reload();
+            
+        } catch (error) {
+            console.error('Lỗi khi lưu thay đổi:', error);
+            alert('Đã xảy ra lỗi khi lưu thay đổi. Vui lòng thử lại.');
+            if (saveBtn) {
+                saveBtn.disabled = false;
+                updateSaveButtonState();
+            }
+        }
+    }
+</script>
 <script th:src="@{/js/vehicle-manager.js}"></script>
 </body>
 </html>
