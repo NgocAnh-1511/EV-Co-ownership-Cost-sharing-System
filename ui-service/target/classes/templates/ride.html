@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ride - EV Co-Ownership</title>
+
+    <!-- Remixicon + Swiper -->
+    <link href="https://cdn.jsdelivr.net/npm/remixicon@4.3.0/fonts/remixicon.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.css" rel="stylesheet">
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" th:href="@{/styles.css}">
+</head>
+<body>
+
+<!-- HEADER NAV -->
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <div class="container">
+        <a class="navbar-brand fw-bold" th:href="@{/}">EV Co-Ownership</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav ms-auto">
+                <li class="nav-item"><a class="nav-link" th:href="@{/}">Home</a></li>
+                <li class="nav-item"><a class="nav-link" th:href="@{/about}">About</a></li>
+                <li class="nav-item"><a class="nav-link active" th:href="@{/ride}">Ride</a></li>
+                <li class="nav-item"><a class="nav-link" th:href="@{/contact}">Contact</a></li>
+            </ul>
+        </div>
+    </div>
+</nav>
+
+<!-- MAIN SECTION -->
+<section class="select__container py-5" id="ride">
+    <div class="container">
+        <h2 class="section__header text-center text-primary mb-4">PICK YOUR DREAM CAR TODAY</h2>
+
+        <!-- Slider container -->
+        <div class="swiper">
+            <div class="swiper-wrapper">
+
+                <!-- Dynamic slide using Thymeleaf -->
+                <div class="swiper-slide" th:each="car : ${cars}">
+                    <div class="select__card shadow">
+                        <img th:src="@{'/assets/' + ${car.image}}" alt="select" class="img-fluid">
+                        <div class="select__info">
+                            <div class="select__info__card">
+                                <span><i class="ri-speed-up-line"></i></span>
+                                <h4 th:text="${car.speed} + ' km/h'">200 km/h</h4>
+                            </div>
+                            <div class="select__info__card">
+                                <span><i class="ri-settings-5-line"></i></span>
+                                <h4 th:text="${car.gear} + ' speed'">6 speed</h4>
+                            </div>
+                            <div class="select__info__card">
+                                <span><i class="ri-roadster-line"></i></span>
+                                <h4 th:text="${car.seats} + ' seats'">5 seats</h4>
+                            </div>
+                            <div class="select__info__card">
+                                <span><i class="ri-signpost-line"></i></span>
+                                <h4 th:text="${car.milage} + ' milage'">15 milage</h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- Price form -->
+        <form th:action="@{/ride/confirm}" method="post" class="select__form mt-4">
+            <div class="select__price">
+                <span><i class="ri-price-tag-3-line"></i></span>
+                <div><span id="select-price" th:text="${selectedPrice != null ? selectedPrice : 225}">225</span> /day</div>
+            </div>
+            <div class="select__btns">
+                <button type="submit" class="btn">View Details</button>
+                <button type="submit" class="btn btn-primary">Rent Now</button>
+            </div>
+        </form>
+    </div>
+</section>
+
+<!-- FOOTER -->
+<footer class="bg-dark text-white text-center py-3">
+    <p class="mb-0">© 2025 EV Co-Ownership System. All rights reserved.</p>
+</footer>
+
+<!-- JS -->
+<script src="https://cdn.jsdelivr.net/npm/swiper@11/swiper-bundle.min.js"></script>
+<script th:src="@{/main.js}"></script>
+</body>
+</html>
