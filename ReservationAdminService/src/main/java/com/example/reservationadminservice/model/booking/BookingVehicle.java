@@ -26,8 +26,8 @@ public class BookingVehicle {
     @Column(name = "license_plate")
     private String licensePlate;
     
-    @Column(name = "group_id")
-    private Long groupId;
+    @Column(name = "group_id", length = 20)
+    private String groupId;
     
     @Column(name = "status")
     private String status;

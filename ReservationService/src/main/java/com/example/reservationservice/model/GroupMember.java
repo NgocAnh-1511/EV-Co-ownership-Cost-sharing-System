@@ -11,7 +11,8 @@ public class GroupMember {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long memberId;
 
-    @ManyToOne(fetch = FetchType.LAZY) @JoinColumn(name = "group_id")
+    @ManyToOne(fetch = FetchType.LAZY) 
+    @JoinColumn(name = "group_id", referencedColumnName = "group_id")
     private VehicleGroup group;
 
     @ManyToOne(fetch = FetchType.LAZY) @JoinColumn(name = "user_id")

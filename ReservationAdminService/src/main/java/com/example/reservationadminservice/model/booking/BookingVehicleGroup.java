@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.time.LocalDateTime;
+
 /**
  * Entity cho bảng vehicle_groups trong booking database (read-only)
  */
@@ -13,14 +15,19 @@ import lombok.Setter;
 @Setter
 public class BookingVehicleGroup {
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "group_id")
-    private Long groupId;
+    @Column(name = "group_id", length = 20)
+    private String groupId;
     
     @Column(name = "group_name")
     private String groupName;
     
     @Column(name = "description")
     private String description;
+    
+    @Column(name = "creation_date")
+    private LocalDateTime creationDate;
+    
+    @Column(name = "active")
+    private String active;
 }
 
