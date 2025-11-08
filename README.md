@@ -1,35 +1,59 @@
-# EV-Co-ownership-Cost-sharing-System
-Phần mềm quản lý đồng sở hữu & chia sẻ chi phí xe điện"
-Actors:
-"Co-owner
-Staff
-Admin"
-"1. Chức năng cho Chủ xe (Co-owner)
-a. Quản lý tài khoản & quyền sở hữu
-+ Đăng ký & xác thực (CMND/CCCD, giấy phép lái xe).
-+ Quản lý tỷ lệ sở hữu (ví dụ: A 40%, B 30%, C 30%).
-+ Quản lý hợp đồng đồng sở hữu (e-contract).
-b. Đặt lịch & sử dụng xe
-+ Lịch chung hiển thị thời gian xe đang trống/đang sử dụng.
-+ Đặt lịch trước để đảm bảo quyền sử dụng.
-+ Hệ thống ưu tiên công bằng dựa trên tỉ lệ sở hữu & lịch sử sử dụng.
-c. Chi phí & thanh toán
-+ Tự động chia chi phí theo tỉ lệ sở hữu hoặc theo mức độ sử dụng.
-+ Các khoản: phí sạc điện, bảo dưỡng, bảo hiểm, đăng kiểm, vệ sinh xe…
-+ Thanh toán trực tuyến (e-wallet, banking, ...).
-+ Bảng tổng kết chi phí theo tháng/quý.
-d. Lịch sử & phân tích cá nhân
-+ Lịch sử sử dụng xe: thời gian, quãng đường, chi phí phát sinh.
-+ So sánh mức sử dụng với tỉ lệ sở hữu.
-e. Nhóm đồng sở hữu
-+ Quản lý nhóm: thêm/xoá thành viên, phân quyền (admin nhóm, thành viên).
-+ Bỏ phiếu / quyết định chung: ví dụ nâng cấp pin, bảo hiểm, bán xe.
-+ Quỹ chung: quỹ bảo dưỡng, phí dự phòng; hiển thị minh bạch số dư và lịch sử chi.
-+ AI gợi ý phân tích sử dụng xe để đề xuất lịch sử dụng công bằng cho các đồng sở hữu."
-"2. Chức năng cho Nhà vận hành (Staff, Admin)
-+ Quản lý nhóm xe đồng sở hữu.
-+ Quản lý hợp đồng pháp lý điện tử.
-+ Quản lý Check-in/Check-out khi nhận và trả xe (quét QR, ký số).
-+ Quản lý thực hiện các dịch vụ xe.
-+ Theo dõi & giám sát tranh chấp (nếu có).
-+ Xuất báo cáo tài chính minh bạch cho từng nhóm."
+# EV Co-ownership System
+
+Hệ thống quản lý đồng sở hữu và chia sẻ chi phí xe điện.
+
+## 🚀 Quick Start
+
+### Yêu cầu
+- Docker & Docker Compose
+- Java 21
+- Maven 3.6+
+
+### Chạy hệ thống
+
+```bash
+# Kiểm tra dự án
+chmod +x check-system.sh
+./check-system.sh
+
+# Chạy hệ thống
+chmod +x run.sh
+./run.sh
+
+# Hoặc chạy thủ công
+docker-compose up --build
+```
+
+## 🌐 Truy cập
+
+- **Giao diện chính**: http://localhost:8080
+- **Group Management API**: http://localhost:8082/api/groups
+- **Cost Payment API**: http://localhost:8083/api/costs
+- **Health Check**: http://localhost:8080/health
+
+## 📋 Tính năng
+
+- ✅ Quản lý nhóm đồng sở hữu
+- ✅ Quản lý thành viên nhóm
+- ✅ Hệ thống bỏ phiếu
+- ✅ Quản lý chi phí
+- ✅ Phân chia chi phí
+- ✅ Quản lý thanh toán
+- ✅ Giao diện web
+- ✅ API RESTful
+
+## 🗄️ Database
+
+- **Group Management DB**: Port 3310
+- **Cost Payment DB**: Port 3308
+- **Sample data**: Có sẵn
+
+## 🎯 Services
+
+- **Group Management Service**: Port 8082
+- **Cost Payment Service**: Port 8083
+- **UI Service**: Port 8080
+
+---
+
+**🎉 Hệ thống đã sẵn sàng để sử dụng!**

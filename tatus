@@ -1,0 +1,33 @@
+[33mcommit 200aab9048eee0c48943cbe4600ad3b423586885[m
+Author: Diencoder <Email của bạn>
+Date:   Tue Oct 28 15:43:16 2025 +0700
+
+    update giao diện 2 serivice
+
+group-management-service/src/main/java/com/example/groupmanagement/entity/Group.java
+group_database_setup.sql
+ui-service/src/main/java/com/example/ui_service/controller/GroupController.java
+ui-service/src/main/java/com/example/ui_service/dto/GroupDto.java
+ui-service/src/main/resources/static/css/cost-list.css
+ui-service/src/main/resources/static/css/cost-management.css
+ui-service/src/main/resources/static/css/fund-management.css
+ui-service/src/main/resources/static/css/fund.css
+ui-service/src/main/resources/static/css/group-management.css
+ui-service/src/main/resources/static/css/voting.css
+ui-service/src/main/resources/static/js/fund-management.js
+ui-service/src/main/resources/static/js/fund.js
+ui-service/src/main/resources/static/js/group-management.js
+ui-service/src/main/resources/static/js/voting.js
+ui-service/src/main/resources/templates/costs/create.html
+ui-service/src/main/resources/templates/costs/edit.html
+ui-service/src/main/resources/templates/costs/list.html
+ui-service/src/main/resources/templates/costs/sharing.html
+ui-service/src/main/resources/templates/dashboard.html
+ui-service/src/main/resources/templates/groups/create.html
+ui-service/src/main/resources/templates/groups/fund.html
+ui-service/src/main/resources/templates/groups/list.html
+ui-service/src/main/resources/templates/groups/management.html
+ui-service/src/main/resources/templates/groups/voting.html
+ui-service/src/main/resources/templates/health.html
+ui-service/src/main/resources/templates/index.html
+ui-service/src/main/resources/templates/reports/index.html

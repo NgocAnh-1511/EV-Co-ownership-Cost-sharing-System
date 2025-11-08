@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sidebar Fragment</title>
+</head>
+<body>
+    <!-- Sidebar Fragment -->
+    <div th:fragment="sidebar">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <!-- Sidebar Header -->
+            <div class="sidebar-header">
+                <a href="/admin" class="sidebar-logo">
+                    <div class="logo-icon">
+                        <i class="fas fa-car-side"></i>
+                    </div>
+                    <span class="sidebar-logo-text">
+                        <span class="logo-brand">CarShare</span>
+                        <span class="logo-tagline">Manager</span>
+                    </span>
+                </a>
+                <button class="sidebar-toggle" id="sidebarToggle" title="Thu gọn menu">
+                    <i class="fas fa-bars"></i>
+                </button>
+            </div>
+            
+            <!-- Sidebar Navigation -->
+            <nav class="sidebar-nav">
+                <!-- Main Navigation -->
+                <div class="nav-section">
+                    <div class="nav-section-title">Trang chủ</div>
+                    <div class="nav-item">
+                        <a href="/admin" class="nav-link" data-route="/admin">
+                            <div class="nav-icon-wrapper">
+                                <i class="fas fa-home"></i>
+                            </div>
+                            <span class="nav-link-text">Admin Panel</span>
+                            <span class="nav-indicator"></span>
+                        </a>
+                    </div>
+                    <div class="nav-item">
+                        <a href="/user" class="nav-link" data-route="/user">
+                            <div class="nav-icon-wrapper">
+                                <i class="fas fa-user-circle"></i>
+                            </div>
+                            <span class="nav-link-text">User Dashboard</span>
+                            <span class="nav-badge new">NEW</span>
+                            <span class="nav-indicator"></span>
+                        </a>
+                    </div>
+                </div>
+                
+                <!-- Cost Management -->
+                <div class="nav-section">
+                    <div class="nav-section-title">Quản lý chi phí</div>
+                    <div class="nav-item">
+                        <a href="/costs" class="nav-link" data-route="/costs">
+                            <div class="nav-icon-wrapper">
+                                <i class="fas fa-receipt"></i>
+                            </div>
+                            <span class="nav-link-text">Danh sách chi phí</span>
+                            <span class="nav-indicator"></span>
+                        </a>
+                    </div>
+                    <div class="nav-item">
+                        <a href="/costs/auto-split" class="nav-link" data-route="/costs/auto-split">
+                            <div class="nav-icon-wrapper">
+                                <i class="fas fa-calculator"></i>
+                            </div>
+                            <span class="nav-link-text">Chia tự động</span>
+                            <span class="nav-badge">HOT</span>
+                            <span class="nav-indicator"></span>
+                        </a>
+                    </div>
+                    <div class="nav-item">
+                        <a href="/costs/usage-tracking" class="nav-link" data-route="/costs/usage-tracking">
+                            <div class="nav-icon-wrapper">
+                                <i class="fas fa-route"></i>
+                            </div>
+                            <span class="nav-link-text">Nhập Km sử dụng</span>
+                            <span class="nav-badge">NEW</span>
+                            <span class="nav-indicator"></span>
+                        </a>
+                    </div>
+                    <div class="nav-item">
+                        <a href="/costs/sharing" class="nav-link" data-route="/costs/sharing">
+                            <div class="nav-icon-wrapper">
+                                <i class="fas fa-share-alt"></i>
+                            </div>
+                            <span class="nav-link-text">Chia thủ công</span>
+                            <span class="nav-indicator"></span>
+                        </a>
+                    </div>
+                </div>
+                
+                <!-- Group Management -->
+                <div class="nav-section">
+                    <div class="nav-section-title">Quản lý nhóm</div>
+                    <div class="nav-item">
+                        <a href="/groups" class="nav-link" data-route="/groups">
+                            <div class="nav-icon-wrapper">
+                                <i class="fas fa-users"></i>
+                            </div>
+                            <span class="nav-link-text">Danh sách nhóm</span>
+                            <span class="nav-indicator"></span>
+                        </a>
+                    </div>
+                    <div class="nav-item">
+                        <a href="/groups/voting" class="nav-link" data-route="/groups/voting">
+                            <div class="nav-icon-wrapper">
+                                <i class="fas fa-vote-yea"></i>
+                            </div>
+                            <span class="nav-link-text">Bỏ phiếu</span>
+                            <span class="nav-indicator"></span>
+                        </a>
+                    </div>
+                    <div class="nav-item">
+                        <a href="/groups/fund" class="nav-link" data-route="/groups/fund">
+                            <div class="nav-icon-wrapper">
+                                <i class="fas fa-wallet"></i>
+                            </div>
+                            <span class="nav-link-text">Quỹ chung</span>
+                            <span class="nav-indicator"></span>
+                        </a>
+                    </div>
+                </div>
+                
+                <!-- Reports -->
+                <div class="nav-section">
+                    <div class="nav-section-title">Báo cáo & Thống kê</div>
+                    <div class="nav-item">
+                        <a href="/reports" class="nav-link" data-route="/reports">
+                            <div class="nav-icon-wrapper">
+                                <i class="fas fa-chart-line"></i>
+                            </div>
+                            <span class="nav-link-text">Báo cáo tổng hợp</span>
+                            <span class="nav-indicator"></span>
+                        </a>
+                    </div>
+                </div>
+                
+                <!-- System -->
+                <div class="nav-section">
+                    <div class="nav-section-title">Hệ thống</div>
+                    <div class="nav-item">
+                        <a href="/health" class="nav-link" data-route="/health">
+                            <div class="nav-icon-wrapper">
+                                <i class="fas fa-heartbeat"></i>
+                            </div>
+                            <span class="nav-link-text">Trạng thái hệ thống</span>
+                            <span class="nav-indicator"></span>
+                        </a>
+                    </div>
+                </div>
+            </nav>
+            
+            <!-- Sidebar Footer -->
+            <div class="sidebar-footer">
+                <div class="footer-user">
+                    <div class="footer-user-avatar">
+                        <i class="fas fa-user-shield"></i>
+                    </div>
+                    <div class="footer-user-info">
+                        <div class="footer-user-name">Admin</div>
+                        <div class="footer-user-role">Quản trị viên</div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+        
+        <!-- Sidebar Overlay for Mobile -->
+        <div class="sidebar-overlay" id="sidebarOverlay"></div>
+    </div>
+</body>
+</html>
