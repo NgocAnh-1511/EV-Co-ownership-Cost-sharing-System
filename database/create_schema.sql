@@ -26,17 +26,33 @@ CREATE TABLE vehicle (
     FOREIGN KEY (group_id) REFERENCES vehiclegroup(group_id)
 );
 
--- 🔹 Bảng VehicleService
+-- 🔹 Bảng Service (Danh mục dịch vụ)
+CREATE TABLE service (
+    service_id VARCHAR(20) PRIMARY KEY,
+    service_name VARCHAR(255) NOT NULL,
+    service_type VARCHAR(50) NOT NULL,
+    created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    INDEX idx_service_name (service_name),
+    INDEX idx_service_type (service_type)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- 🔹 Bảng VehicleService (Đăng ký dịch vụ cho xe)
 CREATE TABLE vehicleservice (
-    service_id INT AUTO_INCREMENT PRIMARY KEY,
-    vehicle_id INT,
+    registration_id INT AUTO_INCREMENT PRIMARY KEY,
+    service_id VARCHAR(20) NOT NULL,
+    vehicle_id VARCHAR(20) NOT NULL,
     service_name VARCHAR(255),
     service_description TEXT,
     service_type VARCHAR(50),
     request_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    status VARCHAR(50),
-    completion_date TIMESTAMP,
-    FOREIGN KEY (vehicle_id) REFERENCES vehicle(vehicle_id)
+    status VARCHAR(50) DEFAULT 'pending',
+    completion_date TIMESTAMP NULL,
+    FOREIGN KEY (service_id) REFERENCES service(service_id) ON DELETE RESTRICT,
+    FOREIGN KEY (vehicle_id) REFERENCES vehicle(vehicle_id) ON DELETE RESTRICT,
+    INDEX idx_vehicle_id (vehicle_id),
+    INDEX idx_service_id (service_id),
+    INDEX idx_status (status)
 );
 
 -- 🔹 Bảng VehicleHistory

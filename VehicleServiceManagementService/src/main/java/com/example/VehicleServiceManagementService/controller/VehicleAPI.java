@@ -31,6 +31,22 @@ public class VehicleAPI {
     private EntityManager entityManager;
 
     /**
+     * Lấy tất cả các xe
+     * @return Danh sách tất cả xe
+     */
+    @GetMapping
+    public ResponseEntity<List<Vehicle>> getAllVehicles() {
+        try {
+            List<Vehicle> vehicles = vehicleRepository.findAll();
+            return ResponseEntity.ok(vehicles);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(null);
+        }
+    }
+
+    /**
      * Thêm nhiều xe vào nhóm
      * @param requestData Map chứa groupId và danh sách vehicles
      * @return ResponseEntity với danh sách xe đã được tạo hoặc thông báo lỗi
