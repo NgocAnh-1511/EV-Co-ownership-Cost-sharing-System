@@ -23,7 +23,7 @@ public class AdminVehicleService {
         return repository.findById(id).orElse(null);
     }
     
-    public List<VehicleAdmin> getVehiclesByGroupId(Long groupId) {
+    public List<VehicleAdmin> getVehiclesByGroupId(String groupId) {
         return repository.findByGroupId(groupId);
     }
 }

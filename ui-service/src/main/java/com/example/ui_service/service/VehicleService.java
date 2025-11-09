@@ -29,6 +29,30 @@ public class VehicleService {
         }
     }
     
+    // Get vehicles for a specific user
+    @SuppressWarnings("unchecked")
+    public List<Map<String, Object>> getUserVehicles(Long userId) {
+        try {
+            ResponseEntity<List> res = restTemplate.getForEntity(API + "/users/" + userId + "/vehicles", List.class);
+            return res.getBody() != null ? res.getBody() : List.of();
+        } catch (Exception e) {
+            System.err.println("⚠️ Không thể lấy danh sách xe của user: " + e.getMessage());
+            return List.of();
+        }
+    }
+    
+    // Get group information for a vehicle
+    @SuppressWarnings("unchecked")
+    public Map<String, Object> getVehicleGroupInfo(Long vehicleId) {
+        try {
+            ResponseEntity<Map> res = restTemplate.getForEntity(API + "/vehicles/" + vehicleId + "/group", Map.class);
+            return res.getBody() != null ? res.getBody() : Map.of();
+        } catch (Exception e) {
+            System.err.println("⚠️ Không thể lấy thông tin nhóm: " + e.getMessage());
+            return Map.of();
+        }
+    }
+    
     // Get vehicles for logged-in user
     @SuppressWarnings("unchecked")
     public List<Map<String, Object>> getMyVehicles() {

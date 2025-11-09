@@ -30,12 +30,49 @@ public class BookingService {
         long overlaps = reservationRepo.countOverlap(vehicleId, start, end);
         return overlaps == 0;
     }
+    
+    /**
+     * Tìm lịch đặt trùng với thời gian yêu cầu
+     */
+    public Reservation findOverlappingReservation(Long vehicleId, LocalDateTime start, LocalDateTime end) {
+        List<Reservation> reservations = reservationRepo.findByVehicle_VehicleIdOrderByStartDatetimeAsc(vehicleId);
+        for (Reservation r : reservations) {
+            if (r.getStatus() == Reservation.Status.BOOKED) {
+                LocalDateTime rStart = r.getStartDatetime();
+                LocalDateTime rEnd = r.getEndDatetime();
+                
+                // Kiểm tra overlap: start < rEnd && end > rStart
+                if (start.isBefore(rEnd) && end.isAfter(rStart)) {
+                    return r;
+                }
+            }
+        }
+        return null;
+    }
 
     @Transactional
     public Reservation create(Long vehicleId, Long userId,
                               LocalDateTime start, LocalDateTime end, String purpose) {
-        if (!isAvailable(vehicleId, start, end)) {
-            throw new IllegalStateException("Time range overlaps existing reservation");
+        Reservation overlappingReservation = findOverlappingReservation(vehicleId, start, end);
+        if (overlappingReservation != null) {
+            // Format thời gian cho đẹp hơn
+            String startTimeStr = overlappingReservation.getStartDatetime() != null 
+                ? overlappingReservation.getStartDatetime().toString().replace("T", " ").substring(0, 16)
+                : "N/A";
+            String endTimeStr = overlappingReservation.getEndDatetime() != null 
+                ? overlappingReservation.getEndDatetime().toString().replace("T", " ").substring(0, 16)
+                : "N/A";
+            
+            // Tạo exception với thông tin chi tiết về lịch đặt trùng
+            String errorMessage = String.format(
+                "OVERLAP:Người đặt: %s | Thời gian: %s → %s | Lý do: %s",
+                overlappingReservation.getUser() != null ? overlappingReservation.getUser().getFullName() : "N/A",
+                startTimeStr,
+                endTimeStr,
+                overlappingReservation.getPurpose() != null && !overlappingReservation.getPurpose().isEmpty() 
+                    ? overlappingReservation.getPurpose() : "Không có ghi chú"
+            );
+            throw new IllegalStateException(errorMessage);
         }
         Vehicle v = vehicleRepo.findById(vehicleId)
                 .orElseThrow(() -> new IllegalArgumentException("Vehicle not found"));

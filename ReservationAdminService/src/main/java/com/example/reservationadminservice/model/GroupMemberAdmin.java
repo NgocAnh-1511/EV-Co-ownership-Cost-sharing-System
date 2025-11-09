@@ -13,7 +13,7 @@ public class GroupMemberAdmin {
     private Long memberId;
 
     @ManyToOne
-    @JoinColumn(name = "group_id")
+    @JoinColumn(name = "group_id", referencedColumnName = "group_id")
     private VehicleGroupAdmin group;
 
     @ManyToOne

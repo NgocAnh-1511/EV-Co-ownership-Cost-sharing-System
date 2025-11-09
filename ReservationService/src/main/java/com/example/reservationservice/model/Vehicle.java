@@ -15,7 +15,7 @@ public class Vehicle {
     private String vehicleType;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "group_id")
+    @JoinColumn(name = "group_id", referencedColumnName = "group_id")
     @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
     private VehicleGroup vehicleGroup;
 
