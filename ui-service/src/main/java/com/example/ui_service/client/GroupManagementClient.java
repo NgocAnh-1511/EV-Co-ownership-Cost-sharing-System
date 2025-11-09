@@ -244,4 +244,33 @@ public class GroupManagementClient {
             return List.of();
         }
     }
+
+    public Map<String, Object> submitVoteAsMap(Integer voteId, Map<String, Object> voteData) {
+        try {
+            org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
+            headers.setContentType(org.springframework.http.MediaType.APPLICATION_JSON);
+            org.springframework.http.HttpEntity<Map<String, Object>> requestEntity = 
+                new org.springframework.http.HttpEntity<>(voteData, headers);
+            
+            ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
+                groupManagementUrl + "/api/groups/votes/" + voteId + "/results",
+                HttpMethod.POST,
+                requestEntity,
+                new ParameterizedTypeReference<Map<String, Object>>() {}
+            );
+            return response.getBody();
+        } catch (org.springframework.web.client.HttpClientErrorException e) {
+            System.err.println("HTTP Error submitting vote: " + e.getStatusCode() + " - " + e.getResponseBodyAsString());
+            try {
+                // Try to parse error response
+                return Map.of("error", e.getResponseBodyAsString());
+            } catch (Exception ex) {
+                return Map.of("error", "Failed to submit vote: " + e.getMessage());
+            }
+        } catch (Exception e) {
+            System.err.println("Error submitting vote: " + e.getMessage());
+            e.printStackTrace();
+            return Map.of("error", "Failed to submit vote: " + e.getMessage());
+        }
+    }
 }

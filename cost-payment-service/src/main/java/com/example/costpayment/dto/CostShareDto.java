@@ -11,6 +11,14 @@ public class CostShareDto {
     private LocalDateTime calculatedAt;
     private String status;
     private String description; // Added for displaying cost description
+    private String costType; // Loại chi phí (ElectricCharge, Maintenance, etc.)
+    private String costTypeDisplay; // Tên hiển thị (Sạc điện, Bảo dưỡng, etc.)
+    private Double totalAmount; // Tổng chi phí gốc
+    private String splitMethod; // Phương thức chia (BY_OWNERSHIP, BY_USAGE, EQUAL)
+    private String splitMethodDisplay; // Tên hiển thị phương thức chia
+    private Double kmDriven; // Số km đã chạy (nếu chia theo usage)
+    private Double totalKm; // Tổng km của nhóm (nếu chia theo usage)
+    private Double ownershipPercent; // Tỷ lệ sở hữu (nếu chia theo ownership)
 
     // Constructors
     public CostShareDto() {}
@@ -100,6 +108,70 @@ public class CostShareDto {
         this.description = description;
     }
 
+    public String getCostType() {
+        return costType;
+    }
+
+    public void setCostType(String costType) {
+        this.costType = costType;
+    }
+
+    public String getCostTypeDisplay() {
+        return costTypeDisplay;
+    }
+
+    public void setCostTypeDisplay(String costTypeDisplay) {
+        this.costTypeDisplay = costTypeDisplay;
+    }
+
+    public Double getTotalAmount() {
+        return totalAmount;
+    }
+
+    public void setTotalAmount(Double totalAmount) {
+        this.totalAmount = totalAmount;
+    }
+
+    public String getSplitMethod() {
+        return splitMethod;
+    }
+
+    public void setSplitMethod(String splitMethod) {
+        this.splitMethod = splitMethod;
+    }
+
+    public String getSplitMethodDisplay() {
+        return splitMethodDisplay;
+    }
+
+    public void setSplitMethodDisplay(String splitMethodDisplay) {
+        this.splitMethodDisplay = splitMethodDisplay;
+    }
+
+    public Double getKmDriven() {
+        return kmDriven;
+    }
+
+    public void setKmDriven(Double kmDriven) {
+        this.kmDriven = kmDriven;
+    }
+
+    public Double getTotalKm() {
+        return totalKm;
+    }
+
+    public void setTotalKm(Double totalKm) {
+        this.totalKm = totalKm;
+    }
+
+    public Double getOwnershipPercent() {
+        return ownershipPercent;
+    }
+
+    public void setOwnershipPercent(Double ownershipPercent) {
+        this.ownershipPercent = ownershipPercent;
+    }
+
     @Override
     public String toString() {
         return "CostShareDto{" +
@@ -111,6 +183,8 @@ public class CostShareDto {
                 ", calculatedAt=" + calculatedAt +
                 ", status='" + status + '\'' +
                 ", description='" + description + '\'' +
+                ", costType='" + costType + '\'' +
+                ", splitMethod='" + splitMethod + '\'' +
                 '}';
     }
 }

@@ -77,12 +77,28 @@ public class UsageTrackingRestController {
             @RequestParam Integer year,
             @RequestParam Double kmDriven) {
         
-        Map<String, Object> updated = costPaymentClient.updateUsageKm(groupId, userId, month, year, kmDriven);
-        if (updated != null) {
-            return ResponseEntity.ok(updated);
-        } else {
-            return ResponseEntity.internalServerError().build();
+        try {
+            Map<String, Object> updated = costPaymentClient.updateUsageKm(groupId, userId, month, year, kmDriven);
+            if (updated != null) {
+                return ResponseEntity.ok(updated);
+            } else {
+                return ResponseEntity.internalServerError().body(Map.of("error", "Failed to update usage tracking"));
+            }
+        } catch (Exception e) {
+            System.err.println("Error in updateKm endpoint: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
         }
+    }
+
+    /**
+     * Lấy lịch sử usage của user
+     * GET /api/usage-tracking/user/{userId}/history
+     */
+    @GetMapping("/user/{userId}/history")
+    public ResponseEntity<List<Map<String, Object>>> getUserHistory(@PathVariable Integer userId) {
+        List<Map<String, Object>> history = costPaymentClient.getUserHistory(userId);
+        return ResponseEntity.ok(history);
     }
 }
 

@@ -26,7 +26,17 @@ public class CostShareServiceImpl implements CostShareService {
 
     public CostShare createCostShare(Integer costId, CostShare costShare) {
         costShare.setCostId(costId);
-        return costShareRepository.save(costShare);
+        CostShare savedShare = costShareRepository.save(costShare);
+        
+        // Update cost status to SHARED after creating a share
+        Optional<Cost> costOpt = costRepository.findById(costId);
+        if (costOpt.isPresent()) {
+            Cost cost = costOpt.get();
+            cost.setStatus(Cost.CostStatus.SHARED);
+            costRepository.save(cost);
+        }
+        
+        return savedShare;
     }
 
     public List<CostShare> getCostSharesByCostId(Integer costId) {
@@ -84,6 +94,10 @@ public class CostShareServiceImpl implements CostShareService {
             shares.add(costShareRepository.save(share));
         }
 
+        // Update cost status to SHARED after creating shares
+        cost.setStatus(Cost.CostStatus.SHARED);
+        costRepository.save(cost);
+
         return shares;
     }
 
@@ -107,7 +121,26 @@ public class CostShareServiceImpl implements CostShareService {
     }
 
     public void deleteCostShare(Integer id) {
-        costShareRepository.deleteById(id);
+        // Get the costId before deleting
+        Optional<CostShare> shareOpt = costShareRepository.findById(id);
+        if (shareOpt.isPresent()) {
+            Integer costId = shareOpt.get().getCostId();
+            costShareRepository.deleteById(id);
+            
+            // Check if there are any remaining shares for this cost
+            List<CostShare> remainingShares = costShareRepository.findByCostId(costId);
+            if (remainingShares.isEmpty()) {
+                // No more shares, set status back to PENDING
+                Optional<Cost> costOpt = costRepository.findById(costId);
+                if (costOpt.isPresent()) {
+                    Cost cost = costOpt.get();
+                    cost.setStatus(Cost.CostStatus.PENDING);
+                    costRepository.save(cost);
+                }
+            }
+        } else {
+            costShareRepository.deleteById(id);
+        }
     }
 
     /**

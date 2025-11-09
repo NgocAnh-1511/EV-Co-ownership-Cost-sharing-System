@@ -17,6 +17,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -113,6 +114,9 @@ public class GroupManagementController {
         if (requestData.containsKey("status")) {
             String statusStr = (String) requestData.get("status");
             group.setStatus("Active".equalsIgnoreCase(statusStr) ? Group.GroupStatus.Active : Group.GroupStatus.Inactive);
+        } else {
+            // Default to Active if status is not provided
+            group.setStatus(Group.GroupStatus.Active);
         }
         
         // Extract ownershipPercent for admin (optional)
@@ -168,14 +172,31 @@ public class GroupManagementController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Group> updateGroup(@PathVariable Integer id, @RequestBody Group groupDetails) {
-        Optional<Group> group = groupRepository.findById(id);
-        if (group.isPresent()) {
-            Group existingGroup = group.get();
-            existingGroup.setGroupName(groupDetails.getGroupName());
-            existingGroup.setAdminId(groupDetails.getAdminId());
-            existingGroup.setVehicleId(groupDetails.getVehicleId());
-            existingGroup.setStatus(groupDetails.getStatus());
+    public ResponseEntity<Group> updateGroup(@PathVariable Integer id, @RequestBody Map<String, Object> requestData) {
+        Optional<Group> groupOpt = groupRepository.findById(id);
+        if (groupOpt.isPresent()) {
+            Group existingGroup = groupOpt.get();
+            
+            // Update fields from request
+            if (requestData.containsKey("groupName")) {
+                existingGroup.setGroupName((String) requestData.get("groupName"));
+            }
+            if (requestData.containsKey("adminId")) {
+                existingGroup.setAdminId(((Number) requestData.get("adminId")).intValue());
+            }
+            if (requestData.containsKey("vehicleId")) {
+                Object vehicleIdObj = requestData.get("vehicleId");
+                if (vehicleIdObj != null) {
+                    existingGroup.setVehicleId(((Number) vehicleIdObj).intValue());
+                } else {
+                    existingGroup.setVehicleId(null);
+                }
+            }
+            if (requestData.containsKey("status")) {
+                String statusStr = (String) requestData.get("status");
+                existingGroup.setStatus("Active".equalsIgnoreCase(statusStr) ? Group.GroupStatus.Active : Group.GroupStatus.Inactive);
+            }
+            
             return ResponseEntity.ok(groupRepository.save(existingGroup));
         }
         return ResponseEntity.notFound().build();
@@ -617,12 +638,132 @@ public class GroupManagementController {
 
     // VotingResult endpoints
     @PostMapping("/votes/{voteId}/results")
-    public VotingResult submitVote(@PathVariable Integer voteId, @RequestBody VotingResult votingResult) {
-        Optional<Voting> voting = votingRepository.findById(voteId);
-        if (voting.isPresent()) {
-            votingResult.setVoting(voting.get());
-            return votingResultRepository.save(votingResult);
+    public ResponseEntity<?> submitVote(@PathVariable Integer voteId, @RequestBody Map<String, Object> voteData) {
+        try {
+            Optional<Voting> votingOpt = votingRepository.findById(voteId);
+            if (!votingOpt.isPresent()) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Voting not found"));
+            }
+            
+            Voting voting = votingOpt.get();
+            if (voting.getGroup() == null) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Voting is not associated with a group"));
+            }
+            Integer groupId = voting.getGroup().getGroupId();
+            
+            // Get memberId from request
+            Integer memberId = null;
+            if (voteData.containsKey("memberId")) {
+                memberId = Integer.valueOf(voteData.get("memberId").toString());
+            } else if (voteData.containsKey("userId")) {
+                // If userId is provided, find the memberId
+                Integer userId = Integer.valueOf(voteData.get("userId").toString());
+                Optional<GroupMember> memberOpt = getMemberByUserIdAndGroupId(userId, groupId);
+                if (!memberOpt.isPresent()) {
+                    return ResponseEntity.badRequest().body(Map.of("error", "User is not a member of this group"));
+                }
+                memberId = memberOpt.get().getMemberId();
+            } else {
+                return ResponseEntity.badRequest().body(Map.of("error", "memberId or userId is required"));
+            }
+            
+            // Get choice from request
+            if (!voteData.containsKey("choice") || voteData.get("choice") == null) {
+                return ResponseEntity.badRequest().body(Map.of("error", "choice is required"));
+            }
+            String choiceStr = voteData.get("choice").toString();
+            VotingResult.VoteChoice choice;
+            try {
+                choice = VotingResult.VoteChoice.valueOf(choiceStr);
+            } catch (IllegalArgumentException e) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Invalid choice value. Must be A (Agree) or D (Disagree)"));
+            }
+            
+            // Check if user already voted - use final copy for lambda
+            final Integer finalMemberId = memberId;
+            List<VotingResult> existingVotes = votingResultRepository.findByVoting_VoteId(voteId);
+            boolean alreadyVoted = existingVotes.stream()
+                .anyMatch(vr -> vr.getGroupMember().getMemberId().equals(finalMemberId));
+            
+            if (alreadyVoted) {
+                return ResponseEntity.badRequest().body(Map.of("error", "You have already voted on this decision"));
+            }
+            
+            // Get GroupMember
+            Optional<GroupMember> memberOpt = groupMemberRepository.findById(memberId);
+            if (!memberOpt.isPresent()) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Member not found"));
+            }
+            
+            // Create and save voting result
+            VotingResult votingResult = new VotingResult();
+            votingResult.setVoting(voting);
+            votingResult.setGroupMember(memberOpt.get());
+            votingResult.setChoice(choice);
+            votingResult = votingResultRepository.save(votingResult);
+            
+            // Update total votes count
+            voting.setTotalVotes(voting.getTotalVotes() + 1);
+            
+            // Check if decision should be accepted
+            List<VotingResult> allVotes = votingResultRepository.findByVoting_VoteId(voteId);
+            long agreeVotes = allVotes.stream()
+                .filter(vr -> vr.getChoice() == VotingResult.VoteChoice.A)
+                .count();
+            
+            double agreePercentage = allVotes.size() > 0 
+                ? (double) agreeVotes / allVotes.size() * 100 
+                : 0;
+            
+            // Check if admin agreed
+            Group group = voting.getGroup();
+            Integer adminId = group.getAdminId();
+            
+            // Find admin member - prioritize by adminId, then by Admin role
+            List<GroupMember> groupMembers = groupMemberRepository.findByGroup_GroupId(groupId);
+            Optional<GroupMember> adminMemberOpt = groupMembers.stream()
+                .filter(m -> m.getUserId().equals(adminId))
+                .findFirst()
+                .or(() -> groupMembers.stream()
+                    .filter(m -> m.getRole() == GroupMember.MemberRole.Admin)
+                    .findFirst());
+            
+            boolean adminAgreed = false;
+            if (adminMemberOpt.isPresent()) {
+                Integer adminMemberId = adminMemberOpt.get().getMemberId();
+                adminAgreed = allVotes.stream()
+                    .anyMatch(vr -> vr.getGroupMember().getMemberId().equals(adminMemberId) 
+                        && vr.getChoice() == VotingResult.VoteChoice.A);
+            }
+            
+            // If >50% agree AND admin agreed, set final result
+            if (agreePercentage > 50 && adminAgreed && voting.getFinalResult() == null) {
+                voting.setFinalResult("Đã chấp nhận");
+                votingRepository.save(voting);
+            } else if (agreePercentage <= 50 && voting.getFinalResult() == null) {
+                // Check if all members have voted
+                List<GroupMember> allMembers = groupMemberRepository.findByGroup_GroupId(groupId);
+                if (allVotes.size() >= allMembers.size()) {
+                    // All members voted but condition not met
+                    voting.setFinalResult("Đã từ chối");
+                    votingRepository.save(voting);
+                }
+            }
+            
+            // Build response map - handle null finalResult
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("votingResult", votingResult);
+            response.put("agreePercentage", agreePercentage);
+            response.put("adminAgreed", adminAgreed);
+            response.put("finalResult", voting.getFinalResult() != null ? voting.getFinalResult() : "");
+            
+            return ResponseEntity.ok(response);
+            
+        } catch (Exception e) {
+            logger.error("Error submitting vote", e);
+            String errorMessage = e.getMessage() != null ? e.getMessage() : "An unexpected error occurred";
+            return ResponseEntity.status(500).body(Map.of("error", errorMessage));
         }
-        return null;
     }
 }

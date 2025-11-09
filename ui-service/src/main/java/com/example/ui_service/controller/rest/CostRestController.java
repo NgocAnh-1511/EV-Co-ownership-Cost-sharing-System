@@ -8,6 +8,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * REST Controller để proxy các request Costs từ frontend sang backend
@@ -92,6 +93,60 @@ public class CostRestController {
             return ResponseEntity.ok().build();
         } else {
             return ResponseEntity.notFound().build();
+        }
+    }
+
+    /**
+     * Tạo cost splits (chia chi phí)
+     * POST /api/costs/{costId}/splits
+     */
+    @PostMapping("/{costId}/splits")
+    public ResponseEntity<?> createCostSplits(
+            @PathVariable Integer costId,
+            @RequestBody Map<String, Object> request) {
+        try {
+            @SuppressWarnings("unchecked")
+            List<Integer> userIds = (List<Integer>) request.get("userIds");
+            @SuppressWarnings("unchecked")
+            List<Double> percentages = ((List<?>) request.get("percentages"))
+                    .stream()
+                    .map(p -> p instanceof Number ? ((Number) p).doubleValue() : Double.parseDouble(p.toString()))
+                    .collect(java.util.stream.Collectors.toList());
+            
+            List<CostSplitDto> shares = costPaymentClient.calculateCostShares(costId, userIds, percentages);
+            
+            // After calculating, we need to actually create them in the backend
+            // The calculateCostShares method only calculates, we need to call the create endpoint
+            // For now, we'll use a workaround by calling the backend directly
+            org.springframework.web.client.RestTemplate restTemplate = new org.springframework.web.client.RestTemplate();
+            String costPaymentUrl = "http://localhost:8081";
+            
+            org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
+            headers.setContentType(org.springframework.http.MediaType.APPLICATION_JSON);
+            
+            Map<String, Object> splitRequest = new java.util.HashMap<>();
+            splitRequest.put("userIds", userIds);
+            splitRequest.put("percentages", percentages);
+            
+            org.springframework.http.HttpEntity<Map<String, Object>> entity = 
+                new org.springframework.http.HttpEntity<>(splitRequest, headers);
+            
+            org.springframework.core.ParameterizedTypeReference<List<CostSplitDto>> responseType = 
+                new org.springframework.core.ParameterizedTypeReference<List<CostSplitDto>>() {};
+            
+            org.springframework.http.ResponseEntity<List<CostSplitDto>> response = restTemplate.exchange(
+                costPaymentUrl + "/api/costs/" + costId + "/splits",
+                org.springframework.http.HttpMethod.POST,
+                entity,
+                responseType
+            );
+            
+            return ResponseEntity.ok(response.getBody());
+        } catch (Exception e) {
+            System.err.println("Error creating cost splits: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body(Map.of("error", e.getMessage()));
         }
     }
 }

@@ -62,6 +62,10 @@ public class CostController {
                     cost.setAmount(resultSet.getDouble("amount"));
                     cost.setDescription(resultSet.getString("description"));
                     
+                    // Get status from database (default to PENDING if null)
+                    String statusStr = resultSet.getString("status");
+                    cost.setStatus(statusStr != null ? statusStr : "PENDING");
+                    
                     // Convert Timestamp to LocalDateTime
                     java.sql.Timestamp timestamp = resultSet.getTimestamp("createdAt");
                     if (timestamp != null) {
@@ -221,6 +225,16 @@ public class CostController {
             logger.error("Error getting cost splits for costId {}: {}", costId, e.getMessage(), e);
             return ResponseEntity.internalServerError().build();
         }
+    }
+
+    /**
+     * Lấy thông tin chia chi phí cho một cost cụ thể (alias cho /splits để tương thích)
+     */
+    @GetMapping("/{costId}/shares")
+    public ResponseEntity<List<CostShareDto>> getCostShares(@PathVariable Integer costId) {
+        logger.info("=== getCostShares() method called for costId: {} ===", costId);
+        // Delegate to getCostSplits method
+        return getCostSplits(costId);
     }
 
     /**
@@ -537,6 +551,12 @@ public class CostController {
         costDto.setAmount(cost.getAmount());
         costDto.setDescription(cost.getDescription());
         costDto.setCreatedAt(cost.getCreatedAt());
+        // Map status from entity (default to PENDING if null)
+        if (cost.getStatus() != null) {
+            costDto.setStatus(cost.getStatus().name());
+        } else {
+            costDto.setStatus("PENDING");
+        }
         return costDto;
     }
 

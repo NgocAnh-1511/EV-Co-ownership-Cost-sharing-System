@@ -591,6 +591,50 @@ body {
     font-size: 1.125rem;
 }
 
+.cost-type-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.375rem 0.875rem;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.cost-type-badge i {
+    font-size: 0.875rem;
+}
+
+.cost-type-electric {
+    background: #FEF3C7;
+    color: #92400E;
+}
+
+.cost-type-maintenance {
+    background: #DBEAFE;
+    color: #1E40AF;
+}
+
+.cost-type-insurance {
+    background: #D1FAE5;
+    color: #065F46;
+}
+
+.cost-type-inspection {
+    background: #E9D5FF;
+    color: #6B21A8;
+}
+
+.cost-type-cleaning {
+    background: #FCE7F3;
+    color: #9F1239;
+}
+
+.cost-type-other {
+    background: #F3F4F6;
+    color: #374151;
+}
+
 .cost-status {
     padding: 0.375rem 0.875rem;
     border-radius: 20px;
@@ -619,6 +663,46 @@ body {
     font-size: 0.875rem;
     color: var(--text-light);
     margin-bottom: 1rem;
+}
+
+.cost-description {
+    font-weight: 500;
+    color: var(--text);
+    margin-bottom: 0.75rem;
+}
+
+.cost-meta {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--border);
+}
+
+.meta-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.8125rem;
+    color: var(--text-light);
+}
+
+.meta-item i {
+    width: 16px;
+    text-align: center;
+    color: var(--primary);
+}
+
+.paid-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: #D1FAE5;
+    color: #065F46;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    font-weight: 600;
 }
 
 .cost-footer {
@@ -2200,3 +2284,434 @@ body {
     }
 }
 
+/* ============ FUND CATEGORIES ============ */
+.fund-categories-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.fund-category-card {
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.fund-category-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+}
+
+.fund-category-card .card-header {
+    padding: 1.25rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.fund-category-card .card-header h3 {
+    font-size: 1.125rem;
+    font-weight: 600;
+    color: var(--dark);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.fund-category-card .card-header h3 i {
+    font-size: 1.25rem;
+    color: var(--primary);
+}
+
+.fund-category-info {
+    padding: 1.25rem;
+}
+
+.category-balance {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+    padding-bottom: 1rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.category-balance .label {
+    font-size: 0.875rem;
+    color: var(--text-light);
+    font-weight: 500;
+}
+
+.category-balance .value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--primary);
+}
+
+.category-stats {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.category-stats .stat-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.category-stats .stat-label {
+    font-size: 0.75rem;
+    color: var(--text-light);
+}
+
+.category-stats .stat-value {
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.category-stats .stat-value.positive {
+    color: var(--success);
+}
+
+.category-stats .stat-value.negative {
+    color: var(--danger);
+}
+
+/* ============ DECISION TABS ============ */
+.decision-tabs {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+    border-bottom: 2px solid var(--border);
+}
+
+.tab-btn {
+    padding: 0.75rem 1.5rem;
+    background: none;
+    border: none;
+    border-bottom: 3px solid transparent;
+    color: var(--text-light);
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    position: relative;
+    bottom: -2px;
+}
+
+.tab-btn:hover {
+    color: var(--primary);
+    background: var(--light);
+}
+
+.tab-btn.active {
+    color: var(--primary);
+    border-bottom-color: var(--primary);
+    font-weight: 600;
+}
+
+.tab-btn .badge {
+    margin-left: 0.25rem;
+    font-size: 0.75rem;
+    padding: 0.125rem 0.5rem;
+}
+
+.decision-tab-content {
+    display: none;
+}
+
+.decision-tab-content.active {
+    display: block;
+}
+
+/* ============ DECISION TABLE ============ */
+.decisions-container {
+    margin-top: 1rem;
+}
+
+.decisions-container table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.decisions-container th {
+    padding: 0.875rem;
+    text-align: left;
+    font-weight: 600;
+    color: var(--dark);
+    background: var(--light);
+    border-bottom: 2px solid var(--border);
+    font-size: 0.875rem;
+}
+
+.decisions-container td {
+    padding: 1rem 0.875rem;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+    font-size: 0.875rem;
+}
+
+.decisions-container tbody tr:hover {
+    background: var(--light);
+}
+
+.decisions-container .btn {
+    padding: 0.375rem 0.75rem;
+    font-size: 0.75rem;
+    margin-right: 0.5rem;
+}
+
+/* ============ RESPONSIVE ============ */
+@media (max-width: 768px) {
+    .fund-categories-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .decision-tabs {
+        flex-wrap: wrap;
+    }
+    
+    .tab-btn {
+        flex: 1;
+        min-width: 120px;
+        justify-content: center;
+    }
+    
+    .decisions-container {
+        overflow-x: auto;
+    }
+    
+    .decisions-container table {
+        min-width: 800px;
+    }
+    
+    .category-stats {
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+}
+
+/* ============ USAGE PAGE ENHANCED STYLES ============ */
+
+/* Info Card Gradient */
+.info-card-gradient {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    margin-bottom: 2rem;
+}
+
+.info-card-gradient .card-header h2 {
+    color: white;
+}
+
+.info-card-gradient .card-body {
+    padding: 1.5rem;
+}
+
+.info-content {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.info-item {
+    display: flex;
+    gap: 1rem;
+    align-items: flex-start;
+}
+
+.info-item i {
+    font-size: 1.5rem;
+    margin-top: 0.25rem;
+    opacity: 0.9;
+}
+
+.info-item strong {
+    display: block;
+    margin-bottom: 0.5rem;
+    font-size: 1rem;
+}
+
+.info-item p {
+    margin: 0;
+    opacity: 0.95;
+    line-height: 1.6;
+}
+
+/* Group Stats Card */
+.group-stats-card {
+    background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+    border: 2px solid #3b82f6;
+    border-radius: 16px;
+    padding: 1.5rem;
+    margin: 1.5rem 0;
+}
+
+.stats-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+.stat-item {
+    text-align: center;
+    padding: 1rem;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.stat-item .stat-label {
+    font-size: 0.75rem;
+    color: var(--text-light);
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+}
+
+.stat-item .stat-value {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--primary);
+}
+
+/* Comparison Bar */
+.comparison-bar {
+    margin-top: 1.5rem;
+}
+
+.comparison-label {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--dark);
+    margin-bottom: 0.75rem;
+}
+
+.bar-container {
+    position: relative;
+    height: 40px;
+    background: #e5e7eb;
+    border-radius: 20px;
+    overflow: hidden;
+    display: flex;
+}
+
+.bar {
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: white;
+    transition: width 0.3s ease;
+    position: relative;
+}
+
+.ownership-bar {
+    background: linear-gradient(135deg, #10b981, #059669);
+    z-index: 2;
+}
+
+.usage-bar {
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+    z-index: 1;
+    margin-left: -2px;
+}
+
+.bar span {
+    padding: 0 0.5rem;
+    white-space: nowrap;
+}
+
+/* Cost Preview Card */
+.cost-preview-card {
+    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+    border: 2px solid #f59e0b;
+    border-radius: 16px;
+    padding: 1.5rem;
+    margin: 1.5rem 0;
+}
+
+.preview-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+    font-weight: 600;
+    color: var(--dark);
+}
+
+.preview-header i {
+    font-size: 1.25rem;
+    color: #f59e0b;
+}
+
+.preview-content p {
+    margin-bottom: 1rem;
+    color: var(--dark);
+    line-height: 1.6;
+}
+
+.preview-result {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-top: 1rem;
+}
+
+.result-item {
+    background: white;
+    padding: 1rem;
+    border-radius: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.result-label {
+    font-size: 0.875rem;
+    color: var(--text-light);
+}
+
+.result-value {
+    font-size: 1.125rem;
+    font-weight: 700;
+    color: #f59e0b;
+}
+
+.form-text {
+    display: block;
+    margin-top: 0.5rem;
+    font-size: 0.75rem;
+    color: var(--text-light);
+}
+
+.form-text i {
+    margin-right: 0.25rem;
+}
+
+/* Responsive for Usage Page */
+@media (max-width: 768px) {
+    .stats-row {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .preview-result {
+        grid-template-columns: 1fr;
+    }
+    
+    .info-content {
+        gap: 1rem;
+    }
+    
+    .info-item {
+        flex-direction: column;
+        text-align: center;
+    }
+}
