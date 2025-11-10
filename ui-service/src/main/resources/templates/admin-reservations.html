@@ -336,10 +336,6 @@
                                 </td>
                                 <td>
                                     <div class="action-buttons">
-                                        <button class="btn btn-sm btn-warning-gradient"
-                                            th:onclick="'openStatusModal(' + ${r.reservationId} + ', \'' + ${r.status} + '\')'">
-                                            <i class="bi bi-arrow-repeat"></i>
-                                        </button>
                                         <button class="btn btn-sm btn-success-gradient"
                                             th:onclick="'openEditModal(' + ${r.reservationId} + ')'">
                                             <i class="bi bi-pencil"></i>
@@ -484,35 +480,6 @@
         </div>
     </div>
 
-    <!-- Status Modal -->
-    <div class="modal fade" id="statusModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">
-                        <i class="bi bi-arrow-repeat me-2"></i>Thay Đổi Trạng Thái
-                    </h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <form id="statusForm" method="post">
-                    <div class="modal-body">
-                        <label class="form-label">Chọn Trạng Thái Mới</label>
-                        <select class="form-select" name="status" id="statusSelect" required>
-                            <option value="BOOKED">Đã đặt</option>
-                            <option value="COMPLETED">Hoàn thành</option>
-                            <option value="CANCELLED">Đã hủy</option>
-                        </select>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
-                        <button type="submit" class="btn btn-warning-gradient">
-                            <i class="bi bi-check-circle me-2"></i>Xác Nhận
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
 
     <!-- Delete Modal -->
     <div class="modal fade" id="deleteModal" tabindex="-1">
@@ -559,11 +526,6 @@
             new bootstrap.Modal(document.getElementById('editModal')).show();
         }
 
-        function openStatusModal(id, currentStatus) {
-            document.getElementById('statusSelect').value = currentStatus;
-            document.getElementById('statusForm').action = `/admin/reservations/${id}/status`;
-            new bootstrap.Modal(document.getElementById('statusModal')).show();
-        }
 
         function openDeleteModal(id) {
             document.getElementById('deleteForm').action = `/admin/reservations/${id}/delete`;

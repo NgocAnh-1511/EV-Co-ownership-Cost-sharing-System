@@ -100,6 +100,7 @@ public class AdminReservationService {
      * - Cập nhật reservation trong bảng admin: co_ownership_admin.reservations
      * - Method này được gọi từ Reservation Service sau khi đã cập nhật bảng chính
      * - Đảm bảo dữ liệu nhất quán giữa 2 bảng
+     * - Nếu reservation không tồn tại, sẽ tạo mới (upsert)
      * 
      * LƯU Ý:
      * - Không nên gọi trực tiếp method này từ admin panel
@@ -111,14 +112,24 @@ public class AdminReservationService {
      */
     public ReservationDTO updateReservation(Long id, ReservationDTO dto) {
         System.out.println("🔄 [ADMIN SERVICE UPDATE] Cập nhật reservation ID: " + id + " trong bảng admin");
+        System.out.println("   → Status từ DTO: " + dto.getStatus());
         
-        ReservationAdmin reservation = repository.findById(id)
-                .orElseThrow(() -> {
-                    System.out.println("❌ [ERROR] Không tìm thấy reservation ID: " + id + " trong bảng admin");
-                    return new RuntimeException("Reservation not found");
-                });
+        // Tìm reservation trong admin database, nếu không tồn tại thì tạo mới
+        ReservationAdmin reservation = repository.findById(id).orElse(null);
         
-        // Cập nhật các field
+        if (reservation == null) {
+            System.out.println("ℹ️ [INFO] Reservation ID: " + id + " không tồn tại trong bảng admin, sẽ tạo mới");
+            reservation = new ReservationAdmin();
+            reservation.setId(id);
+        }
+        
+        // Cập nhật các field - ưu tiên dữ liệu từ DTO, nếu không có thì giữ nguyên giá trị cũ
+        if (dto.getVehicleId() != null) {
+            reservation.setVehicleId(dto.getVehicleId());
+        }
+        if (dto.getUserId() != null) {
+            reservation.setUserId(dto.getUserId());
+        }
         if (dto.getStartDatetime() != null) {
             reservation.setStartDatetime(dto.getStartDatetime());
         }
@@ -128,13 +139,24 @@ public class AdminReservationService {
         if (dto.getPurpose() != null) {
             reservation.setPurpose(dto.getPurpose());
         }
-        if (dto.getStatus() != null) {
-            reservation.setStatus(dto.getStatus());
-            System.out.println("✅ [ADMIN SERVICE UPDATE] Đã cập nhật trạng thái: " + dto.getStatus());
+        // QUAN TRỌNG: Luôn cập nhật status nếu có trong DTO
+        if (dto.getStatus() != null && !dto.getStatus().trim().isEmpty()) {
+            String newStatus = dto.getStatus().trim().toUpperCase();
+            reservation.setStatus(newStatus);
+            System.out.println("✅ [ADMIN SERVICE UPDATE] Đã cập nhật trạng thái: " + newStatus);
+        } else {
+            // Nếu không có status trong DTO, đặt mặc định là BOOKED
+            if (reservation.getStatus() == null || reservation.getStatus().trim().isEmpty()) {
+                reservation.setStatus("BOOKED");
+                System.out.println("ℹ️ [INFO] Không có status trong DTO, đặt mặc định: BOOKED");
+            }
         }
         
+        // Lưu vào database
         ReservationAdmin saved = repository.save(reservation);
+        
         System.out.println("✅ [ADMIN SERVICE UPDATE] Đã cập nhật reservation ID: " + id + " trong bảng admin");
+        System.out.println("   → Final status: " + saved.getStatus());
         return convertToDTO(saved);
     }
     

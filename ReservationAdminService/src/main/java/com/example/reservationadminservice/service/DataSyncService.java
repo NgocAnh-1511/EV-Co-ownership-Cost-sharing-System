@@ -12,7 +12,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
@@ -80,31 +79,50 @@ public class DataSyncService {
     }
 
     /**
-     * Đồng bộ reservations
+     * Đồng bộ reservations - CHỈ CẬP NHẬT VÀ THÊM MỚI, KHÔNG XÓA
+     * 
+     * LÝ DO:
+     * - Không xóa dữ liệu trong admin DB để tránh mất dữ liệu đã xóa thủ công
+     * - Chỉ cập nhật các reservation đã tồn tại và thêm mới các reservation chưa có
+     * - Nếu reservation đã bị xóa trong admin DB, sẽ không được tự động thêm lại
      */
     public void syncReservations() {
-        log.info("📅 Đồng bộ reservations...");
+        log.info("📅 Đồng bộ reservations (chỉ cập nhật và thêm mới, không xóa)...");
         
         try {
             // Đọc từ booking DB
             List<BookingReservation> bookingReservations = bookingReservationRepository.findAll();
             log.info("📖 Đọc được {} reservations từ booking DB", bookingReservations.size());
             
-            // Convert sang admin entities
-            List<ReservationAdmin> adminReservations = bookingReservations.stream()
-                    .map(this::convertToAdminReservation)
-                    .collect(Collectors.toList());
+            int updatedCount = 0;
+            int createdCount = 0;
             
-            log.info("🔄 Đã convert {} reservations", adminReservations.size());
+            // Duyệt qua từng reservation từ booking DB
+            for (BookingReservation booking : bookingReservations) {
+                ReservationAdmin adminReservation = convertToAdminReservation(booking);
+                
+                // Kiểm tra reservation đã tồn tại trong admin DB chưa
+                ReservationAdmin existing = adminReservationRepository.findById(adminReservation.getId()).orElse(null);
+                
+                if (existing != null) {
+                    // Cập nhật reservation đã tồn tại
+                    existing.setVehicleId(adminReservation.getVehicleId());
+                    existing.setUserId(adminReservation.getUserId());
+                    existing.setStartDatetime(adminReservation.getStartDatetime());
+                    existing.setEndDatetime(adminReservation.getEndDatetime());
+                    existing.setPurpose(adminReservation.getPurpose());
+                    existing.setStatus(adminReservation.getStatus());
+                    adminReservationRepository.save(existing);
+                    updatedCount++;
+                } else {
+                    // Thêm mới reservation chưa có
+                    adminReservationRepository.save(adminReservation);
+                    createdCount++;
+                }
+            }
             
-            // Xóa dữ liệu cũ trong admin DB
-            adminReservationRepository.deleteAll();
-            log.info("🗑️ Đã xóa reservations cũ trong admin DB");
-            
-            // Lưu vào admin DB
-            adminReservationRepository.saveAll(adminReservations);
-            
-            log.info("✅ Đã đồng bộ {} reservations", adminReservations.size());
+            log.info("✅ Đã đồng bộ: {} cập nhật, {} thêm mới", updatedCount, createdCount);
+            log.info("ℹ️ Lưu ý: Các reservation đã bị xóa trong admin DB sẽ không được tự động thêm lại");
         } catch (Exception e) {
             log.error("❌ Lỗi khi đồng bộ reservations: {}", e.getMessage(), e);
             e.printStackTrace();
