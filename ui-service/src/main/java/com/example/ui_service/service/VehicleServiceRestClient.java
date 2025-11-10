@@ -158,12 +158,57 @@ public class VehicleServiceRestClient {
     }
 
     /**
-     * Cập nhật trạng thái dịch vụ xe
+     * Cập nhật trạng thái dịch vụ xe theo id
+     * @param id ID của đăng ký dịch vụ
+     * @param status Trạng thái mới
+     * @return Kết quả cập nhật
+     */
+    public Map<String, Object> updateServiceStatusById(Integer id, String status) {
+        try {
+            String url = BASE_URL + "/" + id;
+            System.out.println("📡 [REST CLIENT] Gọi API cập nhật trạng thái theo id: " + url);
+            System.out.println("   ID: " + id);
+            System.out.println("   Status: " + status);
+            
+            Map<String, Object> requestData = new java.util.HashMap<>();
+            requestData.put("status", status);
+            
+            HttpEntity<Map<String, Object>> request = new HttpEntity<>(requestData);
+            ResponseEntity<Map> response = restTemplate.exchange(
+                    url,
+                    HttpMethod.PUT,
+                    request,
+                    Map.class
+            );
+            
+            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                System.out.println("✅ [REST CLIENT] Cập nhật trạng thái thành công");
+                return response.getBody();
+            } else {
+                System.err.println("❌ [REST CLIENT] Cập nhật trạng thái thất bại: " + response.getStatusCode());
+                throw new RuntimeException("Cập nhật trạng thái thất bại với status: " + response.getStatusCode());
+            }
+            
+        } catch (RestClientException e) {
+            System.err.println("❌ [REST CLIENT] Lỗi khi cập nhật trạng thái: " + e.getMessage());
+            e.printStackTrace();
+            throw new RuntimeException("Không thể cập nhật trạng thái: " + e.getMessage(), e);
+        } catch (Exception e) {
+            System.err.println("❌ [REST CLIENT] Lỗi không mong đợi: " + e.getMessage());
+            e.printStackTrace();
+            throw new RuntimeException("Không thể cập nhật trạng thái: " + e.getMessage(), e);
+        }
+    }
+    
+    /**
+     * Cập nhật trạng thái dịch vụ xe (theo serviceId và vehicleId - lấy bản ghi mới nhất)
      * @param serviceId ID của dịch vụ
      * @param vehicleId ID của xe
      * @param status Trạng thái mới
      * @return Kết quả cập nhật
+     * @deprecated Sử dụng updateServiceStatusById thay thế
      */
+    @Deprecated
     public Map<String, Object> updateServiceStatus(String serviceId, String vehicleId, String status) {
         try {
             String url = BASE_URL + "/service/" + serviceId + "/vehicle/" + vehicleId;

@@ -1,6 +1,5 @@
 package com.example.VehicleServiceManagementService.repository;
 
-import com.example.VehicleServiceManagementService.model.VehicleServiceId;
 import com.example.VehicleServiceManagementService.model.Vehicleservice;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -13,7 +12,7 @@ import java.util.List;
 import java.util.Optional;
 
 @Repository
-public interface VehicleServiceRepository extends JpaRepository<Vehicleservice, VehicleServiceId> {
+public interface VehicleServiceRepository extends JpaRepository<Vehicleservice, Integer> {
     
     /**
      * Tìm tất cả các dịch vụ của một xe
@@ -30,12 +29,24 @@ public interface VehicleServiceRepository extends JpaRepository<Vehicleservice, 
     List<Vehicleservice> findByService_ServiceId(String serviceId);
     
     /**
-     * Tìm đăng ký dịch vụ theo service_id và vehicle_id
+     * Tìm đăng ký dịch vụ theo service_id và vehicle_id (lấy bản ghi mới nhất)
      * @param serviceId ID của dịch vụ
      * @param vehicleId ID của xe
      * @return Optional Vehicleservice
      */
-    Optional<Vehicleservice> findById_ServiceIdAndId_VehicleId(String serviceId, String vehicleId);
+    @Query("SELECT v FROM Vehicleservice v WHERE v.service.serviceId = :serviceId AND v.vehicle.vehicleId = :vehicleId ORDER BY v.requestDate DESC")
+    List<Vehicleservice> findByServiceIdAndVehicleId(@Param("serviceId") String serviceId, @Param("vehicleId") String vehicleId);
+    
+    /**
+     * Tìm đăng ký dịch vụ theo service_id và vehicle_id (lấy bản ghi mới nhất)
+     * @param serviceId ID của dịch vụ
+     * @param vehicleId ID của xe
+     * @return Optional Vehicleservice
+     */
+    default Optional<Vehicleservice> findLatestByServiceIdAndVehicleId(String serviceId, String vehicleId) {
+        List<Vehicleservice> services = findByServiceIdAndVehicleId(serviceId, vehicleId);
+        return services.isEmpty() ? Optional.empty() : Optional.of(services.get(0));
+    }
     
     /**
      * Kiểm tra đăng ký dịch vụ có tồn tại không
@@ -43,17 +54,17 @@ public interface VehicleServiceRepository extends JpaRepository<Vehicleservice, 
      * @param vehicleId ID của xe
      * @return true nếu tồn tại
      */
-    boolean existsById_ServiceIdAndId_VehicleId(String serviceId, String vehicleId);
+    boolean existsByService_ServiceIdAndVehicle_VehicleId(String serviceId, String vehicleId);
     
     /**
-     * Xóa đăng ký dịch vụ theo service_id và vehicle_id
+     * Xóa đăng ký dịch vụ theo service_id và vehicle_id (xóa tất cả)
      * @param serviceId ID của dịch vụ
      * @param vehicleId ID của xe
      */
     @Modifying
     @Transactional
-    @Query("DELETE FROM Vehicleservice v WHERE v.id.serviceId = :serviceId AND v.id.vehicleId = :vehicleId")
-    void deleteById_ServiceIdAndId_VehicleId(@Param("serviceId") String serviceId, @Param("vehicleId") String vehicleId);
+    @Query("DELETE FROM Vehicleservice v WHERE v.service.serviceId = :serviceId AND v.vehicle.vehicleId = :vehicleId")
+    void deleteByServiceIdAndVehicleId(@Param("serviceId") String serviceId, @Param("vehicleId") String vehicleId);
     
     /**
      * Xóa tất cả các dịch vụ của một xe
@@ -87,13 +98,13 @@ public interface VehicleServiceRepository extends JpaRepository<Vehicleservice, 
      * Lấy tất cả vehicleservice không cần join (chỉ lấy từ bảng vehicleservice)
      * Sử dụng native query và build entity manually
      */
-    @Query(value = "SELECT vs.service_id, vs.vehicle_id, vs.service_name, vs.service_description, " +
+    @Query(value = "SELECT vs.id, vs.service_id, vs.vehicle_id, vs.service_name, vs.service_description, " +
                    "vs.service_type, vs.request_date, vs.status, vs.completion_date " +
                    "FROM vehicle_management.vehicleservice vs", nativeQuery = true)
     List<Object[]> findAllAsNative();
     
     /**
-     * Kiểm tra duplicate bằng native query (để tránh vấn đề với composite key)
+     * Kiểm tra duplicate bằng native query
      */
     @Query(value = "SELECT COUNT(*) FROM vehicle_management.vehicleservice " +
                    "WHERE service_id = :serviceId AND vehicle_id = :vehicleId", nativeQuery = true)
@@ -107,5 +118,6 @@ public interface VehicleServiceRepository extends JpaRepository<Vehicleservice, 
                    "WHERE service_id = :serviceId AND vehicle_id = :vehicleId " +
                    "AND status IN ('pending', 'in_progress', 'in progress')", nativeQuery = true)
     long countActiveByServiceIdAndVehicleId(@Param("serviceId") String serviceId, @Param("vehicleId") String vehicleId);
+    
 }
 

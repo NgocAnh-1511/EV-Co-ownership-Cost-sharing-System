@@ -409,16 +409,18 @@
         loadVehicleDetail(vehicleId);
     }
 
-    function closeVehicleDetailModal() {
-        // Kiểm tra nếu có thay đổi chưa lưu
-        if (Object.keys(statusChanges).length > 0) {
+    function closeVehicleDetailModal(skipCheck = false) {
+        // Kiểm tra nếu có thay đổi chưa lưu (trừ khi skipCheck = true)
+        if (!skipCheck && Object.keys(statusChanges).length > 0) {
             if (confirm('Bạn có thay đổi chưa lưu. Bạn có muốn lưu trước khi đóng không?')) {
                 saveChangesAndClose();
                 return;
             }
         }
         const modal = document.getElementById('vehicleDetailModal');
-        modal.style.display = 'none';
+        if (modal) {
+            modal.style.display = 'none';
+        }
         statusChanges = {}; // Reset changes
         currentVehicleId = null;
     }
@@ -510,23 +512,46 @@
     }
     
     function buildServiceItem(service, isHistory) {
-        const serviceId = service.serviceId || (service.id && service.id.serviceId) || '-';
-        const vehicleId = service.vehicleId || (service.id && service.id.vehicleId) || '-';
-        const serviceName = service.serviceName || '-';
-        const serviceType = service.serviceType || '-';
-        const serviceDescription = service.serviceDescription || 'Không có mô tả';
-        const status = service.status || 'pending';
-        const requestDate = formatDate(service.requestDate);
+        // Lấy id từ service (id giờ là Integer, primary key)
+        // Nếu id là object (composite key cũ), lấy serviceId và vehicleId từ đó
+        let id = '';
+        let serviceId = '';
+        let vehicleId = '';
+        
+        if (service.id !== undefined && service.id !== null) {
+            if (typeof service.id === 'object') {
+                // Tương thích ngược: id là object (composite key cũ)
+                id = '';
+                serviceId = service.id.serviceId || '';
+                vehicleId = service.id.vehicleId || '';
+            } else {
+                // id là Integer (primary key mới)
+                id = service.id;
+                serviceId = service.serviceId || '';
+                vehicleId = service.vehicleId || '';
+            }
+        } else {
+            // Fallback: lấy từ root
+            serviceId = service.serviceId || '';
+            vehicleId = service.vehicleId || '';
+        }
+        
+        const serviceName = service.serviceName || 'Dịch vụ không tên';
+        const serviceType = service.serviceType || 'Không xác định';
+        const serviceDescription = service.serviceDescription || '';
+        const status = (service.status || 'pending').toLowerCase().trim();
+        const requestDate = service.requestDate ? formatDate(service.requestDate) : '-';
         const completionDate = service.completionDate ? formatDate(service.completionDate) : null;
         const isCompleted = status === 'completed' || status === 'Completed' || isHistory;
         const disabledAttr = isCompleted ? 'disabled' : '';
         const readonlyClass = isCompleted ? 'status-readonly' : '';
         const historyClass = isHistory ? 'service-history-item' : '';
         
-        return `<div class="service-item ${historyClass}" data-service-id="${serviceId}" data-vehicle-id="${vehicleId}">
+        return `<div class="service-item ${historyClass}" data-id="${id}" data-service-id="${serviceId}" data-vehicle-id="${vehicleId}">
             <div class="service-header">
                 <h4>${serviceName}</h4>
                 <select class="status-select ${readonlyClass}" 
+                        data-id="${id}"
                         data-service-id="${serviceId}" 
                         data-vehicle-id="${vehicleId}" 
                         data-original-status="${status}"
@@ -565,16 +590,20 @@
 
     // Theo dõi thay đổi trạng thái (không lưu ngay)
     function trackStatusChange(selectElement) {
+        // Ưu tiên sử dụng id (primary key mới)
+        const id = selectElement.getAttribute('data-id');
         const serviceId = selectElement.getAttribute('data-service-id');
         const vehicleId = selectElement.getAttribute('data-vehicle-id');
         const originalStatus = selectElement.getAttribute('data-original-status');
         const newStatus = selectElement.value;
         
-        if (!serviceId || !vehicleId) {
+        // Sử dụng id làm key nếu có, nếu không thì dùng serviceId_vehicleId (tương thích ngược)
+        const changeKey = id ? id : `${serviceId}_${vehicleId}`;
+        
+        if (!id && (!serviceId || !vehicleId)) {
+            console.error('Không tìm thấy id hoặc serviceId/vehicleId');
             return;
         }
-        
-        const changeKey = `${serviceId}_${vehicleId}`;
         
         // Nếu trạng thái trở về giá trị ban đầu, xóa khỏi danh sách thay đổi
         if (newStatus === originalStatus) {
@@ -582,6 +611,7 @@
         } else {
             // Lưu thay đổi vào object
             statusChanges[changeKey] = {
+                id: id,
                 serviceId: serviceId,
                 vehicleId: vehicleId,
                 newStatus: newStatus,
@@ -616,8 +646,13 @@
     async function saveChangesAndClose() {
         const changes = Object.values(statusChanges);
         
+        // Nếu không có thay đổi, chỉ cần đóng modal và reload
         if (changes.length === 0) {
-            closeVehicleDetailModal();
+            closeVehicleDetailModal(true);
+            // Reload để đảm bảo dữ liệu được cập nhật
+            setTimeout(() => {
+                window.location.reload();
+            }, 100);
             return;
         }
         
@@ -630,21 +665,33 @@
         
         try {
             // Lưu từng thay đổi
+            // Ưu tiên sử dụng endpoint mới với id nếu có
             const updatePromises = changes.map(change => {
-                return fetch(`/admin/vehicle-manager/api/service/${change.serviceId}/vehicle/${change.vehicleId}/status`, {
-                    method: 'PUT',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ status: change.newStatus })
-                });
+                if (change.id) {
+                    // Sử dụng endpoint mới với id
+                    return fetch(`/admin/vehicle-manager/api/service/${change.id}/status`, {
+                        method: 'PUT',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ status: change.newStatus })
+                    });
+                } else {
+                    // Fallback: sử dụng endpoint cũ với serviceId và vehicleId (tương thích ngược)
+                    return fetch(`/admin/vehicle-manager/api/service/${change.serviceId}/vehicle/${change.vehicleId}/status`, {
+                        method: 'PUT',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({ status: change.newStatus })
+                    });
+                }
             });
             
             const responses = await Promise.all(updatePromises);
-            const results = await Promise.all(responses.map(r => r.json()));
             
-            // Kiểm tra kết quả
-            const failed = results.filter(r => !r.success);
-            if (failed.length > 0) {
-                alert('Có lỗi xảy ra khi lưu một số thay đổi. Vui lòng thử lại.');
+            // Kiểm tra response status trước khi parse JSON
+            const errorResponses = responses.filter(r => !r.ok);
+            if (errorResponses.length > 0) {
+                const errorTexts = await Promise.all(errorResponses.map(r => r.text()));
+                console.error('Lỗi khi lưu:', errorTexts);
+                alert('Có lỗi xảy ra khi lưu một số thay đổi. Vui lòng thử lại.\n' + errorTexts.join('\n'));
                 if (saveBtn) {
                     saveBtn.disabled = false;
                     updateSaveButtonState();
@@ -652,27 +699,53 @@
                 return;
             }
             
-            // Kiểm tra nếu có dịch vụ được chuyển sang completed
-            const completedChanges = changes.filter(c => c.newStatus === 'completed' || c.newStatus === 'Completed');
+            // Parse JSON từ các response thành công
+            const results = await Promise.all(responses.map(r => r.json()));
             
-            // Nếu có dịch vụ chuyển sang completed, reload lại dữ liệu để cập nhật vị trí
-            if (completedChanges.length > 0 && currentVehicleId) {
-                // Reload lại dữ liệu dịch vụ để cập nhật vị trí (chuyển xuống lịch sử)
-                statusChanges = {};
-                await loadVehicleDetail(currentVehicleId);
-                updateSaveButtonState();
-                
-                // Hiển thị thông báo
-                alert(`Đã lưu thành công! ${completedChanges.length} dịch vụ đã được chuyển xuống lịch sử.`);
-            } else {
-                // Lưu thành công, reload trang và đóng modal
-                statusChanges = {};
-                window.location.reload();
+            // Kiểm tra kết quả
+            const failed = results.filter(r => !r.success);
+            if (failed.length > 0) {
+                const errorMessages = failed.map(r => r.message || 'Lỗi không xác định').join('\n');
+                alert('Có lỗi xảy ra khi lưu một số thay đổi:\n' + errorMessages);
+                if (saveBtn) {
+                    saveBtn.disabled = false;
+                    updateSaveButtonState();
+                }
+                return;
             }
+            
+            // Lưu thành công
+            statusChanges = {};
+            
+            // Đếm số dịch vụ đã cập nhật
+            const completedCount = changes.filter(c => c.newStatus === 'completed' || c.newStatus === 'Completed').length;
+            const updatedCount = changes.length;
+            
+            // Cập nhật nút lưu để hiển thị trạng thái thành công
+            if (saveBtn) {
+                saveBtn.textContent = 'Đã lưu thành công!';
+                saveBtn.style.background = '#10B981';
+                saveBtn.style.color = 'white';
+            }
+            
+            // Đóng modal trước (bỏ qua kiểm tra vì đã lưu rồi)
+            closeVehicleDetailModal(true);
+            
+            // Hiển thị thông báo thành công trong console
+            console.log(`✅ Đã lưu thành công ${updatedCount} thay đổi.`);
+            if (completedCount > 0) {
+                console.log(`   - ${completedCount} dịch vụ đã được chuyển sang completed.`);
+            }
+            
+            // Reload trang để cập nhật dữ liệu mới nhất
+            // Đợi một chút để đảm bảo modal đã đóng hoàn toàn
+            setTimeout(() => {
+                window.location.reload();
+            }, 300);
             
         } catch (error) {
             console.error('Lỗi khi lưu thay đổi:', error);
-            alert('Đã xảy ra lỗi khi lưu thay đổi. Vui lòng thử lại.');
+            alert('Đã xảy ra lỗi khi lưu thay đổi: ' + error.message);
             if (saveBtn) {
                 saveBtn.disabled = false;
                 updateSaveButtonState();

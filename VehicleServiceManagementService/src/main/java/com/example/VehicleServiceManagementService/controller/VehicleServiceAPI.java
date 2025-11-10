@@ -56,53 +56,51 @@ public class VehicleServiceAPI {
             for (Object[] row : nativeResults) {
                 Map<String, Object> serviceMap = new HashMap<>();
                 
-                // Column order: service_id, vehicle_id, service_name, service_description, 
+                // Column order: id, service_id, vehicle_id, service_name, service_description, 
                 //                service_type, request_date, status, completion_date
-                String serviceId = row[0] != null ? row[0].toString() : null;
-                String vehicleId = row[1] != null ? row[1].toString() : null;
+                Integer id = row[0] != null ? (row[0] instanceof Integer ? (Integer) row[0] : Integer.parseInt(row[0].toString())) : null;
+                String serviceId = row.length > 1 && row[1] != null ? row[1].toString() : null;
+                String vehicleId = row.length > 2 && row[2] != null ? row[2].toString() : null;
                 
-                // Composite key
-                Map<String, Object> idMap = new HashMap<>();
-                idMap.put("serviceId", serviceId);
-                idMap.put("vehicleId", vehicleId);
-                serviceMap.put("id", idMap);
+                // Primary key
+                serviceMap.put("id", id);
                 
                 // Other fields
                 serviceMap.put("serviceId", serviceId);
                 serviceMap.put("vehicleId", vehicleId);
                 
-                if (row.length > 2 && row[2] != null) {
-                    serviceMap.put("serviceName", row[2].toString());
-                }
                 if (row.length > 3 && row[3] != null) {
-                    serviceMap.put("serviceDescription", row[3].toString());
+                    serviceMap.put("serviceName", row[3].toString());
                 }
                 if (row.length > 4 && row[4] != null) {
-                    serviceMap.put("serviceType", row[4].toString());
+                    serviceMap.put("serviceDescription", row[4].toString());
                 }
                 if (row.length > 5 && row[5] != null) {
-                    if (row[5] instanceof java.sql.Timestamp) {
-                        serviceMap.put("requestDate", ((java.sql.Timestamp) row[5]).toInstant().toString());
-                    } else if (row[5] instanceof java.time.Instant) {
-                        serviceMap.put("requestDate", row[5].toString());
-                    } else if (row[5] instanceof java.time.LocalDateTime) {
-                        serviceMap.put("requestDate", ((java.time.LocalDateTime) row[5]).atZone(java.time.ZoneId.systemDefault()).toInstant().toString());
-                    } else {
-                        serviceMap.put("requestDate", row[5].toString());
-                    }
+                    serviceMap.put("serviceType", row[5].toString());
                 }
                 if (row.length > 6 && row[6] != null) {
-                    serviceMap.put("status", row[6].toString());
+                    if (row[6] instanceof java.sql.Timestamp) {
+                        serviceMap.put("requestDate", ((java.sql.Timestamp) row[6]).toInstant().toString());
+                    } else if (row[6] instanceof java.time.Instant) {
+                        serviceMap.put("requestDate", row[6].toString());
+                    } else if (row[6] instanceof java.time.LocalDateTime) {
+                        serviceMap.put("requestDate", ((java.time.LocalDateTime) row[6]).atZone(java.time.ZoneId.systemDefault()).toInstant().toString());
+                    } else {
+                        serviceMap.put("requestDate", row[6].toString());
+                    }
                 }
                 if (row.length > 7 && row[7] != null) {
-                    if (row[7] instanceof java.sql.Timestamp) {
-                        serviceMap.put("completionDate", ((java.sql.Timestamp) row[7]).toInstant().toString());
-                    } else if (row[7] instanceof java.time.Instant) {
-                        serviceMap.put("completionDate", row[7].toString());
-                    } else if (row[7] instanceof java.time.LocalDateTime) {
-                        serviceMap.put("completionDate", ((java.time.LocalDateTime) row[7]).atZone(java.time.ZoneId.systemDefault()).toInstant().toString());
+                    serviceMap.put("status", row[7].toString());
+                }
+                if (row.length > 8 && row[8] != null) {
+                    if (row[8] instanceof java.sql.Timestamp) {
+                        serviceMap.put("completionDate", ((java.sql.Timestamp) row[8]).toInstant().toString());
+                    } else if (row[8] instanceof java.time.Instant) {
+                        serviceMap.put("completionDate", row[8].toString());
+                    } else if (row[8] instanceof java.time.LocalDateTime) {
+                        serviceMap.put("completionDate", ((java.time.LocalDateTime) row[8]).atZone(java.time.ZoneId.systemDefault()).toInstant().toString());
                     } else {
-                        serviceMap.put("completionDate", row[7].toString());
+                        serviceMap.put("completionDate", row[8].toString());
                     }
                 }
                 
@@ -128,17 +126,36 @@ public class VehicleServiceAPI {
     }
 
     /**
-     * Lấy đăng ký dịch vụ theo service_id và vehicle_id
+     * Lấy đăng ký dịch vụ theo id
+     */
+    @GetMapping("/{id}")
+    public ResponseEntity<?> getVehicleServiceById(@PathVariable Integer id) {
+        try {
+            Optional<Vehicleservice> serviceOpt = vehicleServiceRepository.findById(id);
+            if (serviceOpt.isPresent()) {
+                Map<String, Object> response = convertToMap(serviceOpt.get());
+                return ResponseEntity.ok(response);
+            }
+            return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                    .body("Không tìm thấy đăng ký dịch vụ với id: " + id);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Đã xảy ra lỗi khi lấy thông tin dịch vụ: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * Lấy đăng ký dịch vụ theo service_id và vehicle_id (lấy bản ghi mới nhất)
      */
     @GetMapping("/service/{serviceId}/vehicle/{vehicleId}")
     public ResponseEntity<?> getVehicleServiceByServiceAndVehicle(
             @PathVariable String serviceId,
             @PathVariable String vehicleId) {
         try {
-            Optional<Vehicleservice> serviceOpt = vehicleServiceRepository
-                    .findById_ServiceIdAndId_VehicleId(serviceId, vehicleId);
+            Optional<Vehicleservice> serviceOpt = vehicleServiceRepository.findLatestByServiceIdAndVehicleId(serviceId, vehicleId);
             if (serviceOpt.isPresent()) {
-                return ResponseEntity.ok(serviceOpt.get());
+                Map<String, Object> response = convertToMap(serviceOpt.get());
+                return ResponseEntity.ok(response);
             }
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body("Không tìm thấy đăng ký dịch vụ với serviceId: " + serviceId + " và vehicleId: " + vehicleId);
@@ -161,34 +178,32 @@ public class VehicleServiceAPI {
             
             // Filter theo vehicleId
             List<Map<String, Object>> result = nativeResults.stream()
-                    .filter(row -> row.length > 1 && row[1] != null && vehicleId.equals(row[1].toString()))
+                    .filter(row -> row.length > 2 && row[2] != null && vehicleId.equals(row[2].toString()))
                     .map(row -> {
                         Map<String, Object> serviceMap = new HashMap<>();
-                        String serviceId = row[0] != null ? row[0].toString() : null;
+                        Integer id = row[0] != null ? (row[0] instanceof Integer ? (Integer) row[0] : Integer.parseInt(row[0].toString())) : null;
+                        String serviceId = row.length > 1 && row[1] != null ? row[1].toString() : null;
                         
-                        Map<String, Object> idMap = new HashMap<>();
-                        idMap.put("serviceId", serviceId);
-                        idMap.put("vehicleId", vehicleId);
-                        serviceMap.put("id", idMap);
+                        serviceMap.put("id", id);
                         serviceMap.put("serviceId", serviceId);
                         serviceMap.put("vehicleId", vehicleId);
                         
-                        if (row.length > 2 && row[2] != null) serviceMap.put("serviceName", row[2].toString());
-                        if (row.length > 3 && row[3] != null) serviceMap.put("serviceDescription", row[3].toString());
-                        if (row.length > 4 && row[4] != null) serviceMap.put("serviceType", row[4].toString());
-                        if (row.length > 5 && row[5] != null) {
-                            if (row[5] instanceof java.sql.Timestamp) {
-                                serviceMap.put("requestDate", ((java.sql.Timestamp) row[5]).toInstant().toString());
+                        if (row.length > 3 && row[3] != null) serviceMap.put("serviceName", row[3].toString());
+                        if (row.length > 4 && row[4] != null) serviceMap.put("serviceDescription", row[4].toString());
+                        if (row.length > 5 && row[5] != null) serviceMap.put("serviceType", row[5].toString());
+                        if (row.length > 6 && row[6] != null) {
+                            if (row[6] instanceof java.sql.Timestamp) {
+                                serviceMap.put("requestDate", ((java.sql.Timestamp) row[6]).toInstant().toString());
                             } else {
-                                serviceMap.put("requestDate", row[5].toString());
+                                serviceMap.put("requestDate", row[6].toString());
                             }
                         }
-                        if (row.length > 6 && row[6] != null) serviceMap.put("status", row[6].toString());
-                        if (row.length > 7 && row[7] != null) {
-                            if (row[7] instanceof java.sql.Timestamp) {
-                                serviceMap.put("completionDate", ((java.sql.Timestamp) row[7]).toInstant().toString());
+                        if (row.length > 7 && row[7] != null) serviceMap.put("status", row[7].toString());
+                        if (row.length > 8 && row[8] != null) {
+                            if (row[8] instanceof java.sql.Timestamp) {
+                                serviceMap.put("completionDate", ((java.sql.Timestamp) row[8]).toInstant().toString());
                             } else {
-                                serviceMap.put("completionDate", row[7].toString());
+                                serviceMap.put("completionDate", row[8].toString());
                             }
                         }
                         
@@ -254,29 +269,9 @@ public class VehicleServiceAPI {
                     .body("Dịch vụ này đã được đăng ký cho xe này và đang trong trạng thái chờ xử lý. Vui lòng hoàn thành dịch vụ trước đó hoặc hủy đăng ký cũ.");
             }
             
-            // Kiểm tra xem có bản ghi nào với composite key này không (bao gồm cả completed)
-            long totalCount = vehicleServiceRepository.countByServiceIdAndVehicleIdNative(serviceId, vehicleId);
-            if (totalCount > 0) {
-                System.out.println("   ℹ️ [EXISTING SERVICE] Đã có " + totalCount + " bản ghi (có thể đã completed), sẽ update thay vì tạo mới");
-                // Nếu đã có bản ghi completed, sẽ update lại thành pending
-                Optional<Vehicleservice> existingOpt = vehicleServiceRepository.findById_ServiceIdAndId_VehicleId(serviceId, vehicleId);
-                if (existingOpt.isPresent()) {
-                    Vehicleservice existing = existingOpt.get();
-                    String existingStatus = existing.getStatus();
-                    if ("completed".equalsIgnoreCase(existingStatus) || "Completed".equalsIgnoreCase(existingStatus)) {
-                        System.out.println("   ℹ️ [RE-REGISTER] Dịch vụ trước đó đã completed, cho phép đăng ký lại");
-                        // Xóa bản ghi cũ và tạo mới
-                        vehicleServiceRepository.deleteById_ServiceIdAndId_VehicleId(serviceId, vehicleId);
-                        vehicleServiceRepository.flush();
-                        System.out.println("   ✅ Đã xóa bản ghi cũ (completed), sẽ tạo mới");
-                        // Không cần làm gì thêm - service layer sẽ tạo entity mới
-                    } else {
-                        // Nếu không phải completed, trả về lỗi
-                        return ResponseEntity.status(HttpStatus.CONFLICT)
-                            .body("Dịch vụ này đã được đăng ký cho xe này và đang trong trạng thái: " + existingStatus + ". Vui lòng hoàn thành dịch vụ trước đó hoặc hủy đăng ký cũ.");
-                    }
-                }
-            }
+            // Với id làm primary key, có thể đăng ký nhiều lần
+            // Chỉ kiểm tra xem có dịch vụ đang chờ (pending/in_progress) không
+            // Nếu có dịch vụ completed, vẫn cho phép đăng ký lại
             
             System.out.println("   ✅ [NO CONFLICT] Không có conflict, tiếp tục tạo entity...");
 
@@ -326,19 +321,17 @@ public class VehicleServiceAPI {
     }
 
     /**
-     * Cập nhật đăng ký dịch vụ
+     * Cập nhật đăng ký dịch vụ theo id
      */
-    @PutMapping("/service/{serviceId}/vehicle/{vehicleId}")
+    @PutMapping("/{id}")
     public ResponseEntity<?> updateVehicleService(
-            @PathVariable String serviceId,
-            @PathVariable String vehicleId,
+            @PathVariable Integer id,
             @RequestBody Map<String, Object> requestData) {
         try {
-            Optional<Vehicleservice> serviceOpt = vehicleServiceRepository
-                    .findById_ServiceIdAndId_VehicleId(serviceId, vehicleId);
+            Optional<Vehicleservice> serviceOpt = vehicleServiceRepository.findById(id);
             if (serviceOpt.isEmpty()) {
                 return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                        .body("Không tìm thấy đăng ký dịch vụ với serviceId: " + serviceId + " và vehicleId: " + vehicleId);
+                        .body("Không tìm thấy đăng ký dịch vụ với id: " + id);
             }
 
             Vehicleservice service = serviceOpt.get();
@@ -353,6 +346,7 @@ public class VehicleServiceAPI {
             
             if (requestData.containsKey("status")) {
                 String newStatus = (String) requestData.get("status");
+                String oldStatus = service.getStatus();
                 service.setStatus(newStatus);
                 
                 // Tự động set completionDate khi status = completed
@@ -364,6 +358,18 @@ public class VehicleServiceAPI {
                 } else if (newStatus != null && (newStatus.equalsIgnoreCase("pending") || newStatus.equalsIgnoreCase("in_progress") || newStatus.equalsIgnoreCase("in progress"))) {
                     // Reset completionDate nếu chuyển về pending/in_progress
                     service.setCompletionDate(null);
+                }
+                
+                // Đồng bộ trạng thái vehicle sau khi cập nhật status của vehicleservice
+                String vehicleId = service.getVehicleId();
+                if (vehicleId != null && (oldStatus == null || !oldStatus.equalsIgnoreCase(newStatus))) {
+                    try {
+                        System.out.println("🔄 [UPDATE STATUS] Đồng bộ vehicle status sau khi cập nhật vehicleservice status");
+                        vehicleServiceService.syncVehicleStatus(vehicleId);
+                    } catch (Exception e) {
+                        System.err.println("⚠️ [SYNC WARNING] Lỗi khi đồng bộ vehicle status: " + e.getMessage());
+                        // Không throw exception để không ảnh hưởng đến việc cập nhật vehicleservice
+                    }
                 }
             }
             
@@ -388,16 +394,65 @@ public class VehicleServiceAPI {
     }
 
     /**
-     * Xóa đăng ký dịch vụ
+     * Xóa đăng ký dịch vụ theo id
+     */
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> deleteVehicleService(@PathVariable Integer id) {
+        try {
+            Optional<Vehicleservice> serviceOpt = vehicleServiceRepository.findById(id);
+            if (serviceOpt.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body("Không tìm thấy đăng ký dịch vụ với id: " + id);
+            }
+            
+            Vehicleservice service = serviceOpt.get();
+            String vehicleId = service.getVehicleId();
+            
+            // Xóa vehicleservice
+            vehicleServiceRepository.deleteById(id);
+            
+            // Đồng bộ trạng thái vehicle sau khi xóa vehicleservice
+            if (vehicleId != null) {
+                try {
+                    System.out.println("🔄 [DELETE] Đồng bộ vehicle status sau khi xóa vehicleservice");
+                    vehicleServiceService.syncVehicleStatus(vehicleId);
+                } catch (Exception e) {
+                    System.err.println("⚠️ [SYNC WARNING] Lỗi khi đồng bộ vehicle status: " + e.getMessage());
+                    // Không throw exception để không ảnh hưởng đến việc xóa vehicleservice
+                }
+            }
+            
+            return ResponseEntity.ok("Đăng ký dịch vụ đã được xóa thành công");
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Đã xảy ra lỗi khi xóa dịch vụ: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * Xóa đăng ký dịch vụ theo service_id và vehicle_id (xóa tất cả)
      */
     @DeleteMapping("/service/{serviceId}/vehicle/{vehicleId}")
-    public ResponseEntity<?> deleteVehicleService(
+    public ResponseEntity<?> deleteVehicleServiceByServiceAndVehicle(
             @PathVariable String serviceId,
             @PathVariable String vehicleId) {
         try {
-            if (vehicleServiceRepository.existsById_ServiceIdAndId_VehicleId(serviceId, vehicleId)) {
-                vehicleServiceRepository.deleteById_ServiceIdAndId_VehicleId(serviceId, vehicleId);
-                return ResponseEntity.ok("Đăng ký dịch vụ đã được xóa thành công");
+            long count = vehicleServiceRepository.countByServiceIdAndVehicleIdNative(serviceId, vehicleId);
+            if (count > 0) {
+                vehicleServiceRepository.deleteByServiceIdAndVehicleId(serviceId, vehicleId);
+                
+                // Đồng bộ trạng thái vehicle sau khi xóa vehicleservice
+                if (vehicleId != null) {
+                    try {
+                        System.out.println("🔄 [DELETE] Đồng bộ vehicle status sau khi xóa vehicleservice");
+                        vehicleServiceService.syncVehicleStatus(vehicleId);
+                    } catch (Exception e) {
+                        System.err.println("⚠️ [SYNC WARNING] Lỗi khi đồng bộ vehicle status: " + e.getMessage());
+                        // Không throw exception để không ảnh hưởng đến việc xóa vehicleservice
+                    }
+                }
+                
+                return ResponseEntity.ok("Đã xóa " + count + " đăng ký dịch vụ thành công");
             }
             return ResponseEntity.status(HttpStatus.NOT_FOUND)
                     .body("Không tìm thấy đăng ký dịch vụ với serviceId: " + serviceId + " và vehicleId: " + vehicleId);
@@ -407,33 +462,80 @@ public class VehicleServiceAPI {
         }
     }
     
-    /**
-     * Helper method để convert Vehicleservice entity sang Map
-     */
-    private Map<String, Object> convertToMap(Vehicleservice vs) {
-        Map<String, Object> map = new HashMap<>();
-        
-        // Composite key
-        Map<String, Object> idMap = new HashMap<>();
-        idMap.put("serviceId", vs.getServiceId());
-        idMap.put("vehicleId", vs.getVehicleId());
-        map.put("id", idMap);
-        
-        // Other fields
-        map.put("serviceId", vs.getServiceId());
-        map.put("vehicleId", vs.getVehicleId());
-        map.put("serviceName", vs.getServiceName());
-        map.put("serviceDescription", vs.getServiceDescription());
-        map.put("serviceType", vs.getServiceType());
-        map.put("status", vs.getStatus());
-        
-        if (vs.getRequestDate() != null) {
-            map.put("requestDate", vs.getRequestDate().toString());
+        /**
+         * Đồng bộ trạng thái vehicle dựa trên vehicleservice
+         * @param vehicleId ID của vehicle cần đồng bộ
+         * @return Response với kết quả đồng bộ
+         */
+        @PostMapping("/sync-vehicle-status/{vehicleId}")
+        public ResponseEntity<?> syncVehicleStatus(@PathVariable String vehicleId) {
+            try {
+                System.out.println("🔄 [API] Đồng bộ trạng thái vehicle: " + vehicleId);
+                vehicleServiceService.syncVehicleStatus(vehicleId);
+                return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "message", "Đã đồng bộ trạng thái vehicle thành công",
+                    "vehicleId", vehicleId
+                ));
+            } catch (Exception e) {
+                System.err.println("❌ [API] Lỗi khi đồng bộ trạng thái vehicle: " + e.getMessage());
+                e.printStackTrace();
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                        .body(Map.of(
+                            "success", false,
+                            "message", "Đã xảy ra lỗi khi đồng bộ trạng thái: " + e.getMessage()
+                        ));
+            }
         }
-        if (vs.getCompletionDate() != null) {
-            map.put("completionDate", vs.getCompletionDate().toString());
+        
+        /**
+         * Đồng bộ trạng thái cho tất cả vehicles
+         * @return Response với kết quả đồng bộ
+         */
+        @PostMapping("/sync-all-vehicle-statuses")
+        public ResponseEntity<?> syncAllVehicleStatuses() {
+            try {
+                System.out.println("🔄 [API] Đồng bộ trạng thái cho tất cả vehicles...");
+                vehicleServiceService.syncAllVehicleStatuses();
+                return ResponseEntity.ok(Map.of(
+                    "success", true,
+                    "message", "Đã đồng bộ trạng thái cho tất cả vehicles thành công"
+                ));
+            } catch (Exception e) {
+                System.err.println("❌ [API] Lỗi khi đồng bộ trạng thái: " + e.getMessage());
+                e.printStackTrace();
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                        .body(Map.of(
+                            "success", false,
+                            "message", "Đã xảy ra lỗi khi đồng bộ trạng thái: " + e.getMessage()
+                        ));
+            }
         }
         
-        return map;
+        /**
+         * Helper method để convert Vehicleservice entity sang Map
+         */
+        private Map<String, Object> convertToMap(Vehicleservice vs) {
+            Map<String, Object> map = new HashMap<>();
+            
+            // Primary key
+            map.put("id", vs.getId());
+            
+            // Other fields
+            map.put("serviceId", vs.getServiceId());
+            map.put("vehicleId", vs.getVehicleId());
+            map.put("serviceName", vs.getServiceName());
+            map.put("serviceDescription", vs.getServiceDescription());
+            map.put("serviceType", vs.getServiceType());
+            map.put("status", vs.getStatus());
+            
+            if (vs.getRequestDate() != null) {
+                map.put("requestDate", vs.getRequestDate().toString());
+            }
+            if (vs.getCompletionDate() != null) {
+                map.put("completionDate", vs.getCompletionDate().toString());
+            }
+            
+            return map;
+        }
     }
-}

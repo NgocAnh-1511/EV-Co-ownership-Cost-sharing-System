@@ -16,21 +16,24 @@ import java.time.Instant;
        indexes = {
            @Index(name = "idx_vehicle_id", columnList = "vehicle_id"),
            @Index(name = "idx_service_id", columnList = "service_id"),
-           @Index(name = "idx_status", columnList = "status")
+           @Index(name = "idx_status", columnList = "status"),
+           @Index(name = "idx_service_vehicle", columnList = "service_id, vehicle_id")
        })
 @JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "service", "vehicle"})
 public class Vehicleservice {
-    
-    @EmbeddedId
-    private VehicleServiceId id;
+
+    @Id  // Đánh dấu trường này là khóa chính
+    @GeneratedValue(strategy = GenerationType.IDENTITY)  // Để tự động tăng (auto-increment)
+    @Column(name = "id", nullable = false)  // Cột "id" không thể là null
+    private Integer id;
 
     // Thay đổi optional = true để có thể load được ngay cả khi foreign key không tồn tại
     @ManyToOne(fetch = FetchType.LAZY, optional = true)
-    @JoinColumn(name = "service_id", nullable = false, insertable = false, updatable = false)
+    @JoinColumn(name = "service_id", nullable = false)
     private ServiceType service;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = true)
-    @JoinColumn(name = "vehicle_id", nullable = false, insertable = false, updatable = false)
+    @JoinColumn(name = "vehicle_id", nullable = false)
     private Vehicle vehicle;
 
     @Size(max = 255)
@@ -54,21 +57,15 @@ public class Vehicleservice {
 
     @Column(name = "completion_date", nullable = true)
     private Instant completionDate;
+
     
     // Helper methods để dễ dàng truy cập serviceId và vehicleId
     public String getServiceId() {
-        return id != null ? id.getServiceId() : (service != null ? service.getServiceId() : null);
+        return service != null ? service.getServiceId() : null;
     }
     
     public String getVehicleId() {
-        return id != null ? id.getVehicleId() : (vehicle != null ? vehicle.getVehicleId() : null);
-    }
-    
-    // Method để khởi tạo id từ service và vehicle
-    public void initializeId() {
-        if (id == null && service != null && vehicle != null) {
-            id = new VehicleServiceId(service.getServiceId(), vehicle.getVehicleId());
-        }
+        return vehicle != null ? vehicle.getVehicleId() : null;
     }
     
     // Method để đảm bảo serviceType luôn được set từ ServiceType nếu null

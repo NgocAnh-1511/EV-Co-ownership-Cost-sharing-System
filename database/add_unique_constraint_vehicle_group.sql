@@ -53,3 +53,4 @@ MODIFY COLUMN group_id VARCHAR(20) NOT NULL;
 
 
 
+

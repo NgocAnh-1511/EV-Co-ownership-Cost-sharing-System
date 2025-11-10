@@ -79,14 +79,10 @@ public class VehicleServiceController {
             final java.util.function.Function<Map<String, Object>, String> getVehicleId = service -> {
                 String vehicleId = null;
                 
-                // Ưu tiên 1: Lấy từ id.vehicleId (composite key)
-                Object idObj = service.get("id");
-                if (idObj instanceof Map) {
-                    Map<String, Object> idMap = (Map<String, Object>) idObj;
-                    vehicleId = (String) idMap.get("vehicleId");
-                    if (vehicleId != null && !vehicleId.trim().isEmpty()) {
-                        return vehicleId.trim();
-                    }
+                // Ưu tiên 1: Lấy trực tiếp từ root (id giờ là Integer, không còn composite key)
+                vehicleId = (String) service.get("vehicleId");
+                if (vehicleId != null && !vehicleId.trim().isEmpty()) {
+                    return vehicleId.trim();
                 }
                 
                 // Ưu tiên 2: Lấy từ vehicle.vehicleId (nested object)
@@ -99,10 +95,14 @@ public class VehicleServiceController {
                     }
                 }
                 
-                // Fallback: thử lấy trực tiếp từ root
-                vehicleId = (String) service.get("vehicleId");
-                if (vehicleId != null && !vehicleId.trim().isEmpty()) {
-                    return vehicleId.trim();
+                // Fallback: Kiểm tra xem id có phải là Map không (tương thích ngược)
+                Object idObj = service.get("id");
+                if (idObj instanceof Map) {
+                    Map<String, Object> idMap = (Map<String, Object>) idObj;
+                    vehicleId = (String) idMap.get("vehicleId");
+                    if (vehicleId != null && !vehicleId.trim().isEmpty()) {
+                        return vehicleId.trim();
+                    }
                 }
                 
                 return "";
@@ -722,12 +722,56 @@ public class VehicleServiceController {
     }
 
     /**
-     * API endpoint để cập nhật trạng thái dịch vụ
+     * API endpoint để cập nhật trạng thái dịch vụ theo id
+     * @param id ID của đăng ký dịch vụ
+     * @param requestBody Request body chứa status
+     * @return JSON response với kết quả cập nhật
+     */
+    @PutMapping("/admin/vehicle-manager/api/service/{id}/status")
+    @ResponseBody
+    public Map<String, Object> updateServiceStatusById(
+            @PathVariable Integer id,
+            @RequestBody Map<String, Object> requestBody) {
+        Map<String, Object> response = new HashMap<>();
+        try {
+            System.out.println("📡 [API] Cập nhật trạng thái dịch vụ theo id:");
+            System.out.println("   - id: " + id);
+            System.out.println("   - status: " + requestBody.get("status"));
+            
+            String status = (String) requestBody.get("status");
+            if (status == null || status.trim().isEmpty()) {
+                response.put("success", false);
+                response.put("message", "Trạng thái không được để trống");
+                return response;
+            }
+            
+            Map<String, Object> updatedService = vehicleServiceRestClient.updateServiceStatusById(id, status);
+            
+            response.put("success", true);
+            response.put("message", "Cập nhật trạng thái thành công");
+            response.put("service", updatedService);
+            
+            System.out.println("✅ [API] Đã cập nhật trạng thái thành công");
+            
+            return response;
+        } catch (Exception e) {
+            System.err.println("❌ [API] Lỗi khi cập nhật trạng thái: " + e.getMessage());
+            e.printStackTrace();
+            response.put("success", false);
+            response.put("message", "Đã xảy ra lỗi khi cập nhật trạng thái: " + e.getMessage());
+            return response;
+        }
+    }
+    
+    /**
+     * API endpoint để cập nhật trạng thái dịch vụ (theo serviceId và vehicleId - tương thích ngược)
      * @param serviceId ID của dịch vụ
      * @param vehicleId ID của xe
      * @param requestBody Request body chứa status
      * @return JSON response với kết quả cập nhật
+     * @deprecated Sử dụng updateServiceStatusById thay thế
      */
+    @Deprecated
     @PutMapping("/admin/vehicle-manager/api/service/{serviceId}/vehicle/{vehicleId}/status")
     @ResponseBody
     public Map<String, Object> updateServiceStatus(
@@ -736,7 +780,7 @@ public class VehicleServiceController {
             @RequestBody Map<String, Object> requestBody) {
         Map<String, Object> response = new HashMap<>();
         try {
-            System.out.println("📡 [API] Cập nhật trạng thái dịch vụ:");
+            System.out.println("📡 [API] Cập nhật trạng thái dịch vụ (deprecated):");
             System.out.println("   - serviceId: " + serviceId);
             System.out.println("   - vehicleId: " + vehicleId);
             System.out.println("   - status: " + requestBody.get("status"));

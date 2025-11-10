@@ -331,25 +331,23 @@ public class VehicleAPI {
             Vehicle vehicle = vehicleOpt.get();
             String groupId = vehicle.getGroup() != null ? vehicle.getGroup().getGroupId() : null;
             
-            // Tắt foreign key checks tạm thời để xóa các bản ghi liên quan
-            entityManager.createNativeQuery("SET FOREIGN_KEY_CHECKS = 0").executeUpdate();
-            
+            // Xóa tất cả các dịch vụ liên quan đến xe trước
+            // Với id làm primary key, có thể xóa bằng cách xóa theo vehicle_id
             try {
-                // Xóa tất cả các dịch vụ liên quan đến xe trước
                 int deletedServices = entityManager.createNativeQuery(
                     "DELETE FROM vehicle_management.vehicleservice WHERE vehicle_id = :vehicleId"
                 ).setParameter("vehicleId", vehicleId).executeUpdate();
                 System.out.println("DEBUG: Đã xóa " + deletedServices + " dịch vụ liên quan đến xe " + vehicleId);
-                
-                // Xóa xe
-                vehicleRepository.deleteById(vehicleId);
-                vehicleRepository.flush(); // Đảm bảo xóa được thực thi ngay
-                
-                System.out.println("DEBUG: Đã xóa xe " + vehicleId + " thành công");
-            } finally {
-                // Bật lại foreign key checks
-                entityManager.createNativeQuery("SET FOREIGN_KEY_CHECKS = 1").executeUpdate();
+            } catch (Exception e) {
+                System.err.println("DEBUG: Lỗi khi xóa dịch vụ liên quan: " + e.getMessage());
+                // Tiếp tục xóa xe dù có lỗi khi xóa dịch vụ
             }
+            
+            // Xóa xe
+            vehicleRepository.deleteById(vehicleId);
+            vehicleRepository.flush(); // Đảm bảo xóa được thực thi ngay
+            
+            System.out.println("DEBUG: Đã xóa xe " + vehicleId + " thành công");
             
             return ResponseEntity.ok("Xe đã được xóa thành công");
         } catch (org.springframework.dao.DataIntegrityViolationException e) {
