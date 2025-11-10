@@ -2,8 +2,10 @@ package com.example.costpayment.controller;
 
 import com.example.costpayment.entity.Cost;
 import com.example.costpayment.entity.CostShare;
+import com.example.costpayment.dto.UsageTrackingDto;
 import com.example.costpayment.service.AutoCostSplitService;
 import com.example.costpayment.service.CostService;
+import com.example.costpayment.service.UsageTrackingService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -25,6 +27,9 @@ public class AutoSplitController {
 
     @Autowired
     private CostService costService;
+
+    @Autowired
+    private UsageTrackingService usageTrackingService;
 
     /**
      * Tự động chia chi phí
@@ -226,8 +231,23 @@ public class AutoSplitController {
             @RequestParam Integer year) {
         
         // Lấy km từ database
+        List<UsageTrackingDto> usageList = usageTrackingService.getGroupUsageInMonth(groupId, month, year);
+        
+        if (usageList == null || usageList.isEmpty()) {
+            throw new RuntimeException("Không có dữ liệu km cho nhóm " + groupId + 
+                " trong tháng " + month + "/" + year);
+        }
+        
         Map<Integer, Double> usageMap = new HashMap<>();
-        // TODO: Get from UsageTrackingService
+        for (UsageTrackingDto usage : usageList) {
+            if (usage.getKmDriven() != null && usage.getKmDriven() > 0) {
+                usageMap.put(usage.getUserId(), usage.getKmDriven());
+            }
+        }
+        
+        if (usageMap.isEmpty()) {
+            throw new RuntimeException("Không có dữ liệu km hợp lệ cho nhóm " + groupId);
+        }
         
         List<CostShare> shares = autoSplitService.splitByUsage(costId, usageMap);
         
@@ -309,6 +329,7 @@ public class AutoSplitController {
 
             Map<String, Object> preview = new HashMap<>();
             preview.put("amount", amount);
+            preview.put("totalAmount", amount); // Frontend expects totalAmount
             preview.put("splitMethod", splitMethod);
 
             // Tạo danh sách shares để preview
@@ -321,25 +342,53 @@ public class AutoSplitController {
                     Map<String, Object> share = new HashMap<>();
                     share.put("userId", entry.getKey());
                     share.put("percent", entry.getValue());
-                    share.put("amountShare", amount * entry.getValue() / 100);
+                    double shareAmount = amount * entry.getValue() / 100;
+                    share.put("amountShare", shareAmount);
+                    share.put("amount", shareAmount); // Frontend expects amount
                     shares.add(share);
                 }
             } else if ("BY_USAGE".equals(splitMethod)) {
-                // Chia theo km driven
-                Map<Integer, Double> usageMap = new HashMap<>();
-                // TODO: Get from UsageTrackingService
-                // For now, use mock data
-                usageMap.put(1, 100.0);
-                usageMap.put(2, 150.0);
-                usageMap.put(3, 50.0);
+                // Chia theo km driven - Lấy dữ liệu thực từ database
+                List<UsageTrackingDto> usageList = usageTrackingService.getGroupUsageInMonth(groupId, month, year);
                 
-                double totalKm = usageMap.values().stream().mapToDouble(Double::doubleValue).sum();
-                for (Map.Entry<Integer, Double> entry : usageMap.entrySet()) {
+                if (usageList == null || usageList.isEmpty()) {
+                    String errorMsg = "Không có dữ liệu km cho nhóm " + groupId + 
+                        " trong tháng " + month + "/" + year + ". Vui lòng nhập dữ liệu km trước.";
+                    System.err.println("Error getting usage data: " + errorMsg);
+                    Map<String, Object> error = new HashMap<>();
+                    error.put("error", errorMsg);
+                    error.put("shares", new java.util.ArrayList<>());
+                    return ResponseEntity.badRequest().body(error);
+                }
+                
+                // Tính tổng km
+                double totalKm = usageList.stream()
+                    .mapToDouble(u -> u.getKmDriven() != null ? u.getKmDriven() : 0)
+                    .sum();
+                
+                if (totalKm <= 0) {
+                    String errorMsg = "Tổng km phải lớn hơn 0. Vui lòng kiểm tra dữ liệu km.";
+                    System.err.println("Error: " + errorMsg);
+                    Map<String, Object> error = new HashMap<>();
+                    error.put("error", errorMsg);
+                    error.put("shares", new java.util.ArrayList<>());
+                    return ResponseEntity.badRequest().body(error);
+                }
+                
+                // Tính phần chia cho từng user
+                for (UsageTrackingDto usage : usageList) {
+                    if (usage.getKmDriven() == null || usage.getKmDriven() <= 0) {
+                        continue; // Bỏ qua user không có km
+                    }
+                    
                     Map<String, Object> share = new HashMap<>();
-                    share.put("userId", entry.getKey());
-                    double percent = (entry.getValue() / totalKm) * 100;
+                    share.put("userId", usage.getUserId());
+                    double percent = (usage.getKmDriven() / totalKm) * 100;
                     share.put("percent", Math.round(percent * 100.0) / 100.0);
-                    share.put("amountShare", amount * percent / 100);
+                    double shareAmount = amount * percent / 100;
+                    share.put("amountShare", shareAmount);
+                    share.put("amount", shareAmount); // Frontend expects amount
+                    share.put("kmDriven", usage.getKmDriven()); // Thêm km để hiển thị
                     shares.add(share);
                 }
             } else if ("EQUAL".equals(splitMethod)) {
@@ -354,6 +403,7 @@ public class AutoSplitController {
                     share.put("userId", userId);
                     share.put("percent", Math.round(equalPercent * 100.0) / 100.0);
                     share.put("amountShare", equalAmount);
+                    share.put("amount", equalAmount); // Frontend expects amount
                     shares.add(share);
                 }
             }

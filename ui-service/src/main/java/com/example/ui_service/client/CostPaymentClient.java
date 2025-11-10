@@ -50,8 +50,9 @@ public class CostPaymentClient {
 
     public List<CostSplitDto> getCostSplits(Integer costId) {
         try {
+            // Use /splits endpoint which is the primary endpoint
             ResponseEntity<List<CostSplitDto>> response = restTemplate.exchange(
-                costPaymentUrl + "/api/costs/" + costId + "/shares",
+                costPaymentUrl + "/api/costs/" + costId + "/splits",
                 HttpMethod.GET,
                 null,
                 new ParameterizedTypeReference<List<CostSplitDto>>() {}
@@ -170,8 +171,9 @@ public class CostPaymentClient {
 
     public List<CostSplitDto> getCostSharesByCostId(Integer costId) {
         try {
+            // Use /splits endpoint which is the primary endpoint
             ResponseEntity<List<CostSplitDto>> response = restTemplate.exchange(
-                costPaymentUrl + "/api/costs/" + costId + "/shares",
+                costPaymentUrl + "/api/costs/" + costId + "/splits",
                 HttpMethod.GET,
                 null,
                 new ParameterizedTypeReference<List<CostSplitDto>>() {}
@@ -324,19 +326,40 @@ public class CostPaymentClient {
 
     public Map<String, Object> updateUsageKm(Integer groupId, Integer userId, Integer month, Integer year, Double kmDriven) {
         try {
-            String url = String.format("%s/api/usage-tracking/update-km?groupId=%d&userId=%d&month=%d&year=%d&kmDriven=%f",
-                costPaymentUrl, groupId, userId, month, year, kmDriven);
+            // Sử dụng format số để tránh vấn đề với số thập phân
+            String url = String.format("%s/api/usage-tracking/update-km?groupId=%d&userId=%d&month=%d&year=%d&kmDriven=%s",
+                costPaymentUrl, groupId, userId, month, year, kmDriven.toString());
             
-            ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
+            // Backend trả về UsageTracking entity, RestTemplate sẽ tự động convert thành Map
+            Map<String, Object> result = restTemplate.exchange(
                 url,
                 HttpMethod.PUT,
                 null,
-                new ParameterizedTypeReference<Map<String, Object>>() {}
-            );
-            return response.getBody();
+                Map.class
+            ).getBody();
+            
+            return result;
         } catch (Exception e) {
             System.err.println("Error updating usage km: " + e.getMessage());
+            e.printStackTrace(); // In stack trace để debug
             return null;
+        }
+    }
+
+    public List<Map<String, Object>> getUserHistory(Integer userId) {
+        try {
+            String url = String.format("%s/api/usage-tracking/user/%d/history", costPaymentUrl, userId);
+            
+            ResponseEntity<List<Map<String, Object>>> response = restTemplate.exchange(
+                url,
+                HttpMethod.GET,
+                null,
+                new ParameterizedTypeReference<List<Map<String, Object>>>() {}
+            );
+            return response.getBody() != null ? response.getBody() : List.of();
+        } catch (Exception e) {
+            System.err.println("Error fetching user history: " + e.getMessage());
+            return List.of();
         }
     }
 

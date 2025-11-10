@@ -5,6 +5,9 @@ import com.example.costpayment.entity.Cost;
 import com.example.costpayment.entity.CostShare;
 import com.example.costpayment.entity.Payment;
 import com.example.costpayment.entity.PaymentStatus;
+import com.example.costpayment.entity.UsageTracking;
+import com.example.costpayment.repository.UsageTrackingRepository;
+import com.example.costpayment.service.AutoCostSplitService;
 import com.example.costpayment.service.CostService;
 import com.example.costpayment.service.CostShareService;
 import com.example.costpayment.service.PaymentService;
@@ -36,6 +39,12 @@ public class CostShareRestController {
     
     @Autowired
     private CostService costService;
+    
+    @Autowired(required = false)
+    private AutoCostSplitService autoCostSplitService;
+    
+    @Autowired(required = false)
+    private UsageTrackingRepository usageTrackingRepository;
 
     /**
      * Get pending (unpaid) cost shares for a user
@@ -179,7 +188,7 @@ public class CostShareRestController {
     }
 
     /**
-     * Convert CostShare entity to DTO
+     * Convert CostShare entity to DTO with full information
      */
     private CostShareDto convertToDto(CostShare share) {
         CostShareDto dto = new CostShareDto();
@@ -191,17 +200,95 @@ public class CostShareRestController {
         dto.setCalculatedAt(share.getCalculatedAt());
         dto.setStatus("PENDING"); // Default status
         
-        // Get description from Cost entity
+        // Get full Cost information
         try {
             costService.getCostById(share.getCostId()).ifPresent(cost -> {
+                // Basic cost info
                 dto.setDescription(cost.getDescription());
+                dto.setTotalAmount(cost.getAmount());
+                
+                // Cost type
+                dto.setCostType(cost.getCostType().name());
+                dto.setCostTypeDisplay(cost.getCostType().getDisplayName());
+                
+                // Determine split method based on cost type
+                String splitMethod = determineSplitMethod(cost.getCostType());
+                dto.setSplitMethod(splitMethod);
+                dto.setSplitMethodDisplay(getSplitMethodDisplayName(splitMethod));
+                
+                // If split by ownership, get ownership percent
+                if ("BY_OWNERSHIP".equals(splitMethod)) {
+                    dto.setOwnershipPercent(share.getPercent());
+                }
+                
+                // If split by usage, try to get km information
+                if ("BY_USAGE".equals(splitMethod)) {
+                    try {
+                        // Try to get km from usage tracking
+                        // Note: We need groupId and month/year, which we don't have directly
+                        // For now, we'll try to get it from the calculated date
+                        LocalDateTime calculatedAt = share.getCalculatedAt();
+                        if (calculatedAt != null) {
+                            int month = calculatedAt.getMonthValue();
+                            int year = calculatedAt.getYear();
+                            
+                            // Try to find usage tracking for this user in the same month/year
+                            // We'll need groupId, but we can try to find it from other shares
+                            List<CostShare> allSharesForCost = costShareService.getCostSharesByCostId(share.getCostId());
+                            if (!allSharesForCost.isEmpty()) {
+                                // Try to get km if usageTrackingRepository is available
+                                if (usageTrackingRepository != null) {
+                                    // We need groupId - for now, we'll skip detailed km info
+                                    // This can be enhanced later when we have groupId in CostShare or Cost
+                                }
+                            }
+                        }
+                    } catch (Exception e) {
+                        logger.debug("Could not get km information: {}", e.getMessage());
+                    }
+                }
             });
         } catch (Exception e) {
-            logger.warn("Failed to get cost description for costId {}: {}", share.getCostId(), e.getMessage());
+            logger.warn("Failed to get cost information for costId {}: {}", share.getCostId(), e.getMessage());
             dto.setDescription("Chi phí #" + share.getCostId());
         }
         
         return dto;
+    }
+    
+    /**
+     * Determine split method based on cost type
+     */
+    private String determineSplitMethod(Cost.CostType costType) {
+        switch (costType) {
+            case ElectricCharge:
+                return "BY_USAGE";
+            case Maintenance:
+            case Insurance:
+            case Inspection:
+                return "BY_OWNERSHIP";
+            case Cleaning:
+            case Other:
+                return "EQUAL";
+            default:
+                return "BY_OWNERSHIP";
+        }
+    }
+    
+    /**
+     * Get display name for split method
+     */
+    private String getSplitMethodDisplayName(String splitMethod) {
+        switch (splitMethod) {
+            case "BY_USAGE":
+                return "Chia theo km";
+            case "BY_OWNERSHIP":
+                return "Chia theo sở hữu";
+            case "EQUAL":
+                return "Chia đều";
+            default:
+                return "Chia theo sở hữu";
+        }
     }
 
     /**

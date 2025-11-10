@@ -10,7 +10,7 @@ const API = {
     FUND: '/api/fund'
 };
 
-// Current User - get from URL parameter or default to 1
+// Current User - get from URL parameter or default to 4
 const urlParams = new URLSearchParams(window.location.search);
 const CURRENT_USER_ID = parseInt(urlParams.get('userId')) || 2;
 
@@ -25,6 +25,7 @@ document.addEventListener('DOMContentLoaded', function() {
     initUsageForm();
     initPaymentMethods();
     initFundModals();
+    initCostFilters();
     loadHomePage();
 });
 
@@ -310,6 +311,12 @@ async function loadCostsPage() {
             const safeDescription = description.replace(/'/g, "\\'").replace(/"/g, '&quot;');
             const amount = share.amountShare || share.shareAmount || 0;
             const shareId = share.shareId || share.share_id || 'N/A';
+            const totalAmount = share.totalAmount || amount;
+            const percent = share.percent || 0;
+            const costType = share.costType || 'Other';
+            const costTypeDisplay = share.costTypeDisplay || 'Khác';
+            const splitMethod = share.splitMethod || 'BY_OWNERSHIP';
+            const splitMethodDisplay = share.splitMethodDisplay || 'Chia theo sở hữu';
             
             // Handle calculatedAt - could be string or already a date
             let calculatedDate = new Date().toISOString();
@@ -321,17 +328,49 @@ async function loadCostsPage() {
                 }
             }
             
+            // Get icon and color for cost type
+            const costTypeInfo = getCostTypeInfo(costType);
+            
             return `
-                <div class="cost-card">
+                <div class="cost-card" data-cost-type="${costType}" data-status="${share.isPaid ? 'paid' : 'pending'}">
                     <div class="cost-header">
-                        <div class="cost-type">Chi phí chung</div>
+                        <div class="cost-type-badge ${costTypeInfo.class}">
+                            <i class="${costTypeInfo.icon}"></i>
+                            <span>${costTypeDisplay}</span>
+                        </div>
                         <div class="cost-status ${share.isPaid ? 'paid' : 'pending'}">
                             ${share.isPaid ? 'Đã thanh toán' : 'Chưa thanh toán'}
                         </div>
                     </div>
                     <div class="cost-amount">${formatCurrency(amount)}</div>
                     <div class="cost-details">
-                        ${description}
+                        <div class="cost-description">${description}</div>
+                        <div class="cost-meta">
+                            <div class="meta-item">
+                                <i class="fas fa-tag"></i>
+                                <span>Tổng chi phí: ${formatCurrency(totalAmount)}</span>
+                            </div>
+                            <div class="meta-item">
+                                <i class="fas fa-percentage"></i>
+                                <span>Tỷ lệ của bạn: ${percent.toFixed(2)}%</span>
+                            </div>
+                            <div class="meta-item">
+                                <i class="fas fa-balance-scale"></i>
+                                <span>${splitMethodDisplay}</span>
+                            </div>
+                            ${share.kmDriven ? `
+                                <div class="meta-item">
+                                    <i class="fas fa-tachometer-alt"></i>
+                                    <span>Km của bạn: ${share.kmDriven.toFixed(1)} km</span>
+                                </div>
+                            ` : ''}
+                            ${share.ownershipPercent ? `
+                                <div class="meta-item">
+                                    <i class="fas fa-user-tag"></i>
+                                    <span>Tỷ lệ sở hữu: ${share.ownershipPercent.toFixed(2)}%</span>
+                                </div>
+                            ` : ''}
+                        </div>
                     </div>
                     <div class="cost-footer">
                         <div class="cost-date">
@@ -342,11 +381,18 @@ async function loadCostsPage() {
                                     onclick="payCostShare(${shareId}, ${amount}, '${safeDescription}')">
                                 <i class="fas fa-credit-card"></i> Thanh toán
                             </button>
-                        ` : ''}
+                        ` : `
+                            <span class="paid-badge">
+                                <i class="fas fa-check-circle"></i> Đã thanh toán
+                            </span>
+                        `}
                     </div>
                 </div>
             `;
         }).join('');
+        
+        // Apply filters
+        applyCostFilters();
         
         console.log('Successfully rendered', allShares.length, 'cost shares');
         
@@ -384,16 +430,118 @@ function payCostShare(shareId, amount, description) {
     }, 300);
 }
 
+// ============ COST FILTERS ============
+function initCostFilters() {
+    const statusFilter = document.getElementById('user-cost-filter');
+    const typeFilter = document.getElementById('user-cost-type-filter');
+    const monthFilter = document.getElementById('user-month-filter');
+    
+    if (statusFilter) {
+        statusFilter.addEventListener('change', applyCostFilters);
+    }
+    if (typeFilter) {
+        typeFilter.addEventListener('change', applyCostFilters);
+    }
+    if (monthFilter) {
+        monthFilter.addEventListener('change', applyCostFilters);
+    }
+}
+
+function applyCostFilters() {
+    const statusFilter = document.getElementById('user-cost-filter')?.value || 'all';
+    const typeFilter = document.getElementById('user-cost-type-filter')?.value || 'all';
+    const monthFilter = document.getElementById('user-month-filter')?.value || '';
+    
+    const cards = document.querySelectorAll('.cost-card');
+    let visibleCount = 0;
+    
+    cards.forEach(card => {
+        const costType = card.getAttribute('data-cost-type') || '';
+        const status = card.getAttribute('data-status') || '';
+        const dateStr = card.querySelector('.cost-date')?.textContent || '';
+        
+        // Check status filter
+        let showByStatus = statusFilter === 'all' || status === statusFilter;
+        
+        // Check type filter
+        let showByType = typeFilter === 'all' || costType === typeFilter;
+        
+        // Check month filter
+        let showByMonth = true;
+        if (monthFilter) {
+            const month = parseInt(monthFilter);
+            const monthNames = ['Tháng 1', 'Tháng 2', 'Tháng 3', 'Tháng 4', 'Tháng 5', 'Tháng 6',
+                               'Tháng 7', 'Tháng 8', 'Tháng 9', 'Tháng 10', 'Tháng 11', 'Tháng 12'];
+            const monthName = monthNames[month - 1];
+            showByMonth = dateStr.includes(monthName) || dateStr.includes(`/${month}/`);
+        }
+        
+        const shouldShow = showByStatus && showByType && showByMonth;
+        card.style.display = shouldShow ? 'block' : 'none';
+        if (shouldShow) visibleCount++;
+    });
+    
+    // Show message if no results
+    const grid = document.getElementById('user-costs-grid');
+    if (visibleCount === 0 && cards.length > 0) {
+        const noResults = document.createElement('div');
+        noResults.className = 'no-results';
+        noResults.style.cssText = 'grid-column: 1/-1; text-align: center; padding: 40px; color: var(--text-light);';
+        noResults.innerHTML = `
+            <i class="fas fa-filter" style="font-size: 48px; margin-bottom: 16px; opacity: 0.5;"></i>
+            <p>Không có chi phí nào phù hợp với bộ lọc</p>
+        `;
+        
+        // Remove existing no-results if any
+        const existing = grid.querySelector('.no-results');
+        if (existing) existing.remove();
+        
+        grid.appendChild(noResults);
+    } else {
+        const existing = grid.querySelector('.no-results');
+        if (existing) existing.remove();
+    }
+}
+
+/**
+ * Get icon and CSS class for cost type
+ */
+function getCostTypeInfo(costType) {
+    const typeMap = {
+        'ElectricCharge': {
+            icon: 'fas fa-bolt',
+            class: 'cost-type-electric'
+        },
+        'Maintenance': {
+            icon: 'fas fa-wrench',
+            class: 'cost-type-maintenance'
+        },
+        'Insurance': {
+            icon: 'fas fa-shield-alt',
+            class: 'cost-type-insurance'
+        },
+        'Inspection': {
+            icon: 'fas fa-clipboard-check',
+            class: 'cost-type-inspection'
+        },
+        'Cleaning': {
+            icon: 'fas fa-spray-can',
+            class: 'cost-type-cleaning'
+        },
+        'Other': {
+            icon: 'fas fa-receipt',
+            class: 'cost-type-other'
+        }
+    };
+    
+    return typeMap[costType] || typeMap['Other'];
+}
+
 // ============ USAGE PAGE ============
 async function loadUsagePage() {
     try {
-        // Load groups for selection
-        const response = await fetch(API.GROUPS);
-        const groups = await response.json();
-        
-        const select = document.getElementById('usage-group');
-        select.innerHTML = '<option value="">-- Chọn nhóm --</option>' +
-            groups.map(g => `<option value="${g.groupId}">${g.groupName}</option>`).join('');
+        // Load groups for selection (user's groups)
+        await loadGroupsForUsage();
         
         // Load usage history
         await loadUsageHistory();
@@ -402,6 +550,9 @@ async function loadUsagePage() {
         console.error('Error loading usage page:', error);
     }
 }
+
+let currentGroupUsageData = null;
+let currentGroupMembers = null;
 
 function initUsageForm() {
     const form = document.getElementById('usage-form');
@@ -418,36 +569,174 @@ function initUsageForm() {
     const yearInput = document.getElementById('usage-year');
     if (monthSelect) monthSelect.value = now.getMonth() + 1;
     if (yearInput) yearInput.value = now.getFullYear();
+    
+    // Load groups for dropdown
+    loadGroupsForUsage();
+}
+
+async function loadGroupsForUsage() {
+    try {
+        const response = await fetch(`${API.GROUPS}/user/${CURRENT_USER_ID}`);
+        if (!response.ok) throw new Error('Failed to load groups');
+        
+        const groups = await response.json();
+        const groupSelect = document.getElementById('usage-group');
+        
+        if (groupSelect && groups && groups.length > 0) {
+            groupSelect.innerHTML = '<option value="">-- Chọn nhóm --</option>' +
+                groups.map(g => `<option value="${g.groupId}">${g.groupName}</option>`).join('');
+        }
+    } catch (error) {
+        console.error('Error loading groups:', error);
+    }
+}
+
+async function loadGroupUsageInfo() {
+    const groupId = document.getElementById('usage-group').value;
+    const month = document.getElementById('usage-month').value;
+    const year = document.getElementById('usage-year').value;
+    
+    if (!groupId || !month || !year) {
+        document.getElementById('group-usage-stats').style.display = 'none';
+        document.getElementById('cost-preview').style.display = 'none';
+        return;
+    }
+    
+    try {
+        // Load group members to get ownership percentage
+        const membersResponse = await fetch(`${API.GROUPS}/${groupId}/members`);
+        if (!membersResponse.ok) throw new Error('Failed to load members');
+        currentGroupMembers = await membersResponse.json();
+        
+        // Find current user's ownership
+        const myMember = currentGroupMembers.find(m => m.userId === CURRENT_USER_ID);
+        const myOwnership = myMember ? (myMember.ownershipPercent || 0) : 0;
+        
+        // Load group usage data
+        const usageResponse = await fetch(`${API.USAGE}/group/${groupId}?month=${month}&year=${year}`);
+        let groupUsageData = [];
+        if (usageResponse.ok) {
+            groupUsageData = await usageResponse.json();
+        }
+        currentGroupUsageData = groupUsageData;
+        
+        // Calculate totals
+        const totalKm = groupUsageData.reduce((sum, u) => sum + (u.kmDriven || 0), 0);
+        const myUsage = groupUsageData.find(u => u.userId === CURRENT_USER_ID);
+        const myKm = myUsage ? (myUsage.kmDriven || 0) : 0;
+        const myUsagePercent = totalKm > 0 ? ((myKm / totalKm) * 100).toFixed(2) : 0;
+        
+        // Update UI
+        document.getElementById('my-ownership-percent').textContent = myOwnership.toFixed(2) + '%';
+        document.getElementById('group-total-km').textContent = totalKm.toFixed(1) + ' km';
+        document.getElementById('my-current-km').textContent = myKm.toFixed(1) + ' km';
+        document.getElementById('my-usage-percent').textContent = myUsagePercent + '%';
+        
+        // Update comparison bars
+        document.getElementById('ownership-bar').style.width = myOwnership + '%';
+        document.getElementById('usage-bar').style.width = myUsagePercent + '%';
+        
+        // Set current km input value
+        const kmInput = document.getElementById('km-driven');
+        if (myKm > 0 && !kmInput.value) {
+            kmInput.value = myKm;
+        }
+        
+        // Show stats card
+        document.getElementById('group-usage-stats').style.display = 'block';
+        
+        // Update preview
+        updateUsagePreview();
+        
+    } catch (error) {
+        console.error('Error loading group usage info:', error);
+        document.getElementById('group-usage-stats').style.display = 'none';
+    }
+}
+
+function updateUsagePreview() {
+    const groupId = document.getElementById('usage-group').value;
+    const month = document.getElementById('usage-month').value;
+    const year = document.getElementById('usage-year').value;
+    const kmInput = document.getElementById('km-driven');
+    const kmDriven = parseFloat(kmInput.value) || 0;
+    
+    if (!groupId || !month || !year || kmDriven <= 0) {
+        document.getElementById('cost-preview').style.display = 'none';
+        return;
+    }
+    
+    // Calculate total km including current input
+    let totalKm = 0;
+    if (currentGroupUsageData && currentGroupUsageData.length > 0) {
+        totalKm = currentGroupUsageData.reduce((sum, u) => {
+            if (u.userId === CURRENT_USER_ID) {
+                return sum + kmDriven; // Use current input value
+            }
+            return sum + (u.kmDriven || 0);
+        }, 0);
+    } else {
+        totalKm = kmDriven; // Only current user's input
+    }
+    
+    if (totalKm <= 0) {
+        document.getElementById('cost-preview').style.display = 'none';
+        return;
+    }
+    
+    // Calculate percentage
+    const myPercent = ((kmDriven / totalKm) * 100).toFixed(2);
+    
+    // Example cost: 1,000,000 VNĐ
+    const exampleCost = 1000000;
+    const myShare = (exampleCost * myPercent / 100).toFixed(0);
+    
+    // Update preview
+    document.getElementById('preview-my-percent').textContent = myPercent + '%';
+    document.getElementById('preview-my-share').textContent = formatCurrency(myShare);
+    
+    // Show preview
+    document.getElementById('cost-preview').style.display = 'block';
 }
 
 async function saveUsage() {
+    const groupId = parseInt(document.getElementById('usage-group').value);
+    const month = parseInt(document.getElementById('usage-month').value);
+    const year = parseInt(document.getElementById('usage-year').value);
+    const kmDriven = parseFloat(document.getElementById('km-driven').value);
+    const note = document.getElementById('usage-note').value;
+    
+    if (!groupId || !month || !year || isNaN(kmDriven) || kmDriven < 0) {
+        showToast('Vui lòng điền đầy đủ thông tin', 'error');
+        return;
+    }
+    
     const data = {
-        groupId: parseInt(document.getElementById('usage-group').value),
+        groupId: groupId,
         userId: CURRENT_USER_ID,
-        month: parseInt(document.getElementById('usage-month').value),
-        year: parseInt(document.getElementById('usage-year').value),
-        kmDriven: parseFloat(document.getElementById('km-driven').value)
+        month: month,
+        year: year,
+        kmDriven: kmDriven,
+        note: note || null
     };
     
     try {
-        const response = await fetch(API.USAGE, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data)
+        const response = await fetch(`${API.USAGE}/update-km?groupId=${groupId}&userId=${CURRENT_USER_ID}&month=${month}&year=${year}&kmDriven=${kmDriven}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' }
         });
         
         if (response.ok) {
             showToast('Đã lưu thông tin sử dụng!', 'success');
-            document.getElementById('usage-form').reset();
             
-            // Set back to current month/year
-            const now = new Date();
-            document.getElementById('usage-month').value = now.getMonth() + 1;
-            document.getElementById('usage-year').value = now.getFullYear();
+            // Reload group usage info to update stats
+            await loadGroupUsageInfo();
             
+            // Reload history
             await loadUsageHistory();
         } else {
-            showToast('Lỗi khi lưu dữ liệu', 'error');
+            const errorData = await response.json().catch(() => ({}));
+            showToast(errorData.message || 'Lỗi khi lưu dữ liệu', 'error');
         }
         
     } catch (error) {
@@ -1065,6 +1354,8 @@ async function loadFundPage() {
         await loadPendingVoteRequests(); // Load các yêu cầu cần vote
         await loadRecentTransactions();
         await loadTransactionHistory();
+        await loadFundCategories(); // Load phân loại quỹ
+        await loadGroupDecisions(); // Load quyết định chung
         
         // Bắt đầu auto-refresh mỗi 15 giây khi ở trang Fund
         startFundAutoRefresh();
@@ -1450,7 +1741,9 @@ async function loadPendingVoteRequests() {
                     
                     const isWithdraw = transactionType === 'Withdraw' || transactionType === 'WITHDRAW';
                     const isPending = status === 'Pending' || status === 'PENDING';
-                    const isNotMyRequest = userId !== CURRENT_USER_ID && userId !== parseInt(CURRENT_USER_ID);
+                    const isNotMyRequest = userId != CURRENT_USER_ID && parseInt(userId) != parseInt(CURRENT_USER_ID);
+                    
+                    console.log(`  📝 Request: userId=${userId}, type=${transactionType}, status=${status}, isWithdraw=${isWithdraw}, isPending=${isPending}, isNotMyRequest=${isNotMyRequest}`);
                     
                     if (isWithdraw && isPending && isNotMyRequest) {
                         allPendingRequests.push({
@@ -1506,17 +1799,26 @@ function updatePendingVoteDisplay(requests) {
         return;
     }
     
+    // Luôn hiển thị section để user biết có phần này
+    voteSection.style.display = 'block';
+    
     // Cập nhật badge
     voteBadge.textContent = requests.length;
     
-    // Hiển thị/ẩn section
+    // Render danh sách yêu cầu hoặc message trống
     if (requests.length === 0) {
-        voteSection.style.display = 'none';
+        voteBody.innerHTML = `
+            <tr>
+                <td colspan="6" class="empty-table">
+                    <div class="empty-state">
+                        <i class="fas fa-check-circle"></i>
+                        <p>Không có yêu cầu nào cần bỏ phiếu</p>
+                    </div>
+                </td>
+            </tr>
+        `;
         return;
     }
-    
-    // Hiển thị section
-    voteSection.style.display = 'block';
     
     // Render danh sách yêu cầu
     voteBody.innerHTML = requests.map(req => {
@@ -1613,6 +1915,7 @@ async function loadTransactionHistory() {
     try {
         const statusEl = document.getElementById('filterStatus');
         const typeEl = document.getElementById('filterType');
+        const categoryEl = document.getElementById('filterCategory');
         const status = statusEl ? statusEl.value : '';
         const type = typeEl ? typeEl.value : '';
         
@@ -1626,6 +1929,14 @@ async function loadTransactionHistory() {
         const transactions = await response.json();
         
         updateTransactionTable(transactions);
+        
+        // Update category filter event listener
+        if (categoryEl && !categoryEl.hasAttribute('data-listener-added')) {
+            categoryEl.setAttribute('data-listener-added', 'true');
+            categoryEl.addEventListener('change', () => {
+                loadTransactionHistory();
+            });
+        }
         
     } catch (error) {
         console.error('Error loading transaction history:', error);
@@ -1650,16 +1961,65 @@ function updateTransactionTable(transactions) {
         return;
     }
     
-    tbody.innerHTML = transactions.map(t => `
+    // Phân loại giao dịch theo mục đích
+    const categorizeTransaction = (purpose) => {
+        if (!purpose) return 'other';
+        const purposeLower = purpose.toLowerCase();
+        if (purposeLower.includes('bảo dưỡng') || purposeLower.includes('maintenance') || 
+            purposeLower.includes('sửa chữa') || purposeLower.includes('repair')) {
+            return 'maintenance';
+        }
+        if (purposeLower.includes('dự phòng') || purposeLower.includes('reserve') || 
+            purposeLower.includes('phòng ngừa') || purposeLower.includes('emergency')) {
+            return 'reserve';
+        }
+        return 'other';
+    };
+    
+    const categoryEl = document.getElementById('filterCategory');
+    const selectedCategory = categoryEl ? categoryEl.value : '';
+    
+    let filteredTransactions = transactions;
+    if (selectedCategory) {
+        filteredTransactions = transactions.filter(t => {
+            const category = categorizeTransaction(t.purpose);
+            return category === selectedCategory;
+        });
+    }
+    
+    if (filteredTransactions.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="6" class="empty-table">
+                    <div class="empty-state">
+                        <i class="fas fa-filter"></i>
+                        <p>Không có giao dịch nào phù hợp với bộ lọc</p>
+                    </div>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+    
+    tbody.innerHTML = filteredTransactions.map(t => {
+        const category = categorizeTransaction(t.purpose);
+        const categoryBadge = category === 'maintenance' ? '<span class="badge badge-info">🔧 Bảo Dưỡng</span>' :
+                            category === 'reserve' ? '<span class="badge badge-warning">🛡️ Dự Phòng</span>' :
+                            '<span class="badge badge-secondary">📋 Khác</span>';
+        
+        return `
         <tr>
-            <td>${formatFundDate(t.createdAt)}</td>
+            <td>${formatFundDate(t.date || t.createdAt)}</td>
             <td>
-                <span class="badge ${t.type === 'Deposit' ? 'badge-success' : 'badge-warning'}">
-                    ${t.type === 'Deposit' ? '📥 Nạp tiền' : '📤 Rút tiền'}
-                </span>
+                <div style="display: flex; flex-direction: column; gap: 0.25rem;">
+                    <span class="badge ${t.transactionType === 'Deposit' ? 'badge-success' : 'badge-warning'}">
+                        ${t.transactionType === 'Deposit' ? '📥 Nạp tiền' : '📤 Rút tiền'}
+                    </span>
+                    ${categoryBadge}
+                </div>
             </td>
             <td>${t.purpose || '-'}</td>
-            <td class="amount ${t.type === 'Withdraw' ? 'negative' : 'positive'}">
+            <td class="amount ${t.transactionType === 'Withdraw' ? 'negative' : 'positive'}">
                 ${formatFundCurrency(t.amount)}
             </td>
             <td>
@@ -1667,9 +2027,10 @@ function updateTransactionTable(transactions) {
                     ${getFundStatusIcon(t.status)} ${getFundStatusText(t.status)}
                 </span>
             </td>
-            <td>${t.createdByName || 'Unknown'}</td>
+            <td>User #${t.userId || 'Unknown'}</td>
         </tr>
-    `).join('');
+    `;
+    }).join('');
 }
 
 // Modal functions
@@ -2940,5 +3301,453 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
+    
+    // Initialize Create Decision Modal
+    const createDecisionForm = document.getElementById('createDecisionForm');
+    if (createDecisionForm) {
+        createDecisionForm.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const groupId = document.getElementById('decisionGroup').value;
+            const decisionType = document.getElementById('decisionType').value;
+            const topic = document.getElementById('decisionTopic').value;
+            const optionA = document.getElementById('decisionOptionA').value;
+            const optionB = document.getElementById('decisionOptionB').value;
+            
+            if (!groupId || !decisionType || !topic || !optionA || !optionB) {
+                showToast('Vui lòng điền đầy đủ thông tin', 'error');
+                return;
+            }
+            
+            try {
+                const voteData = {
+                    topic: topic,
+                    optionA: optionA,
+                    optionB: optionB
+                };
+                
+                const response = await fetch(`${API.GROUPS}/${groupId}/votes`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(voteData)
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || errorData.error || 'Failed to create decision');
+                }
+                
+                const result = await response.json();
+                showToast('✅ Đã tạo quyết định chung thành công!', 'success');
+                closeCreateDecisionModal();
+                await loadGroupDecisions();
+                
+            } catch (error) {
+                console.error('Error creating decision:', error);
+                showToast('❌ Lỗi: ' + error.message, 'error');
+            }
+        });
+    }
+    
+    // Load groups for decision modal
+    const decisionGroupSelect = document.getElementById('decisionGroup');
+    if (decisionGroupSelect) {
+        // Load groups when modal opens
+        window.openCreateDecisionModal = function() {
+            const modal = document.getElementById('createDecisionModal');
+            if (modal) {
+                modal.classList.add('show');
+                modal.style.display = 'flex';
+                const form = document.getElementById('createDecisionForm');
+                if (form) form.reset();
+                loadFundGroupsForDecision();
+            }
+        };
+        
+        window.closeCreateDecisionModal = function() {
+            const modal = document.getElementById('createDecisionModal');
+            if (modal) {
+                modal.classList.remove('show');
+                modal.style.display = 'none';
+            }
+        };
+    }
+    
+    // Close decision modal when clicking outside
+    const createDecisionModal = document.getElementById('createDecisionModal');
+    if (createDecisionModal) {
+        createDecisionModal.addEventListener('click', function(e) {
+            if (e.target === createDecisionModal) {
+                closeCreateDecisionModal();
+            }
+        });
+    }
 });
+
+// Load fund categories (Quỹ Bảo Dưỡng, Phí Dự Phòng)
+async function loadFundCategories() {
+    try {
+        const response = await fetch(`${API.FUND}/transactions?userId=${CURRENT_USER_ID}`);
+        if (!response.ok) throw new Error('Failed to load transactions');
+        
+        const transactions = await response.json();
+        
+        // Phân loại giao dịch
+        const categorizeTransaction = (purpose) => {
+            if (!purpose) return 'other';
+            const purposeLower = purpose.toLowerCase();
+            if (purposeLower.includes('bảo dưỡng') || purposeLower.includes('maintenance') || 
+                purposeLower.includes('sửa chữa') || purposeLower.includes('repair')) {
+                return 'maintenance';
+            }
+            if (purposeLower.includes('dự phòng') || purposeLower.includes('reserve') || 
+                purposeLower.includes('phòng ngừa') || purposeLower.includes('emergency')) {
+                return 'reserve';
+            }
+            return 'other';
+        };
+        
+        let maintenanceDeposited = 0, maintenanceSpent = 0;
+        let reserveDeposited = 0, reserveSpent = 0;
+        
+        transactions.forEach(t => {
+            const category = categorizeTransaction(t.purpose);
+            const amount = parseFloat(t.amount) || 0;
+            
+            if (category === 'maintenance') {
+                if (t.transactionType === 'Deposit') {
+                    maintenanceDeposited += amount;
+                } else if (t.transactionType === 'Withdraw') {
+                    maintenanceSpent += amount;
+                }
+            } else if (category === 'reserve') {
+                if (t.transactionType === 'Deposit') {
+                    reserveDeposited += amount;
+                } else if (t.transactionType === 'Withdraw') {
+                    reserveSpent += amount;
+                }
+            }
+        });
+        
+        const maintenanceBalance = maintenanceDeposited - maintenanceSpent;
+        const reserveBalance = reserveDeposited - reserveSpent;
+        
+        // Update UI
+        const maintenanceBalanceEl = document.getElementById('maintenanceFundBalance');
+        const maintenanceSpentEl = document.getElementById('maintenanceSpent');
+        const maintenanceDepositedEl = document.getElementById('maintenanceDeposited');
+        
+        const reserveBalanceEl = document.getElementById('reserveFundBalance');
+        const reserveSpentEl = document.getElementById('reserveSpent');
+        const reserveDepositedEl = document.getElementById('reserveDeposited');
+        
+        if (maintenanceBalanceEl) maintenanceBalanceEl.textContent = formatFundCurrency(maintenanceBalance);
+        if (maintenanceSpentEl) maintenanceSpentEl.textContent = formatFundCurrency(maintenanceSpent);
+        if (maintenanceDepositedEl) maintenanceDepositedEl.textContent = formatFundCurrency(maintenanceDeposited);
+        
+        if (reserveBalanceEl) reserveBalanceEl.textContent = formatFundCurrency(reserveBalance);
+        if (reserveSpentEl) reserveSpentEl.textContent = formatFundCurrency(reserveSpent);
+        if (reserveDepositedEl) reserveDepositedEl.textContent = formatFundCurrency(reserveDeposited);
+        
+    } catch (error) {
+        console.error('Error loading fund categories:', error);
+    }
+}
+
+// Load group decisions (Quyết định chung)
+async function loadGroupDecisions() {
+    try {
+        // Get user's groups
+        const groupsResponse = await fetch(`/api/groups/user/${CURRENT_USER_ID}`);
+        if (!groupsResponse.ok) {
+            console.error('Failed to load user groups');
+            return;
+        }
+        
+        const groups = await groupsResponse.json();
+        const allDecisions = [];
+        
+        // Load votes from all groups
+        for (const group of groups) {
+            try {
+                const votesResponse = await fetch(`${API.GROUPS}/${group.groupId}/votes`);
+                if (votesResponse.ok) {
+                    const votes = await votesResponse.json();
+                    votes.forEach(vote => {
+                        allDecisions.push({
+                            ...vote,
+                            groupId: group.groupId,
+                            groupName: group.groupName || `Nhóm ${group.groupId}`
+                        });
+                    });
+                }
+            } catch (e) {
+                console.warn(`Error loading votes for group ${group.groupId}:`, e);
+            }
+        }
+        
+        // Categorize decisions by type
+        const categorizeDecision = (topic) => {
+            if (!topic) return 'other';
+            const topicLower = topic.toLowerCase();
+            if (topicLower.includes('pin') || topicLower.includes('battery')) return 'battery_upgrade';
+            if (topicLower.includes('bảo hiểm') || topicLower.includes('insurance')) return 'insurance';
+            if (topicLower.includes('bán') || topicLower.includes('sell')) return 'sell_vehicle';
+            if (topicLower.includes('bảo dưỡng') || topicLower.includes('maintenance')) return 'maintenance';
+            return 'other';
+        };
+        
+        const getDecisionTypeLabel = (type) => {
+            const labels = {
+                'battery_upgrade': '🔋 Nâng cấp pin',
+                'insurance': '🛡️ Bảo hiểm',
+                'sell_vehicle': '🚗 Bán xe',
+                'maintenance': '🔧 Bảo dưỡng lớn',
+                'upgrade': '⚡ Nâng cấp khác',
+                'other': '📋 Khác'
+            };
+            return labels[type] || '📋 Khác';
+        };
+        
+        // Separate decisions
+        const pendingDecisions = allDecisions.filter(d => !d.finalResult);
+        const myDecisions = allDecisions.filter(d => {
+            // Assuming creator info might be in the vote or we need to check differently
+            // For now, show all decisions
+            return true;
+        });
+        
+        // Update badges
+        const pendingBadge = document.getElementById('pendingDecisionsBadge');
+        if (pendingBadge) pendingBadge.textContent = pendingDecisions.length;
+        
+        // Update tables
+        updateAllDecisionsTable(allDecisions, categorizeDecision, getDecisionTypeLabel);
+        updatePendingDecisionsTable(pendingDecisions, categorizeDecision, getDecisionTypeLabel);
+        updateMyDecisionsTable(myDecisions, categorizeDecision, getDecisionTypeLabel);
+        
+    } catch (error) {
+        console.error('Error loading group decisions:', error);
+    }
+}
+
+function updateAllDecisionsTable(decisions, categorizeDecision, getDecisionTypeLabel) {
+    const tbody = document.getElementById('allDecisionsBody');
+    if (!tbody) return;
+    
+    if (decisions.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="7" class="empty-table">
+                    <div class="empty-state">
+                        <i class="fas fa-vote-yea"></i>
+                        <p>Chưa có quyết định nào</p>
+                    </div>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+    
+    tbody.innerHTML = decisions.map(d => {
+        const type = categorizeDecision(d.topic);
+        const typeLabel = getDecisionTypeLabel(type);
+        const status = d.finalResult ? 'completed' : 'pending';
+        const statusBadge = status === 'completed' 
+            ? '<span class="badge badge-success">✅ Hoàn tất</span>'
+            : '<span class="badge badge-warning">⏳ Đang chờ</span>';
+        
+        return `
+        <tr>
+            <td>${typeLabel}</td>
+            <td><strong>${d.topic || '-'}</strong></td>
+            <td>User #${d.groupId || 'Unknown'}</td>
+            <td>${formatFundDate(d.createdAt)}</td>
+            <td>${statusBadge}</td>
+            <td>${d.finalResult || '<span class="text-muted">Chưa có kết quả</span>'}</td>
+            <td>
+                <button class="btn btn-sm btn-outline" onclick="viewDecisionDetail(${d.voteId})">
+                    <i class="fas fa-eye"></i> Xem
+                </button>
+                ${!d.finalResult ? `
+                    <button class="btn btn-sm btn-success" onclick="voteOnDecision(${d.voteId}, 'A')">
+                        <i class="fas fa-check"></i> Đồng ý
+                    </button>
+                    <button class="btn btn-sm btn-danger" onclick="voteOnDecision(${d.voteId}, 'B')">
+                        <i class="fas fa-times"></i> Từ chối
+                    </button>
+                ` : ''}
+            </td>
+        </tr>
+    `;
+    }).join('');
+}
+
+function updatePendingDecisionsTable(decisions, categorizeDecision, getDecisionTypeLabel) {
+    const tbody = document.getElementById('pendingDecisionsBody');
+    if (!tbody) return;
+    
+    if (decisions.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="6" class="empty-table">
+                    <div class="empty-state">
+                        <i class="fas fa-check-circle"></i>
+                        <p>Không có quyết định nào đang chờ vote</p>
+                    </div>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+    
+    tbody.innerHTML = decisions.map(d => {
+        const type = categorizeDecision(d.topic);
+        const typeLabel = getDecisionTypeLabel(type);
+        const progress = `${d.totalVotes || 0} phiếu`;
+        
+        return `
+        <tr>
+            <td>${typeLabel}</td>
+            <td><strong>${d.topic || '-'}</strong></td>
+            <td>User #${d.groupId || 'Unknown'}</td>
+            <td>${formatFundDate(d.createdAt)}</td>
+            <td>${progress}</td>
+            <td>
+                <button class="btn btn-sm btn-success" onclick="voteOnDecision(${d.voteId}, 'A')">
+                    <i class="fas fa-check"></i> Đồng ý
+                </button>
+                <button class="btn btn-sm btn-danger" onclick="voteOnDecision(${d.voteId}, 'B')">
+                    <i class="fas fa-times"></i> Từ chối
+                </button>
+            </td>
+        </tr>
+    `;
+    }).join('');
+}
+
+function updateMyDecisionsTable(decisions, categorizeDecision, getDecisionTypeLabel) {
+    const tbody = document.getElementById('myDecisionsBody');
+    if (!tbody) return;
+    
+    if (decisions.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="6" class="empty-table">
+                    <div class="empty-state">
+                        <i class="fas fa-user"></i>
+                        <p>Bạn chưa tạo quyết định nào</p>
+                    </div>
+                </td>
+            </tr>
+        `;
+        return;
+    }
+    
+    tbody.innerHTML = decisions.map(d => {
+        const type = categorizeDecision(d.topic);
+        const typeLabel = getDecisionTypeLabel(type);
+        const status = d.finalResult ? 'completed' : 'pending';
+        const statusBadge = status === 'completed' 
+            ? '<span class="badge badge-success">✅ Hoàn tất</span>'
+            : '<span class="badge badge-warning">⏳ Đang chờ</span>';
+        
+        return `
+        <tr>
+            <td>${typeLabel}</td>
+            <td><strong>${d.topic || '-'}</strong></td>
+            <td>${formatFundDate(d.createdAt)}</td>
+            <td>${statusBadge}</td>
+            <td>${d.finalResult || '<span class="text-muted">Chưa có kết quả</span>'}</td>
+            <td>
+                <button class="btn btn-sm btn-outline" onclick="viewDecisionDetail(${d.voteId})">
+                    <i class="fas fa-eye"></i> Xem
+                </button>
+            </td>
+        </tr>
+    `;
+    }).join('');
+}
+
+// Switch decision tab
+function switchDecisionTab(tabName) {
+    // Update tab buttons
+    document.querySelectorAll('.decision-tabs .tab-btn').forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.getAttribute('data-tab') === tabName) {
+            btn.classList.add('active');
+        }
+    });
+    
+    // Update tab content
+    document.querySelectorAll('.decision-tab-content').forEach(content => {
+        content.classList.remove('active');
+        if (content.id === `${tabName}-tab`) {
+            content.classList.add('active');
+        }
+    });
+}
+
+// Load groups for decision modal
+async function loadFundGroupsForDecision() {
+    try {
+        const response = await fetch(`/api/groups/user/${CURRENT_USER_ID}`);
+        if (!response.ok) throw new Error('Failed to load groups');
+        
+        const groups = await response.json();
+        const select = document.getElementById('decisionGroup');
+        if (select) {
+            select.innerHTML = '<option value="">Chọn nhóm</option>' +
+                groups.map(g => `<option value="${g.groupId}">${g.groupName}</option>`).join('');
+        }
+    } catch (error) {
+        console.error('Error loading groups for decision:', error);
+        const select = document.getElementById('decisionGroup');
+        if (select) select.innerHTML = '<option value="">Không thể tải nhóm</option>';
+    }
+}
+
+// Vote on decision
+async function voteOnDecision(voteId, choice) {
+    if (!confirm(`Bạn có chắc chắn muốn chọn "${choice === 'A' ? 'Đồng ý' : 'Từ chối'}" không?`)) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`${API.GROUPS}/votes/${voteId}/results`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                userId: CURRENT_USER_ID,
+                choice: choice
+            })
+        });
+        
+        const responseData = await response.json();
+        
+        if (!response.ok) {
+            const errorMsg = responseData.error || responseData.message || 'Failed to vote';
+            throw new Error(errorMsg);
+        }
+        
+        showToast(`✅ Bạn đã bỏ phiếu "${choice === 'A' ? 'Đồng ý' : 'Từ chối'}" thành công!`, 'success');
+        
+        // Reload decisions to show updated status
+        await loadGroupDecisions();
+        
+    } catch (error) {
+        console.error('Error voting on decision:', error);
+        showToast('❌ Lỗi: ' + error.message, 'error');
+    }
+}
+
+// View decision detail
+function viewDecisionDetail(voteId) {
+    // Navigate to voting page or show modal
+    window.location.href = `/groups/voting?voteId=${voteId}`;
+}
 

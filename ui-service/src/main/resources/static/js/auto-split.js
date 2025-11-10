@@ -20,6 +20,22 @@ function initializeForm() {
     if (costForm) {
         costForm.addEventListener('submit', handleFormSubmit);
     }
+
+    // Add event listeners for auto-update preview
+    const vehicleSelect = document.getElementById('vehicleId');
+    if (vehicleSelect) {
+        vehicleSelect.addEventListener('change', updatePreview);
+    }
+
+    const amountInput = document.getElementById('amount');
+    if (amountInput) {
+        amountInput.addEventListener('input', updatePreview);
+    }
+
+    const splitMethodSelect = document.getElementById('splitMethod');
+    if (splitMethodSelect) {
+        splitMethodSelect.addEventListener('change', updatePreview);
+    }
 }
 
 // Load vehicles (groups)
@@ -31,15 +47,40 @@ async function loadVehicles() {
         groupsData = await response.json();
         const vehicleSelect = document.getElementById('vehicleId');
         
-        if (vehicleSelect && groupsData && groupsData.length > 0) {
-            vehicleSelect.innerHTML = '<option value="">-- Chọn xe --</option>' +
-                groupsData.map(g => 
-                    `<option value="${g.vehicleId}" data-group-id="${g.groupId}">${g.groupName}</option>`
-                ).join('');
+        if (!vehicleSelect) {
+            console.error('Vehicle select element not found');
+            return;
         }
+
+        if (!groupsData || groupsData.length === 0) {
+            vehicleSelect.innerHTML = '<option value="">-- Không có xe nào --</option>';
+            showNotification('Không có nhóm/xe nào trong hệ thống', 'warning');
+            return;
+        }
+
+        // Filter groups that have both groupId and vehicleId
+        const validGroups = groupsData.filter(g => g.groupId && g.vehicleId);
+        
+        if (validGroups.length === 0) {
+            vehicleSelect.innerHTML = '<option value="">-- Không có xe hợp lệ --</option>';
+            showNotification('Không có xe nào có dữ liệu hợp lệ', 'warning');
+            return;
+        }
+
+        vehicleSelect.innerHTML = '<option value="">-- Chọn xe --</option>' +
+            validGroups.map(g => {
+                const groupName = g.groupName || `Group ${g.groupId}`;
+                return `<option value="${g.vehicleId}" data-group-id="${g.groupId}">${groupName}</option>`;
+            }).join('');
+
+        console.log(`Loaded ${validGroups.length} vehicles/groups`);
     } catch (error) {
         console.error('Error loading vehicles:', error);
-        showNotification('Không thể tải danh sách xe', 'error');
+        const vehicleSelect = document.getElementById('vehicleId');
+        if (vehicleSelect) {
+            vehicleSelect.innerHTML = '<option value="">-- Lỗi tải dữ liệu --</option>';
+        }
+        showNotification('Không thể tải danh sách xe: ' + error.message, 'error');
     }
 }
 
@@ -120,14 +161,28 @@ async function updatePreview() {
     const amount = parseFloat(document.getElementById('amount').value) || 0;
     const splitMethod = document.getElementById('splitMethod').value;
 
-    if (!vehicleSelect.value || !amount || !splitMethod) {
+    if (!vehicleSelect || !vehicleSelect.value || !amount || !splitMethod) {
         document.getElementById('previewSection').style.display = 'none';
         return;
     }
 
     // Get groupId from selected vehicle
     const selectedOption = vehicleSelect.options[vehicleSelect.selectedIndex];
-    const groupId = selectedOption.dataset.groupId;
+    if (!selectedOption || !selectedOption.dataset || !selectedOption.dataset.groupId) {
+        console.error('Không tìm thấy groupId cho xe đã chọn');
+        document.getElementById('previewSection').style.display = 'none';
+        showNotification('Vui lòng chọn xe hợp lệ', 'error');
+        return;
+    }
+
+    const groupId = parseInt(selectedOption.dataset.groupId);
+    if (isNaN(groupId) || groupId <= 0) {
+        console.error('groupId không hợp lệ:', selectedOption.dataset.groupId);
+        document.getElementById('previewSection').style.display = 'none';
+        showNotification('Dữ liệu xe không hợp lệ. Vui lòng làm mới trang.', 'error');
+        return;
+    }
+
     currentGroupId = groupId;
 
     try {
@@ -140,7 +195,7 @@ async function updatePreview() {
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                groupId: parseInt(groupId),
+                groupId: groupId,
                 amount: amount,
                 splitMethod: splitMethod,
                 month: new Date().getMonth() + 1,
@@ -148,15 +203,28 @@ async function updatePreview() {
             })
         });
 
-        if (!response.ok) throw new Error('Failed to get preview');
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            throw new Error(errorData.message || `Lỗi ${response.status}: ${response.statusText}`);
+        }
 
         const preview = await response.json();
+        
+        // Validate preview response
+        if (!preview || !preview.shares || !Array.isArray(preview.shares)) {
+            throw new Error('Dữ liệu preview không hợp lệ từ server');
+        }
+
+        if (preview.shares.length === 0) {
+            displayEmptyPreview(amount, splitMethod);
+            return;
+        }
+
         displayPreview(preview, amount, splitMethod);
 
     } catch (error) {
         console.error('Error getting preview:', error);
-        // Fallback to simple preview
-        displaySimplePreview(amount, splitMethod);
+        displayErrorPreview(amount, splitMethod, error.message);
     } finally {
         hideLoading();
     }
@@ -164,19 +232,44 @@ async function updatePreview() {
 
 // Display preview
 function displayPreview(preview, amount, splitMethod) {
-    document.getElementById('previewSection').style.display = 'block';
-    document.getElementById('previewTotal').textContent = formatMoney(amount);
-    document.getElementById('previewMembers').textContent = preview.shares.length;
-    document.getElementById('previewMethod').textContent = getSplitMethodLabel(splitMethod);
+    const previewSection = document.getElementById('previewSection');
+    if (!previewSection) {
+        console.error('Preview section not found');
+        return;
+    }
 
+    previewSection.style.display = 'block';
+    
+    const previewTotal = document.getElementById('previewTotal');
+    const previewMembers = document.getElementById('previewMembers');
+    const previewMethod = document.getElementById('previewMethod');
     const tbody = document.getElementById('previewTableBody');
-    tbody.innerHTML = preview.shares.map(share => `
-        <tr>
-            <td><strong>User ${share.userId}</strong></td>
-            <td><span class="badge badge-primary">${share.percent.toFixed(2)}%</span></td>
-            <td><strong>${formatMoney(share.amountShare)}</strong></td>
-        </tr>
-    `).join('');
+
+    if (previewTotal) previewTotal.textContent = formatMoney(amount);
+    if (previewMembers) previewMembers.textContent = preview.shares ? preview.shares.length : 0;
+    if (previewMethod) previewMethod.textContent = getSplitMethodLabel(splitMethod);
+
+    if (tbody && preview.shares && preview.shares.length > 0) {
+        tbody.innerHTML = preview.shares.map(share => {
+            const percent = share.percent != null ? parseFloat(share.percent).toFixed(2) : '0.00';
+            const amountShare = share.amountShare != null ? share.amountShare : 0;
+            return `
+                <tr>
+                    <td><strong>User ${share.userId || 'N/A'}</strong></td>
+                    <td><span class="badge badge-primary">${percent}%</span></td>
+                    <td><strong>${formatMoney(amountShare)}</strong></td>
+                </tr>
+            `;
+        }).join('');
+    } else {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="3" class="text-center">
+                    Không có dữ liệu để hiển thị
+                </td>
+            </tr>
+        `;
+    }
 }
 
 // Display simple preview (fallback)
@@ -191,6 +284,43 @@ function displaySimplePreview(amount, splitMethod) {
         <tr>
             <td colspan="3" class="text-center">
                 <i class="fas fa-spinner fa-spin"></i> Đang tải preview...
+            </td>
+        </tr>
+    `;
+}
+
+// Display empty preview
+function displayEmptyPreview(amount, splitMethod) {
+    document.getElementById('previewSection').style.display = 'block';
+    document.getElementById('previewTotal').textContent = formatMoney(amount);
+    document.getElementById('previewMembers').textContent = '0';
+    document.getElementById('previewMethod').textContent = getSplitMethodLabel(splitMethod);
+
+    const tbody = document.getElementById('previewTableBody');
+    tbody.innerHTML = `
+        <tr>
+            <td colspan="3" class="text-center" style="color: #ef4444;">
+                <i class="fas fa-exclamation-triangle"></i> 
+                Không có thành viên nào trong nhóm để chia chi phí
+            </td>
+        </tr>
+    `;
+}
+
+// Display error preview
+function displayErrorPreview(amount, splitMethod, errorMessage) {
+    document.getElementById('previewSection').style.display = 'block';
+    document.getElementById('previewTotal').textContent = formatMoney(amount);
+    document.getElementById('previewMembers').textContent = '-';
+    document.getElementById('previewMethod').textContent = getSplitMethodLabel(splitMethod);
+
+    const tbody = document.getElementById('previewTableBody');
+    tbody.innerHTML = `
+        <tr>
+            <td colspan="3" class="text-center" style="color: #ef4444; padding: 1rem;">
+                <i class="fas fa-exclamation-circle"></i><br>
+                <strong>Không thể tải preview</strong><br>
+                <small style="color: #6b7280;">${errorMessage || 'Vui lòng thử lại sau'}</small>
             </td>
         </tr>
     `;

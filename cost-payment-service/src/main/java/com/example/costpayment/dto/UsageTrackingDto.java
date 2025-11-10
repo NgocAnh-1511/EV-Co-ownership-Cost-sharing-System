@@ -14,13 +14,10 @@ public class UsageTrackingDto {
     private Integer month;
     private Integer year;
     private Double kmDriven;
-    private Double hoursUsed;
-    private String note;
     private LocalDateTime recordedAt;
     
     // Thêm field tính toán
     private Double percentKm;      // % km so với tổng nhóm
-    private Double percentHours;   // % giờ so với tổng nhóm
 }
 
 

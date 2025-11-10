@@ -32,12 +32,6 @@ public class UsageTracking {
     @Column(name = "kmDriven")
     private Double kmDriven;
 
-    @Column(name = "hoursUsed")
-    private Double hoursUsed;
-
-    @Column(name = "note", length = 500)
-    private String note;
-
     @Column(name = "recordedAt")
     private LocalDateTime recordedAt;
 

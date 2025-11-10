@@ -362,6 +362,37 @@ public class FundRestController {
     }
 
     /**
+     * Admin rút tiền trực tiếp (không cần vote)
+     * POST /api/fund/withdraw/admin
+     * Body: { fundId, userId (adminId), amount, purpose, receiptUrl? }
+     */
+    @PostMapping("/withdraw/admin")
+    public ResponseEntity<?> adminDirectWithdraw(@RequestBody Map<String, Object> request) {
+        try {
+            String url = costPaymentServiceUrl + "/api/funds/withdraw/admin";
+            logger.info("Admin direct withdraw request: {} to URL: {}", request, url);
+            
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(request, headers);
+            
+            ResponseEntity<Map> response = restTemplate.exchange(
+                url,
+                HttpMethod.POST,
+                entity,
+                Map.class
+            );
+            
+            logger.info("Admin direct withdraw response: {}", response.getBody());
+            return ResponseEntity.ok(response.getBody());
+        } catch (Exception e) {
+            logger.error("Error processing admin direct withdraw: {}", e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    /**
      * Lấy quỹ theo groupId
      * GET /api/fund/group/{groupId}
      */

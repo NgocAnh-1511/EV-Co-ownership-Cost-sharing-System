@@ -24,12 +24,17 @@ public class Cost {
     @Column(name = "description", columnDefinition = "TEXT")
     private String description;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "status")
+    private CostStatus status;
+
     @Column(name = "createdAt")
     private LocalDateTime createdAt;
 
     // Constructors
     public Cost() {
         this.createdAt = LocalDateTime.now();
+        this.status = CostStatus.PENDING;
     }
 
     public Cost(Integer vehicleId, CostType costType, Double amount, String description) {
@@ -89,6 +94,14 @@ public class Cost {
         this.createdAt = createdAt;
     }
 
+    public CostStatus getStatus() {
+        return status;
+    }
+
+    public void setStatus(CostStatus status) {
+        this.status = status;
+    }
+
     // CostType enum
     public enum CostType {
         ElectricCharge("Sạc điện"),
@@ -109,6 +122,22 @@ public class Cost {
         }
     }
 
+    // CostStatus enum
+    public enum CostStatus {
+        PENDING("Chưa chia"),
+        SHARED("Đã chia");
+
+        private final String displayName;
+
+        CostStatus(String displayName) {
+            this.displayName = displayName;
+        }
+
+        public String getDisplayName() {
+            return displayName;
+        }
+    }
+
     @Override
     public String toString() {
         return "Cost{" +
@@ -117,6 +146,7 @@ public class Cost {
                 ", costType=" + costType +
                 ", amount=" + amount +
                 ", description='" + description + '\'' +
+                ", status=" + status +
                 ", createdAt=" + createdAt +
                 '}';
     }

@@ -239,14 +239,52 @@ public class FundServiceImpl implements FundService {
         FundTransaction transaction = transactionRepository.findById(request.getTransactionId())
             .orElseThrow(() -> new RuntimeException("Không tìm thấy giao dịch"));
 
-        // Kiểm tra trạng thái: CHỈ approve khi đã có > 50% đồng ý (status = Approved)
-        if (transaction.getStatus() != TransactionStatus.Approved) {
+        // Kiểm tra trạng thái: CHỈ approve khi status = Pending
+        if (transaction.getStatus() != TransactionStatus.Pending) {
             throw new IllegalStateException(
-                "Chỉ có thể phê duyệt yêu cầu khi đã có > 50% thành viên đồng ý. " +
+                "Chỉ có thể phê duyệt yêu cầu đang ở trạng thái Pending. " +
                 "Hiện tại trạng thái: " + transaction.getStatus());
         }
 
-        // Lấy quỹ
+        // KIỂM TRA: Phải đảm bảo có >50% thành viên đồng ý mới được phê duyệt
+        try {
+            // Lấy số thành viên nhóm
+            GroupFund fund = groupFundRepository.findById(transaction.getFundId())
+                .orElseThrow(() -> new RuntimeException("Không tìm thấy quỹ"));
+            
+            int totalMembers = getGroupMemberCount(fund.getGroupId());
+            if (totalMembers <= 0) {
+                throw new IllegalStateException("Không thể lấy số thành viên nhóm");
+            }
+            
+            // Đếm số phiếu đồng ý
+            long approveCount = voteRepository.countApprovesByTransactionId(request.getTransactionId());
+            
+            // Tính tỷ lệ: approveCount / (totalMembers - 1) vì trừ người tạo request
+            int eligibleVoters = totalMembers - 1; // Trừ người tạo request
+            if (eligibleVoters <= 0) {
+                throw new IllegalStateException("Không có thành viên nào có thể vote");
+            }
+            
+            double approvalRate = (double) approveCount / eligibleVoters;
+            logger.info("Admin approval check: approveCount={}, eligibleVoters={}, approvalRate={}%", 
+                approveCount, eligibleVoters, String.format("%.2f", approvalRate * 100));
+            
+            // PHẢI > 50% mới được phê duyệt (không phải >= 50%)
+            if (approvalRate <= 0.5) {
+                throw new IllegalStateException(
+                    String.format("Không thể phê duyệt: chỉ có %.1f%% thành viên đồng ý (cần >50%%)", 
+                        approvalRate * 100));
+            }
+        } catch (IllegalStateException e) {
+            // Re-throw IllegalStateException
+            throw e;
+        } catch (Exception e) {
+            logger.error("Error checking approval rate for admin approval: {}", e.getMessage(), e);
+            throw new IllegalStateException("Không thể kiểm tra tỷ lệ đồng ý: " + e.getMessage());
+        }
+
+        // Lấy quỹ (lấy lại để đảm bảo có dữ liệu mới nhất)
         GroupFund fund = groupFundRepository.findById(transaction.getFundId())
             .orElseThrow(() -> new RuntimeException("Không tìm thấy quỹ"));
 
@@ -397,45 +435,34 @@ public class FundServiceImpl implements FundService {
             return transaction;
         }
 
-        // Nếu vote approve, kiểm tra xem có đạt > 50% đồng ý không
+        // Nếu vote approve, chỉ tính số phiếu và log thống kê
+        // KHÔNG thay đổi status - status chỉ thay đổi khi admin approve/reject
         try {
-            // Lấy số thành viên nhóm
+            // Lấy số thành viên nhóm để tính tỷ lệ
             GroupFund fund = groupFundRepository.findById(transaction.getFundId())
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy quỹ"));
             
             int totalMembers = getGroupMemberCount(fund.getGroupId());
-            if (totalMembers <= 0) {
-                logger.warn("Cannot get member count for groupId={}, assuming 1", fund.getGroupId());
-                totalMembers = 1;
-            }
-
-            // Đếm số phiếu đồng ý
-            long approveCount = voteRepository.countApprovesByTransactionId(request.getTransactionId());
-            
-            // Tính tỷ lệ: approveCount / (totalMembers - 1) vì trừ người tạo request
-            int eligibleVoters = totalMembers - 1; // Trừ người tạo request
-            if (eligibleVoters <= 0) {
-                eligibleVoters = 1; // Fallback
-            }
-
-            double approvalRate = (double) approveCount / eligibleVoters;
-            logger.info("Vote stats: approveCount={}, eligibleVoters={}, approvalRate={}%", 
-                approveCount, eligibleVoters, String.format("%.2f", approvalRate * 100));
-
-            // Nếu > 50% đồng ý, chuyển sang Approved (chờ admin xác nhận)
-            if (approvalRate > 0.5) {
-                // Chuyển sang Approved nhưng không set approvedBy (sẽ set khi admin approve)
-                transaction.setStatus(TransactionStatus.Approved);
-                transactionRepository.save(transaction);
-                logger.info("Transaction {} reached >50% approval, status changed to Approved", 
-                    request.getTransactionId());
+            if (totalMembers > 0) {
+                // Đếm số phiếu đồng ý (sau khi đã lưu vote mới)
+                long approveCount = voteRepository.countApprovesByTransactionId(request.getTransactionId());
+                
+                // Tính tỷ lệ: approveCount / (totalMembers - 1) vì trừ người tạo request
+                int eligibleVoters = totalMembers - 1; // Trừ người tạo request
+                if (eligibleVoters > 0) {
+                    double approvalRate = (double) approveCount / eligibleVoters;
+                    logger.info("Vote recorded: approveCount={}, eligibleVoters={}, approvalRate={}% (Status remains Pending until admin approval)", 
+                        approveCount, eligibleVoters, String.format("%.2f", approvalRate * 100));
+                }
             }
         } catch (Exception e) {
-            logger.error("Error checking approval rate for transaction {}: {}", 
+            logger.error("Error calculating vote stats for transaction {}: {}", 
                 request.getTransactionId(), e.getMessage(), e);
-            // Tiếp tục với status Pending nếu có lỗi
+            // Không ảnh hưởng đến vote - chỉ là thống kê
         }
 
+        // QUAN TRỌNG: Giữ nguyên status Pending - không tự động chuyển sang Approved
+        // Admin sẽ quyết định approve/reject dựa trên số phiếu khi xem request
         return transaction;
     }
 

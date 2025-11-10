@@ -18,6 +18,7 @@ CREATE TABLE Cost (
     `costType` ENUM('ElectricCharge','Maintenance','Insurance','Inspection','Cleaning','Other') DEFAULT 'Other',
     `amount` DOUBLE NOT NULL,
     `description` TEXT,
+    `status` ENUM('PENDING','SHARED') DEFAULT 'PENDING',
     `createdAt` DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 

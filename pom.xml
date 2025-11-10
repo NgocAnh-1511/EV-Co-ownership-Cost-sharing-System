@@ -14,6 +14,8 @@
         <module>ReservationAdminService</module>
         <module>AIService</module>
         <module>ui-service</module>
+        <module>group-management-service</module>
+        <module>cost-payment-service</module>
     </modules>
 
     <properties>

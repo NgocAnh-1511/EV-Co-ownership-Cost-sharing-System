@@ -34,8 +34,6 @@ public class UsageTrackingServiceImpl implements UsageTrackingService {
             // Update
             UsageTracking existingUsage = existing.get();
             existingUsage.setKmDriven(usageTracking.getKmDriven());
-            existingUsage.setHoursUsed(usageTracking.getHoursUsed());
-            existingUsage.setNote(usageTracking.getNote());
             return usageTrackingRepository.save(existingUsage);
         } else {
             // Create new
@@ -53,22 +51,14 @@ public class UsageTrackingServiceImpl implements UsageTrackingService {
                 .mapToDouble(u -> u.getKmDriven() != null ? u.getKmDriven() : 0)
                 .sum();
 
-        // Tính tổng giờ
-        double totalHours = usageList.stream()
-                .mapToDouble(u -> u.getHoursUsed() != null ? u.getHoursUsed() : 0)
-                .sum();
-
         // Convert sang DTO và tính %
         return usageList.stream().map(usage -> {
             UsageTrackingDto dto = new UsageTrackingDto();
             BeanUtils.copyProperties(usage, dto);
 
-            // Tính %
+            // Tính % km
             if (totalKm > 0 && usage.getKmDriven() != null) {
                 dto.setPercentKm((usage.getKmDriven() / totalKm) * 100);
-            }
-            if (totalHours > 0 && usage.getHoursUsed() != null) {
-                dto.setPercentHours((usage.getHoursUsed() / totalHours) * 100);
             }
 
             return dto;
