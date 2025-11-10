@@ -2,313 +2,145 @@
 <html lang="vi" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <title>Health Check - EV Co-ownership System</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Health Check - CarShare Manager</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link th:href="@{/css/layout.css}" rel="stylesheet">
 </head>
 <body>
-    <!-- Navigation -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
-        <div class="container">
-            <a class="navbar-brand" href="/">
-                <i class="fas fa-car me-2"></i>
-                EV Co-ownership System
-            </a>
-            <div class="navbar-nav ms-auto">
-                <a class="nav-link" href="/">Dashboard</a>
-                <a class="nav-link" href="/groups">Groups</a>
-                <a class="nav-link" href="/costs">Costs</a>
-                <a class="nav-link active" href="/health">Health</a>
-            </div>
-        </div>
-    </nav>
-
-    <div class="container mt-4">
-        <!-- Page Header -->
-        <div class="row mb-4">
-            <div class="col-12">
-                <h1 class="display-5 text-primary">
-                    <i class="fas fa-heartbeat me-3"></i>
-                    Health Check
-                </h1>
-                <p class="lead text-muted">Kiểm tra trạng thái hoạt động của các microservices</p>
-            </div>
-        </div>
-
-        <!-- Services Status -->
-        <div class="row mb-4">
-            <div class="col-12">
-                <div class="card">
-                    <div class="card-header">
-                        <h5 class="mb-0">
-                            <i class="fas fa-server me-2"></i>
-                            Trạng thái Microservices
-                        </h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="table-responsive">
-                            <table class="table table-hover">
-                                <thead class="table-primary">
-                                    <tr>
-                                        <th>Service</th>
-                                        <th>Port</th>
-                                        <th>Status</th>
-                                        <th>Response Time</th>
-                                        <th>Last Check</th>
-                                        <th>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr th:each="service : ${services}">
-                                        <td>
-                                            <strong th:text="${service.key}">Service Name</strong>
-                                        </td>
-                                        <td>
-                                            <span class="badge bg-info" th:text="${service.key == 'Group Management Service' ? '8082' : '8083'}">Port</span>
-                                        </td>
-                                        <td>
-                                            <span th:if="${service.value.startsWith('UP')}" class="badge bg-success">
-                                                <i class="fas fa-check-circle me-1"></i>
-                                                UP
-                                            </span>
-                                            <span th:if="${!service.value.startsWith('UP')}" class="badge bg-danger">
-                                                <i class="fas fa-times-circle me-1"></i>
-                                                DOWN
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <span th:if="${service.value.startsWith('UP')}" class="text-success">
-                                                <i class="fas fa-clock me-1"></i>
-                                                < 100ms
-                                            </span>
-                                            <span th:if="${!service.value.startsWith('UP')}" class="text-danger">
-                                                <i class="fas fa-exclamation-triangle me-1"></i>
-                                                N/A
-                                            </span>
-                                        </td>
-                                        <td th:text="${#temporals.format(#temporals.createNow(), 'dd/MM/yyyy HH:mm:ss')}">Now</td>
-                                        <td>
-                                            <button class="btn btn-sm btn-outline-primary" th:onclick="'checkService(\'' + ${service.key} + '\')'">
-                                                <i class="fas fa-sync-alt"></i>
-                                                Refresh
-                                            </button>
-                                        </td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- System Information -->
-        <div class="row mb-4">
-            <div class="col-md-6">
-                <div class="card">
-                    <div class="card-header">
-                        <h6 class="mb-0">
-                            <i class="fas fa-info-circle me-2"></i>
-                            Thông tin hệ thống
-                        </h6>
-                    </div>
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-6">
-                                <strong>UI Service:</strong>
-                            </div>
-                            <div class="col-6">
-                                <span class="badge bg-success">UP</span>
-                            </div>
-                        </div>
-                        <hr>
-                        <div class="row">
-                            <div class="col-6">
-                                <strong>Port:</strong>
-                            </div>
-                            <div class="col-6">
-                                8080
-                            </div>
-                        </div>
-                        <hr>
-                        <div class="row">
-                            <div class="col-6">
-                                <strong>Java Version:</strong>
-                            </div>
-                            <div class="col-6">
-                                21
-                            </div>
-                        </div>
-                        <hr>
-                        <div class="row">
-                            <div class="col-6">
-                                <strong>Spring Boot:</strong>
-                            </div>
-                            <div class="col-6">
-                                3.5.6
-                            </div>
-                        </div>
+    <!-- Layout Container -->
+    <div class="layout-container">
+        <!-- Include Sidebar Fragment -->
+        <div th:replace="fragments/sidebar :: sidebar"></div>
+        
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Top Bar -->
+            <div class="top-bar">
+                <div class="top-bar-left">
+                    <button class="mobile-menu-toggle" id="mobileMenuToggle">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <div class="page-info">
+                        <h1 class="page-title">
+                            <i class="fas fa-heartbeat"></i>
+                            System Health Check
+                        </h1>
+                        <p class="page-subtitle">Kiểm tra trạng thái hoạt động của các dịch vụ</p>
                     </div>
                 </div>
             </div>
             
-            <div class="col-md-6">
+            <!-- Content Area -->
+            <div class="content-area">
+                <div class="health-grid">
+                    <div class="health-card">
+                        <div class="health-icon success">
+                            <i class="fas fa-check-circle"></i>
+                        </div>
+                        <div class="health-content">
+                            <h3>UI Service</h3>
+                            <div class="health-status">
+                                <span class="status-badge success">UP</span>
+                                <span class="port-info">Port: 8080</span>
+                            </div>
+                            <p class="health-description">Dịch vụ giao diện người dùng</p>
+                        </div>
+                    </div>
+                    
+                    <div class="health-card">
+                        <div class="health-icon success">
+                            <i class="fas fa-check-circle"></i>
+                        </div>
+                        <div class="health-content">
+                            <h3>Group Management</h3>
+                            <div class="health-status">
+                                <span class="status-badge success">UP</span>
+                                <span class="port-info">Port: 8082</span>
+                            </div>
+                            <p class="health-description">Dịch vụ quản lý nhóm</p>
+                            <a href="http://localhost:8082/actuator/health" target="_blank" class="btn btn-outline btn-sm">
+                                <i class="fas fa-external-link-alt"></i>
+                                Check Health
+                            </a>
+                        </div>
+                    </div>
+                    
+                    <div class="health-card">
+                        <div class="health-icon success">
+                            <i class="fas fa-check-circle"></i>
+                        </div>
+                        <div class="health-content">
+                            <h3>Cost Payment</h3>
+                            <div class="health-status">
+                                <span class="status-badge success">UP</span>
+                                <span class="port-info">Port: 8083</span>
+                            </div>
+                            <p class="health-description">Dịch vụ quản lý chi phí</p>
+                            <a href="http://localhost:8083/actuator/health" target="_blank" class="btn btn-outline btn-sm">
+                                <i class="fas fa-external-link-alt"></i>
+                                Check Health
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="card">
                     <div class="card-header">
-                        <h6 class="mb-0">
-                            <i class="fas fa-database me-2"></i>
-                            Database Status
-                        </h6>
+                        <h3 class="card-title">Service URLs</h3>
                     </div>
                     <div class="card-body">
-                        <div class="row">
-                            <div class="col-6">
-                                <strong>Group DB:</strong>
+                        <div class="service-list">
+                            <div class="service-item">
+                                <div class="service-info">
+                                    <i class="fas fa-globe"></i>
+                                    <div>
+                                        <h4>UI Service</h4>
+                                        <p>Giao diện người dùng chính</p>
+                                    </div>
+                                </div>
+                                <a href="http://localhost:8080" target="_blank" class="btn btn-outline">
+                                    <i class="fas fa-external-link-alt"></i>
+                                    Mở
+                                </a>
                             </div>
-                            <div class="col-6">
-                                <span class="badge bg-success">Connected</span>
+                            
+                            <div class="service-item">
+                                <div class="service-info">
+                                    <i class="fas fa-users"></i>
+                                    <div>
+                                        <h4>Group Management API</h4>
+                                        <p>API quản lý nhóm và thành viên</p>
+                                    </div>
+                                </div>
+                                <a href="http://localhost:8082/api/groups" target="_blank" class="btn btn-outline">
+                                    <i class="fas fa-external-link-alt"></i>
+                                    Mở
+                                </a>
                             </div>
-                        </div>
-                        <hr>
-                        <div class="row">
-                            <div class="col-6">
-                                <strong>Payment DB:</strong>
-                            </div>
-                            <div class="col-6">
-                                <span class="badge bg-success">Connected</span>
-                            </div>
-                        </div>
-                        <hr>
-                        <div class="row">
-                            <div class="col-6">
-                                <strong>Eureka Server:</strong>
-                            </div>
-                            <div class="col-6">
-                                <span class="badge bg-success">Registered</span>
-                            </div>
-                        </div>
-                        <hr>
-                        <div class="row">
-                            <div class="col-6">
-                                <strong>Service Discovery:</strong>
-                            </div>
-                            <div class="col-6">
-                                <span class="badge bg-success">Active</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- API Endpoints -->
-        <div class="row">
-            <div class="col-12">
-                <div class="card">
-                    <div class="card-header">
-                        <h5 class="mb-0">
-                            <i class="fas fa-link me-2"></i>
-                            API Endpoints
-                        </h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="row">
-                            <div class="col-md-6">
-                                <h6>Group Management Service</h6>
-                                <ul class="list-unstyled">
-                                    <li><i class="fas fa-check text-success me-2"></i>GET /api/groups</li>
-                                    <li><i class="fas fa-check text-success me-2"></i>POST /api/groups</li>
-                                    <li><i class="fas fa-check text-success me-2"></i>GET /api/groups/{id}</li>
-                                    <li><i class="fas fa-check text-success me-2"></i>PUT /api/groups/{id}</li>
-                                    <li><i class="fas fa-check text-success me-2"></i>DELETE /api/groups/{id}</li>
-                                </ul>
-                            </div>
-                            <div class="col-md-6">
-                                <h6>Cost Payment Service</h6>
-                                <ul class="list-unstyled">
-                                    <li><i class="fas fa-check text-success me-2"></i>GET /api/costs</li>
-                                    <li><i class="fas fa-check text-success me-2"></i>POST /api/costs</li>
-                                    <li><i class="fas fa-check text-success me-2"></i>GET /api/costs/{id}</li>
-                                    <li><i class="fas fa-check text-success me-2"></i>PUT /api/costs/{id}</li>
-                                    <li><i class="fas fa-check text-success me-2"></i>DELETE /api/costs/{id}</li>
-                                </ul>
+                            
+                            <div class="service-item">
+                                <div class="service-info">
+                                    <i class="fas fa-receipt"></i>
+                                    <div>
+                                        <h4>Cost Payment API</h4>
+                                        <p>API quản lý chi phí và thanh toán</p>
+                                    </div>
+                                </div>
+                                <a href="http://localhost:8083/api/costs" target="_blank" class="btn btn-outline">
+                                    <i class="fas fa-external-link-alt"></i>
+                                    Mở
+                                </a>
                             </div>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
-
-        <!-- Quick Actions -->
-        <div class="row mt-4">
-            <div class="col-md-4">
-                <div class="card text-center">
-                    <div class="card-body">
-                        <i class="fas fa-sync-alt fa-3x text-primary mb-3"></i>
-                        <h5 class="card-title">Refresh All</h5>
-                        <p class="card-text">Kiểm tra lại trạng thái tất cả services</p>
-                        <button class="btn btn-primary" onclick="refreshAll()">
-                            <i class="fas fa-sync-alt me-1"></i>
-                            Refresh
-                        </button>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="card text-center">
-                    <div class="card-body">
-                        <i class="fas fa-chart-line fa-3x text-success mb-3"></i>
-                        <h5 class="card-title">Metrics</h5>
-                        <p class="card-text">Xem metrics chi tiết của các services</p>
-                        <a href="/actuator/metrics" class="btn btn-success" target="_blank">
-                            <i class="fas fa-chart-line me-1"></i>
-                            View Metrics
-                        </a>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="card text-center">
-                    <div class="card-body">
-                        <i class="fas fa-cogs fa-3x text-info mb-3"></i>
-                        <h5 class="card-title">Configuration</h5>
-                        <p class="card-text">Xem cấu hình hệ thống</p>
-                        <a href="/actuator/configprops" class="btn btn-info" target="_blank">
-                            <i class="fas fa-cogs me-1"></i>
-                            View Config
-                        </a>
-                    </div>
-                </div>
-            </div>
-        </div>
+        </main>
     </div>
 
     <!-- Scripts -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        function checkService(serviceName) {
-            // Simulate service check
-            const button = event.target;
-            const originalText = button.innerHTML;
-            button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Checking...';
-            button.disabled = true;
-            
-            setTimeout(() => {
-                button.innerHTML = originalText;
-                button.disabled = false;
-                // In a real implementation, this would make an API call
-                alert('Service ' + serviceName + ' checked successfully!');
-            }, 1000);
-        }
-
-        function refreshAll() {
-            location.reload();
-        }
-
-        // Auto-refresh every 30 seconds
-        setInterval(() => {
-            location.reload();
-        }, 30000);
-    </script>
+    <script th:src="@{/js/layout.js}"></script>
 </body>
 </html>

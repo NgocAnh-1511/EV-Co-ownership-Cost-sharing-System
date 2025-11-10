@@ -2,198 +2,197 @@
 <html lang="vi" xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
-    <title>Groups - EV Co-ownership System</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản lý Nhóm - CarShare Manager</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link th:href="@{/css/layout.css}" rel="stylesheet">
+    <link th:href="@{/css/group-management.css}" rel="stylesheet">
 </head>
 <body>
-    <!-- Navigation -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
-        <div class="container">
-            <a class="navbar-brand" href="/">
-                <i class="fas fa-car me-2"></i>
-                EV Co-ownership System
-            </a>
-            <div class="navbar-nav ms-auto">
-                <a class="nav-link" href="/">Dashboard</a>
-                <a class="nav-link active" href="/groups">Groups</a>
-                <a class="nav-link" href="/costs">Costs</a>
-                <a class="nav-link" href="/health">Health</a>
-            </div>
-        </div>
-    </nav>
-
-    <div class="container mt-4">
-        <!-- Alert Messages -->
-        <div th:if="${success}" class="alert alert-success alert-dismissible fade show" role="alert">
-            <i class="fas fa-check-circle me-2"></i>
-            <span th:text="${success}"></span>
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
+    <!-- Layout Container -->
+    <div class="layout-container">
+        <!-- Include Sidebar Fragment -->
+        <div th:replace="fragments/sidebar :: sidebar"></div>
         
-        <div th:if="${error}" class="alert alert-danger alert-dismissible fade show" role="alert">
-            <i class="fas fa-exclamation-circle me-2"></i>
-            <span th:text="${error}"></span>
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-
-        <!-- Page Header -->
-        <div class="row mb-4">
-            <div class="col-md-8">
-                <h1 class="display-5 text-primary">
-                    <i class="fas fa-users me-3"></i>
-                    Quản lý nhóm đồng sở hữu
-                </h1>
-                <p class="lead text-muted">Quản lý các nhóm đồng sở hữu xe điện và thành viên</p>
-            </div>
-            <div class="col-md-4 text-end">
-                <a href="/groups/create" class="btn btn-primary btn-lg">
-                    <i class="fas fa-plus me-2"></i>
-                    Tạo nhóm mới
-                </a>
-            </div>
-        </div>
-
-        <!-- Groups List -->
-        <div class="card">
-            <div class="card-header">
-                <h5 class="mb-0">
-                    <i class="fas fa-list me-2"></i>
-                    Danh sách nhóm
-                </h5>
-            </div>
-            <div class="card-body">
-                <div th:if="${groups != null and !groups.empty}" class="table-responsive">
-                    <table class="table table-hover">
-                        <thead class="table-primary">
-                            <tr>
-                                <th>Tên nhóm</th>
-                                <th>Mô tả</th>
-                                <th>Xe</th>
-                                <th>Admin</th>
-                                <th>Trạng thái</th>
-                                <th>Tỷ lệ sở hữu</th>
-                                <th>Thành viên</th>
-                                <th>Ngày tạo</th>
-                                <th>Hành động</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr th:each="group : ${groups}">
-                                <td>
-                                    <strong th:text="${group.groupName}">Group Name</strong>
-                                </td>
-                                <td th:text="${group.description}">Description</td>
-                                <td>
-                                    <span class="badge bg-info" th:text="${group.vehicleId}">Vehicle ID</span>
-                                </td>
-                                <td th:text="${group.groupAdminId}">Admin ID</td>
-                                <td>
-                                    <span th:if="${group.status == 'ACTIVE'}" class="badge bg-success">Hoạt động</span>
-                                    <span th:if="${group.status == 'INACTIVE'}" class="badge bg-secondary">Không hoạt động</span>
-                                    <span th:if="${group.status == 'SUSPENDED'}" class="badge bg-warning">Tạm dừng</span>
-                                    <span th:if="${group.status == 'DISSOLVED'}" class="badge bg-danger">Giải tán</span>
-                                </td>
-                                <td>
-                                    <span class="badge bg-primary" th:text="${group.totalOwnershipPercentage} + '%'">100%</span>
-                                </td>
-                                <td>
-                                    <span class="badge bg-info" th:text="${group.members != null ? group.members.size() : 0}">0</span>
-                                </td>
-                                <td th:text="${#temporals.format(group.createdAt, 'dd/MM/yyyy')}">Date</td>
-                                <td>
-                                    <div class="btn-group" role="group">
-                                        <a th:href="@{/groups/{id}(id=${group.id})}" class="btn btn-sm btn-outline-primary" title="Xem chi tiết">
-                                            <i class="fas fa-eye"></i>
-                                        </a>
-                                        <a th:href="@{/groups/{id}/edit(id=${group.id})}" class="btn btn-sm btn-outline-warning" title="Chỉnh sửa">
-                                            <i class="fas fa-edit"></i>
-                                        </a>
-                                        <button type="button" class="btn btn-sm btn-outline-danger" 
-                                                th:onclick="'deleteGroup(' + ${group.id} + ')'" title="Xóa">
-                                            <i class="fas fa-trash"></i>
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Top Bar -->
+            <div class="top-bar">
+                <div class="top-bar-left">
+                    <button class="mobile-menu-toggle" id="mobileMenuToggle">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <div class="page-info">
+                        <h1 class="page-title">
+                            <i class="fas fa-users"></i>
+                            Quản lý Nhóm
+                        </h1>
+                        <p class="page-subtitle">Tạo và quản lý các nhóm đồng sở hữu xe điện</p>
+                    </div>
                 </div>
-                
-                <div th:if="${groups == null or groups.empty}" class="text-center text-muted py-5">
-                    <i class="fas fa-users fa-4x mb-4"></i>
-                    <h4>Chưa có nhóm nào</h4>
-                    <p class="mb-4">Bắt đầu bằng cách tạo nhóm đồng sở hữu đầu tiên của bạn</p>
-                    <a href="/groups/create" class="btn btn-primary btn-lg">
-                        <i class="fas fa-plus me-2"></i>
-                        Tạo nhóm đầu tiên
+                <div class="top-bar-actions">
+                    <a href="/groups/create" class="btn btn-primary">
+                        <i class="fas fa-plus"></i>
+                        Tạo Nhóm Mới
                     </a>
                 </div>
             </div>
-        </div>
+            
+            <!-- Content Area -->
+            <div class="content-area">
+                <!-- Summary Cards -->
+                <div class="summary-cards">
+                    <div class="summary-card">
+                        <div class="card-icon blue">
+                            <i class="fas fa-users"></i>
+                        </div>
+                        <div class="card-content">
+                            <h3>Tổng Nhóm</h3>
+                            <div class="card-number" th:text="${groups != null ? groups.size() : 0}">0</div>
+                        </div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="card-icon green">
+                            <i class="fas fa-check-circle"></i>
+                        </div>
+                        <div class="card-content">
+                            <h3>Nhóm Hoạt Động</h3>
+                            <div class="card-number" th:text="${groups != null ? groups.size() : 0}">0</div>
+                        </div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="card-icon yellow">
+                            <i class="fas fa-car"></i>
+                        </div>
+                        <div class="card-content">
+                            <h3>Tổng Xe</h3>
+                            <div class="card-number" th:text="${groups != null ? groups.size() : 0}">0</div>
+                        </div>
+                    </div>
+                    <div class="summary-card">
+                        <div class="card-icon purple">
+                            <i class="fas fa-user-friends"></i>
+                        </div>
+                        <div class="card-content">
+                            <h3>Tổng Thành Viên</h3>
+                            <div class="card-number" th:text="${totalMembers != null ? totalMembers : 0}">0</div>
+                        </div>
+                    </div>
+                </div>
 
-        <!-- Quick Actions -->
-        <div class="row mt-4">
-            <div class="col-md-4">
-                <div class="card text-center">
-                    <div class="card-body">
-                        <i class="fas fa-users fa-3x text-primary mb-3"></i>
-                        <h5 class="card-title">Quản lý thành viên</h5>
-                        <p class="card-text">Thêm, xóa và quản lý thành viên trong nhóm</p>
+                <!-- Groups Section -->
+                <div class="group-list-section">
+                    <div class="section-header">
+                        <h2>Danh sách Nhóm</h2>
+                        <div class="search-filter-bar">
+                            <div class="search-box">
+                                <i class="fas fa-search"></i>
+                                <input type="text" class="search-input" placeholder="Tìm kiếm nhóm..." id="groupSearch">
+                            </div>
+                            <div class="filter-dropdown">
+                                <select class="filter-select" id="statusFilter">
+                                    <option value="">Tất cả trạng thái</option>
+                                    <option value="Active">Hoạt động</option>
+                                    <option value="Inactive">Không hoạt động</option>
+                                </select>
+                                <i class="fas fa-chevron-down"></i>
+                            </div>
+                        </div>
                     </div>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="card text-center">
-                    <div class="card-body">
-                        <i class="fas fa-vote-yea fa-3x text-success mb-3"></i>
-                        <h5 class="card-title">Bỏ phiếu</h5>
-                        <p class="card-text">Tạo và quản lý các cuộc bỏ phiếu trong nhóm</p>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="card text-center">
-                    <div class="card-body">
-                        <i class="card-body">
-                        <i class="fas fa-chart-pie fa-3x text-info mb-3"></i>
-                        <h5 class="card-title">Báo cáo</h5>
-                        <p class="card-text">Xem báo cáo chi tiết về hoạt động nhóm</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
 
-    <!-- Delete Confirmation Modal -->
-    <div class="modal fade" id="deleteModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Xác nhận xóa nhóm</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <p>Bạn có chắc chắn muốn xóa nhóm này không?</p>
-                    <p class="text-danger"><strong>Hành động này không thể hoàn tác!</strong></p>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
-                    <form id="deleteForm" method="post" style="display: inline;">
-                        <button type="submit" class="btn btn-danger">Xóa nhóm</button>
-                    </form>
+                    <!-- Groups Content -->
+                    <div th:if="${groups == null or groups.isEmpty()}" class="empty-state">
+                        <div class="empty-state-content">
+                            <i class="fas fa-users"></i>
+                            <h3>Chưa có nhóm nào</h3>
+                            <p>Hãy tạo nhóm đầu tiên để bắt đầu quản lý đồng sở hữu xe điện</p>
+                            <a href="/groups/create" class="btn btn-primary">
+                                <i class="fas fa-plus"></i>
+                                Tạo Nhóm Đầu Tiên
+                            </a>
+                        </div>
+                    </div>
+
+                    <div th:unless="${groups == null or groups.isEmpty()}" class="group-cards">
+                        <div th:each="group : ${groups}" class="group-card" th:data-group-id="${group.groupId}" th:data-group-status="${group.status}">
+                            <div class="group-header">
+                                <div class="group-info">
+                                    <h3 class="group-name" th:text="${group.groupName}">Tên Nhóm</h3>
+                                    <small class="group-id">ID: <span th:text="${group.groupId}">1</span></small>
+                                </div>
+                                <span class="status-badge" 
+                                      th:classappend="${group.status == 'Active'} ? 'active' : 'inactive'"
+                                      th:text="${group.status == 'Active' ? 'Hoạt động' : 'Không hoạt động'}">Hoạt động</span>
+                            </div>
+                            
+                            <div class="group-body">
+                                <div class="group-details">
+                                    <div class="detail-item">
+                                        <i class="fas fa-user-shield"></i>
+                                        <div>
+                                            <span class="label">Admin</span>
+                                            <span class="value" th:text="${group.adminId}">1</span>
+                                        </div>
+                                    </div>
+                                    <div class="detail-item">
+                                        <i class="fas fa-car"></i>
+                                        <div>
+                                            <span class="label">Xe</span>
+                                            <span class="value" th:text="${group.vehicleId}">1</span>
+                                        </div>
+                                    </div>
+                                    <div class="detail-item">
+                                        <i class="fas fa-calendar"></i>
+                                        <div>
+                                            <span class="label">Ngày tạo</span>
+                                            <span class="value" th:text="${group.createdAt != null ? #dates.format(group.createdAt, 'dd/MM/yyyy') : 'N/A'}">01/01/2024</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="group-stats">
+                                    <div class="stat-item">
+                                        <span class="stat-label">Thành viên</span>
+                                        <span class="stat-value" th:text="${group.memberCount != null ? group.memberCount : 0}">0</span>
+                                    </div>
+                                    <div class="stat-item">
+                                        <span class="stat-label">Chi phí</span>
+                                        <span class="stat-value" th:text="${group.totalCost != null ? #numbers.formatDecimal(group.totalCost, 1, 'COMMA', 2, 'POINT') + 'đ' : '0đ'}">0đ</span>
+                                    </div>
+                                    <div class="stat-item">
+                                        <span class="stat-label">Bỏ phiếu</span>
+                                        <span class="stat-value" th:text="${group.voteCount != null ? group.voteCount : 0}">0</span>
+                                    </div>
+                                </div>
+                                
+                                <div class="group-actions">
+                                    <a th:href="@{/groups/{id}/members(id=${group.groupId})}" 
+                                       class="action-btn" title="Xem thành viên">
+                                        <i class="fas fa-users"></i>
+                                    </a>
+                                    <a th:href="@{/groups/{id}/votes(id=${group.groupId})}" 
+                                       class="action-btn" title="Bỏ phiếu">
+                                        <i class="fas fa-vote-yea"></i>
+                                    </a>
+                                    <a th:href="@{/groups/{id}/edit(id=${group.groupId})}" 
+                                       class="action-btn" title="Chỉnh sửa">
+                                        <i class="fas fa-edit"></i>
+                                    </a>
+                                    <button class="action-btn delete" title="Xóa nhóm" th:onclick="'deleteGroup(\'' + ${group.groupId} + '\')'">
+                                        <i class="fas fa-trash"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
-        </div>
+        </main>
     </div>
 
     <!-- Scripts -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script>
-        function deleteGroup(groupId) {
-            document.getElementById('deleteForm').action = '/groups/' + groupId + '/delete';
-            new bootstrap.Modal(document.getElementById('deleteModal')).show();
-        }
-    </script>
+    <script th:src="@{/js/layout.js}"></script>
+    <script th:src="@{/js/group-management.js}"></script>
 </body>
 </html>

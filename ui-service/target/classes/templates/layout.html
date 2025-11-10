@@ -3,92 +3,63 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title th:text="${title} ?: 'EV Co-ownership System'">EV Co-ownership System</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <title th:text="${pageTitle ?: 'CarShare Manager'}">CarShare Manager</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <link th:href="@{/styles.css}" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link th:href="@{/css/layout.css}" rel="stylesheet">
+    <th:block th:if="${pageCss}">
+        <link th:href="@{/css/${pageCss}.css}" rel="stylesheet">
+    </th:block>
 </head>
 <body>
-    <!-- Navigation -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
-        <div class="container">
-            <a class="navbar-brand" href="/">
-                <i class="fas fa-car me-2"></i>
-                EV Co-ownership System
-            </a>
-            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav me-auto">
-                    <li class="nav-item">
-                        <a class="nav-link" href="/">
-                            <i class="fas fa-tachometer-alt me-1"></i>Dashboard
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/groups">
-                            <i class="fas fa-users me-1"></i>Groups
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/costs">
-                            <i class="fas fa-dollar-sign me-1"></i>Costs
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link" href="/health">
-                            <i class="fas fa-heartbeat me-1"></i>Health Check
-                        </a>
-                    </li>
-                </ul>
-                <ul class="navbar-nav">
-                    <li class="nav-item">
-                        <span class="navbar-text">
-                            <i class="fas fa-user me-1"></i>Admin User
-                        </span>
-                    </li>
-                </ul>
-            </div>
-        </div>
-    </nav>
-
-    <!-- Main Content -->
-    <main class="container mt-4">
-        <!-- Alert Messages -->
-        <div th:if="${success}" class="alert alert-success alert-dismissible fade show" role="alert">
-            <i class="fas fa-check-circle me-2"></i>
-            <span th:text="${success}"></span>
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
+    <!-- Layout Container -->
+    <div class="layout-container">
+        <!-- Include Sidebar Fragment -->
+        <div th:replace="fragments/sidebar :: sidebar"></div>
         
-        <div th:if="${error}" class="alert alert-danger alert-dismissible fade show" role="alert">
-            <i class="fas fa-exclamation-circle me-2"></i>
-            <span th:text="${error}"></span>
-            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-        </div>
-
-        <!-- Page Content -->
-        <div th:fragment="content">
-            <!-- Content will be inserted here -->
-        </div>
-    </main>
-
-    <!-- Footer -->
-    <footer class="bg-light mt-5 py-4">
-        <div class="container text-center">
-            <p class="text-muted mb-0">
-                <i class="fas fa-car me-1"></i>
-                EV Co-ownership & Cost-sharing System - Microservices Architecture
-            </p>
-            <small class="text-muted">
-                Group Management Service | Cost Payment Service | UI Service
-            </small>
-        </div>
-    </footer>
-
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Top Bar -->
+            <div class="top-bar">
+                <div class="top-bar-left">
+                    <button class="mobile-menu-toggle" id="mobileMenuToggle">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <div class="page-info">
+                        <h1 class="page-title" th:text="${pageTitle ?: 'Trang chủ'}">Trang chủ</h1>
+                        <p class="page-subtitle" th:text="${pageSubtitle ?: 'Hệ thống quản lý đồng sở hữu xe điện'}">Hệ thống quản lý đồng sở hữu xe điện</p>
+                    </div>
+                </div>
+                <div class="top-bar-actions">
+                    <!-- Page-specific actions will be inserted here -->
+                    <div th:fragment="page-actions">
+                        <!-- Override this fragment in child templates -->
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Content Area -->
+            <div class="content-area">
+                <!-- Page content will be inserted here -->
+                <div th:fragment="page-content">
+                    <!-- Override this fragment in child templates -->
+                    <div class="card">
+                        <div class="card-content">
+                            <div class="empty-state">
+                                <i class="fas fa-info-circle"></i>
+                                <p>Nội dung trang sẽ được hiển thị ở đây</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    
     <!-- Scripts -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    <script th:src="@{/main.js}"></script>
+    <script th:src="@{/js/layout.js}"></script>
+    <th:block th:if="${pageJs}">
+        <script th:src="@{/js/${pageJs}.js}"></script>
+    </th:block>
 </body>
 </html>
