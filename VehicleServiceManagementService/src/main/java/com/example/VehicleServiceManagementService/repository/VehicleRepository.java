@@ -27,4 +27,29 @@ public interface VehicleRepository extends JpaRepository<Vehicle, String> {
      */
     @Query("SELECT COUNT(v) FROM Vehicle v WHERE v.group.groupId = :groupId")
     long countByGroupId(@Param("groupId") String groupId);
+
+    /**
+     * Tìm xe theo biển số xe
+     * @param vehicleNumber Biển số xe
+     * @return Optional Vehicle
+     */
+    @Query("SELECT v FROM Vehicle v WHERE v.vehicleNumber = :vehicleNumber")
+    java.util.Optional<Vehicle> findByVehicleNumber(@Param("vehicleNumber") String vehicleNumber);
+
+    /**
+     * Kiểm tra xem biển số xe đã tồn tại chưa (trừ xe hiện tại khi update)
+     * @param vehicleNumber Biển số xe
+     * @param vehicleId ID của xe (để loại trừ khi update)
+     * @return true nếu biển số đã tồn tại
+     */
+    @Query("SELECT COUNT(v) > 0 FROM Vehicle v WHERE v.vehicleNumber = :vehicleNumber AND v.vehicleNumber IS NOT NULL AND v.vehicleNumber != '' AND v.vehicleId != :vehicleId")
+    boolean existsByVehicleNumberAndVehicleIdNot(@Param("vehicleNumber") String vehicleNumber, @Param("vehicleId") String vehicleId);
+
+    /**
+     * Kiểm tra xem biển số xe đã tồn tại chưa (khi thêm mới)
+     * @param vehicleNumber Biển số xe
+     * @return true nếu biển số đã tồn tại
+     */
+    @Query("SELECT COUNT(v) > 0 FROM Vehicle v WHERE v.vehicleNumber = :vehicleNumber AND v.vehicleNumber IS NOT NULL AND v.vehicleNumber != ''")
+    boolean existsByVehicleNumber(@Param("vehicleNumber") String vehicleNumber);
 }

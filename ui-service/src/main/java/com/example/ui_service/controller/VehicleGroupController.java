@@ -25,7 +25,9 @@ public class VehicleGroupController {
                                  @RequestParam(value = "searchQuery", required = false, defaultValue = "") String searchQuery,
                                  @RequestParam(value = "statusFilter", required = false, defaultValue = "Tất cả") String statusFilter,
                                  @RequestParam(value = "deleteGroupId", required = false) String deleteGroupId,
-                                 @RequestParam(value = "viewGroupId", required = false) String viewGroupId) {
+                                 @RequestParam(value = "viewGroupId", required = false) String viewGroupId,
+                                 @RequestParam(value = "page", required = false, defaultValue = "1") int page,
+                                 @RequestParam(value = "size", required = false, defaultValue = "10") int size) {
 
         String deleteStatusMessage = null;
         boolean deleteSuccess = false;
@@ -98,12 +100,31 @@ public class VehicleGroupController {
                         ("Tất cả".equals(statusFilter) || group.getActive().equalsIgnoreCase(statusFilter)))
                 .collect(Collectors.toList());
 
+        // Tính toán thống kê
+        long totalGroups = filteredGroups.size();
+        long activeGroups = filteredGroups.stream()
+                .filter(group -> "active".equalsIgnoreCase(group.getActive()))
+                .count();
+
+        // Phân trang
+        int totalPages = filteredGroups.isEmpty() ? 1 : (int) Math.ceil((double) filteredGroups.size() / size);
+        int startIndex = (page - 1) * size;
+        int endIndex = Math.min(startIndex + size, filteredGroups.size());
+        List<VehiclegroupDTO> pagedGroups = filteredGroups.isEmpty() ? 
+            filteredGroups : filteredGroups.subList(startIndex, endIndex);
+
         // Thêm dữ liệu vào model
-        model.addAttribute("filteredGroups", filteredGroups);
-        model.addAttribute("totalGroups", filteredGroups.size());
-        model.addAttribute("activeGroups", filteredGroups.stream().filter(group -> "active".equalsIgnoreCase(group.getActive())).count());
+        model.addAttribute("filteredGroups", pagedGroups);
+        model.addAttribute("totalGroups", totalGroups);
+        model.addAttribute("activeGroups", activeGroups);
         model.addAttribute("statusFilter", statusFilter);
         model.addAttribute("searchQuery", searchQuery);
+        model.addAttribute("currentPage", page);
+        model.addAttribute("totalPages", totalPages);
+        model.addAttribute("pageSize", size);
+        model.addAttribute("totalFiltered", filteredGroups.size());
+        model.addAttribute("startIndex", startIndex + 1);
+        model.addAttribute("endIndex", endIndex);
 
         // Thêm thông báo trạng thái xóa nhóm xe (nếu có)
         if (deleteStatusMessage != null) {
@@ -116,14 +137,13 @@ public class VehicleGroupController {
             model.addAttribute("noDataMessage", "Không tìm thấy nhóm xe phù hợp.");
         }
 
-        return "admin/staff-management";  // Trả về trang staff-management
+        return "/admin/staff-management";  // Trả về trang staff-management
     }
 
     /**
      * Xử lý thêm nhóm xe mới
      * @param groupId Mã nhóm xe
      * @param name Tên nhóm xe
-     * @param vehicleCount Số lượng xe
      * @param active Trạng thái (active/inactive)
      * @param description Mô tả
      * @param vehiclesJson JSON string chứa danh sách xe cần thêm (nếu có)
@@ -133,7 +153,6 @@ public class VehicleGroupController {
     @PostMapping("/admin/staff-management/add")
     public String addVehicleGroup(@RequestParam("groupId") String groupId,
                                   @RequestParam("name") String name,
-                                  @RequestParam(value = "vehicleCount", required = false, defaultValue = "0") Integer vehicleCount,
                                   @RequestParam(value = "active", required = false, defaultValue = "active") String active,
                                   @RequestParam(value = "description", required = false, defaultValue = "") String description,
                                   @RequestParam(value = "vehicles", required = false) String vehiclesJson,
@@ -143,7 +162,6 @@ public class VehicleGroupController {
             VehiclegroupDTO vehicleGroup = new VehiclegroupDTO();
             vehicleGroup.setGroupId(groupId);
             vehicleGroup.setName(name);
-            vehicleGroup.setVehicleCount(vehicleCount);
             vehicleGroup.setActive(active);
             vehicleGroup.setDescription(description);
             
@@ -174,27 +192,14 @@ public class VehicleGroupController {
                 redirectAttributes.addFlashAttribute("updateSuccess", false);
             }
         } catch (Exception e) {
-            redirectAttributes.addFlashAttribute("updateStatusMessage", "Lỗi khi thêm nhóm xe: " + e.getMessage());
-            redirectAttributes.addFlashAttribute("updateSuccess", false);
+                redirectAttributes.addFlashAttribute("updateStatusMessage", "Lỗi khi thêm nhóm xe: " + e.getMessage());
+                redirectAttributes.addFlashAttribute("updateSuccess", false);
         }
-        return "redirect:/admin/staff-management";
+        return "redirect:/admin/staff-management?searchQuery=&statusFilter=Tất cả&page=1";
     }
-
-    /**
-     * Xử lý cập nhật nhóm xe
-     * @param groupId ID của nhóm xe cần cập nhật
-     * @param name Tên nhóm xe
-     * @param vehicleCount Số lượng xe
-     * @param active Trạng thái (active/inactive)
-     * @param description Mô tả
-     * @param vehicles JSON string chứa danh sách xe cần thêm (nếu có)
-     * @param redirectAttributes Để truyền thông báo sau khi redirect
-     * @return Redirect về trang staff-management với thông báo kết quả
-     */
     @PostMapping("/admin/staff-management/update/{groupId}")
     public String updateVehicleGroup(@PathVariable String groupId,
                                      @RequestParam("name") String name,
-                                     @RequestParam(value = "vehicleCount", required = false, defaultValue = "0") Integer vehicleCount,
                                      @RequestParam("active") String active,
                                      @RequestParam(value = "description", required = false, defaultValue = "") String description,
                                      @RequestParam(value = "vehicles", required = false) String vehiclesJson,
@@ -222,7 +227,6 @@ public class VehicleGroupController {
             VehiclegroupDTO vehicleGroup = new VehiclegroupDTO();
             vehicleGroup.setGroupId(groupId);
             vehicleGroup.setName(name);
-            vehicleGroup.setVehicleCount(vehicleCount);
             vehicleGroup.setActive(active);
             vehicleGroup.setDescription(description);
             
@@ -238,6 +242,6 @@ public class VehicleGroupController {
             redirectAttributes.addFlashAttribute("updateStatusMessage", "Lỗi khi cập nhật nhóm xe: " + e.getMessage());
             redirectAttributes.addFlashAttribute("updateSuccess", false);
         }
-        return "redirect:/admin/staff-management";
+        return "redirect:/admin/staff-management?searchQuery=&statusFilter=Tất cả&page=1";
     }
 }

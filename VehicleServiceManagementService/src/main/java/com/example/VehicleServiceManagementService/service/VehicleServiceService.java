@@ -67,18 +67,66 @@ public class VehicleServiceService {
             System.out.println("   - Đăng ký dịch vụ mới, sẽ insert...");
             System.out.println("   - Composite key: serviceId=" + serviceId + ", vehicleId=" + vehicleId);
             
-            // Đảm bảo id được set đúng
-            if (vehicleService.getId() == null) {
-                VehicleServiceId compositeId = new VehicleServiceId(serviceId, vehicleId);
-                vehicleService.setId(compositeId);
-                System.out.println("   - Đã set composite key: " + compositeId);
+            // Kiểm tra xem entity có tồn tại trong database không
+            boolean exists = vehicleServiceRepository.existsById_ServiceIdAndId_VehicleId(serviceId, vehicleId);
+            
+            Vehicleservice savedService;
+            
+            if (exists) {
+                System.out.println("   ⚠️ Entity đã tồn tại trong database, sẽ update thay vì insert");
+                // Nếu tồn tại, load entity từ database và update
+                Optional<Vehicleservice> existingOpt = vehicleServiceRepository.findById_ServiceIdAndId_VehicleId(serviceId, vehicleId);
+                if (existingOpt.isPresent()) {
+                    Vehicleservice existing = existingOpt.get();
+                    // Update các trường từ entity mới
+                    existing.setServiceName(vehicleService.getServiceName());
+                    existing.setServiceDescription(vehicleService.getServiceDescription());
+                    existing.setServiceType(vehicleService.getServiceType());
+                    existing.setStatus(vehicleService.getStatus());
+                    // Không update requestDate (đã có updatable = false)
+                    existing.setCompletionDate(vehicleService.getCompletionDate());
+                    savedService = vehicleServiceRepository.save(existing);
+                    vehicleServiceRepository.flush();
+                } else {
+                    throw new IllegalStateException("Entity được báo là tồn tại nhưng không load được từ database");
+                }
+            } else {
+                System.out.println("   ✅ Entity chưa tồn tại, sẽ insert mới");
+                
+                // Clear persistence context để đảm bảo entity mới không bị conflict
+                entityManager.clear();
+                
+                // Tạo entity mới hoàn toàn (không liên quan đến entity cũ)
+                Vehicleservice newEntity = new Vehicleservice();
+                VehicleServiceId newId = new VehicleServiceId(serviceId, vehicleId);
+                newEntity.setId(newId);
+                
+                // Set các relationships (cần load lại từ database sau khi clear)
+                ServiceType serviceEntity = serviceRepository.findById(serviceId)
+                    .orElseThrow(() -> new IllegalArgumentException("Service not found: " + serviceId));
+                Vehicle vehicleEntity = vehicleRepository.findById(vehicleId)
+                    .orElseThrow(() -> new IllegalArgumentException("Vehicle not found: " + vehicleId));
+                
+                newEntity.setService(serviceEntity);
+                newEntity.setVehicle(vehicleEntity);
+                newEntity.setServiceName(vehicleService.getServiceName());
+                newEntity.setServiceDescription(vehicleService.getServiceDescription());
+                newEntity.setServiceType(vehicleService.getServiceType());
+                newEntity.setStatus(vehicleService.getStatus());
+                newEntity.setRequestDate(vehicleService.getRequestDate() != null ? vehicleService.getRequestDate() : Instant.now());
+                newEntity.setCompletionDate(vehicleService.getCompletionDate());
+                
+                System.out.println("   - Tạo entity mới với composite key: " + newId);
+                System.out.println("   - Service: " + serviceEntity.getServiceName());
+                System.out.println("   - Vehicle: " + vehicleEntity.getVehicleNumber());
+                
+                // Sử dụng EntityManager.persist() để INSERT mới
+                entityManager.persist(newEntity);
+                entityManager.flush();
+                entityManager.refresh(newEntity);
+                
+                savedService = newEntity;
             }
-            
-            // Sử dụng repository.save() để insert mới
-            Vehicleservice savedService = vehicleServiceRepository.save(vehicleService);
-            
-            // Flush để đảm bảo insert/update được thực thi
-            vehicleServiceRepository.flush();
             
             System.out.println("   ✅ Entity đã được lưu thành công!");
             System.out.println("   - Service: " + savedService.getServiceId());

@@ -1,14 +1,16 @@
 package com.example.ui_service.service;
 
-import com.example.ui_service.model.ServiceDTO;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.client.RestClientException;
 
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -20,82 +22,148 @@ public class ServiceRestClient {
     @Autowired
     private RestTemplate restTemplate;
 
-    @Autowired
-    private ObjectMapper objectMapper;
-
     /**
-     * Lấy tất cả các dịch vụ từ bảng service trong database
-     * Gọi API: GET http://localhost:8083/api/services
-     * API này sẽ query từ bảng service trong database vehicle_management
-     * @return Danh sách dịch vụ
+     * Lấy tất cả các dịch vụ từ bảng service
+     * @return Danh sách dịch vụ dạng Map
      */
-    public List<ServiceDTO> getAllServices() {
+    public List<Map<String, Object>> getAllServices() {
         try {
-            System.out.println("🔍 Đang gọi API: " + BASE_URL + " để lấy danh sách dịch vụ từ bảng service");
-            Map[] services = restTemplate.getForObject(BASE_URL, Map[].class);
-            if (services == null || services.length == 0) {
-                System.out.println("⚠️ Không có dịch vụ nào trong database");
-                return Collections.emptyList();
+            System.out.println("📡 [SERVICE REST CLIENT] Gọi API lấy danh sách dịch vụ: " + BASE_URL);
+            
+            // Backend API trả về List<ServiceType>, nhưng RestTemplate sẽ convert sang Map tự động
+            ParameterizedTypeReference<List<Map<String, Object>>> typeRef = 
+                new ParameterizedTypeReference<List<Map<String, Object>>>() {};
+            
+            ResponseEntity<List<Map<String, Object>>> response = restTemplate.exchange(
+                    BASE_URL,
+                    HttpMethod.GET,
+                    null,
+                    typeRef
+            );
+            
+            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                List<Map<String, Object>> services = response.getBody();
+                System.out.println("✅ [SERVICE REST CLIENT] Đã lấy được " + services.size() + " dịch vụ");
+                
+                // Debug: Log service đầu tiên nếu có
+                if (!services.isEmpty()) {
+                    System.out.println("   📋 Service đầu tiên: " + services.get(0));
+                }
+                
+                return services;
+            } else {
+                System.err.println("⚠️ [SERVICE REST CLIENT] API trả về status: " + response.getStatusCode());
+                return new ArrayList<>();
             }
             
-            List<ServiceDTO> serviceDTOList = new ArrayList<>();
-            for (Map<String, Object> service : services) {
-                ServiceDTO dto = new ServiceDTO();
-                dto.setServiceId((String) service.get("serviceId"));
-                dto.setServiceName((String) service.get("serviceName"));
-                dto.setServiceType((String) service.get("serviceType"));
-                serviceDTOList.add(dto);
-            }
-            System.out.println("✅ Đã lấy " + serviceDTOList.size() + " dịch vụ từ bảng service");
-            return serviceDTOList;
-        } catch (Exception e) {
-            System.err.println("❌ Lỗi khi lấy danh sách dịch vụ từ bảng service: " + e.getMessage());
+        } catch (RestClientException e) {
+            System.err.println("❌ [SERVICE REST CLIENT] Lỗi khi lấy danh sách dịch vụ: " + e.getMessage());
             e.printStackTrace();
-            return Collections.emptyList();
-        }
-    }
-
-    /**
-     * Lấy dịch vụ theo ID
-     * @param serviceId ID của dịch vụ
-     * @return ServiceDTO hoặc null
-     */
-    public ServiceDTO getServiceById(String serviceId) {
-        try {
-            Map<String, Object> service = restTemplate.getForObject(BASE_URL + "/" + serviceId, Map.class);
-            if (service == null) {
-                return null;
-            }
-            ServiceDTO dto = new ServiceDTO();
-            dto.setServiceId((String) service.get("serviceId"));
-            dto.setServiceName((String) service.get("serviceName"));
-            dto.setServiceType((String) service.get("serviceType"));
-            return dto;
+            return new ArrayList<>();
         } catch (Exception e) {
-            System.err.println("Lỗi khi lấy dịch vụ theo ID: " + e.getMessage());
-            return null;
+            System.err.println("❌ [SERVICE REST CLIENT] Lỗi không mong đợi: " + e.getMessage());
+            e.printStackTrace();
+            return new ArrayList<>();
         }
     }
 
     /**
-     * Lấy danh sách các loại dịch vụ từ bảng service
-     * @return Danh sách loại dịch vụ
+     * Lấy danh sách các loại dịch vụ duy nhất từ bảng service
+     * @return Danh sách loại dịch vụ (service_type)
      */
     public List<String> getServiceTypes() {
         try {
-            System.out.println("🔍 Đang gọi API: " + BASE_URL + "/types để lấy danh sách loại dịch vụ");
-            String[] types = restTemplate.getForObject(BASE_URL + "/types", String[].class);
-            if (types == null || types.length == 0) {
-                System.out.println("⚠️ Không có loại dịch vụ nào trong database");
-                return Collections.emptyList();
+            System.out.println("📡 [SERVICE REST CLIENT] Lấy danh sách loại dịch vụ từ: " + BASE_URL + "/types");
+            
+            ParameterizedTypeReference<List<String>> typeRef = 
+                new ParameterizedTypeReference<List<String>>() {};
+            
+            ResponseEntity<List<String>> response = restTemplate.exchange(
+                    BASE_URL + "/types",
+                    HttpMethod.GET,
+                    null,
+                    typeRef
+            );
+            
+            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                System.out.println("✅ [SERVICE REST CLIENT] Đã lấy được " + response.getBody().size() + " loại dịch vụ");
+                return response.getBody();
+            } else {
+                System.err.println("⚠️ [SERVICE REST CLIENT] API trả về status: " + response.getStatusCode());
+                return new ArrayList<>();
             }
-            List<String> typeList = Arrays.asList(types);
-            System.out.println("✅ Đã lấy " + typeList.size() + " loại dịch vụ từ bảng service");
-            return typeList;
-        } catch (Exception e) {
-            System.err.println("❌ Lỗi khi lấy danh sách loại dịch vụ từ bảng service: " + e.getMessage());
+            
+        } catch (RestClientException e) {
+            System.err.println("❌ [SERVICE REST CLIENT] Lỗi khi lấy danh sách loại dịch vụ: " + e.getMessage());
             e.printStackTrace();
-            return Collections.emptyList();
+            return new ArrayList<>();
+        } catch (Exception e) {
+            System.err.println("❌ [SERVICE REST CLIENT] Lỗi không mong đợi: " + e.getMessage());
+            e.printStackTrace();
+            return new ArrayList<>();
+        }
+    }
+
+    /**
+     * Lấy tất cả các dịch vụ từ bảng service và convert sang ServiceDTO
+     * @return Danh sách dịch vụ dạng ServiceDTO
+     */
+    public List<com.example.ui_service.model.ServiceDTO> getAllServicesAsDTO() {
+        try {
+            List<Map<String, Object>> servicesMap = getAllServices();
+            List<com.example.ui_service.model.ServiceDTO> servicesDTO = new ArrayList<>();
+            
+            for (Map<String, Object> serviceMap : servicesMap) {
+                com.example.ui_service.model.ServiceDTO dto = new com.example.ui_service.model.ServiceDTO();
+                dto.setServiceId((String) serviceMap.get("serviceId"));
+                dto.setServiceName((String) serviceMap.get("serviceName"));
+                dto.setServiceType((String) serviceMap.get("serviceType"));
+                servicesDTO.add(dto);
+            }
+            
+            return servicesDTO;
+        } catch (Exception e) {
+            System.err.println("❌ [SERVICE REST CLIENT] Lỗi khi convert sang ServiceDTO: " + e.getMessage());
+            e.printStackTrace();
+            return new ArrayList<>();
+        }
+    }
+
+    /**
+     * Thêm dịch vụ mới vào bảng service
+     * @param serviceData Dữ liệu dịch vụ cần thêm (serviceId, serviceName, serviceType)
+     * @return Kết quả thêm dịch vụ
+     */
+    public Map<String, Object> addService(Map<String, Object> serviceData) {
+        try {
+            System.out.println("📡 [SERVICE REST CLIENT] Thêm dịch vụ mới: " + BASE_URL);
+            System.out.println("   Request data: " + serviceData);
+            
+            org.springframework.http.HttpEntity<Map<String, Object>> request = 
+                new org.springframework.http.HttpEntity<>(serviceData);
+            org.springframework.http.ResponseEntity<Map> response = restTemplate.exchange(
+                    BASE_URL,
+                    org.springframework.http.HttpMethod.POST,
+                    request,
+                    Map.class
+            );
+            
+            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                System.out.println("✅ [SERVICE REST CLIENT] Đã thêm dịch vụ mới thành công");
+                return response.getBody();
+            } else {
+                System.err.println("❌ [SERVICE REST CLIENT] Thêm dịch vụ thất bại: " + response.getStatusCode());
+                throw new RuntimeException("Thêm dịch vụ thất bại với status: " + response.getStatusCode());
+            }
+            
+        } catch (RestClientException e) {
+            System.err.println("❌ [SERVICE REST CLIENT] Lỗi khi thêm dịch vụ: " + e.getMessage());
+            e.printStackTrace();
+            throw new RuntimeException("Không thể thêm dịch vụ: " + e.getMessage(), e);
+        } catch (Exception e) {
+            System.err.println("❌ [SERVICE REST CLIENT] Lỗi không mong đợi: " + e.getMessage());
+            e.printStackTrace();
+            throw new RuntimeException("Không thể thêm dịch vụ: " + e.getMessage(), e);
         }
     }
 }

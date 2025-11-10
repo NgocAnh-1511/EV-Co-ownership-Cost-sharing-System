@@ -269,6 +269,7 @@ public class VehicleServiceAPI {
                         vehicleServiceRepository.deleteById_ServiceIdAndId_VehicleId(serviceId, vehicleId);
                         vehicleServiceRepository.flush();
                         System.out.println("   ✅ Đã xóa bản ghi cũ (completed), sẽ tạo mới");
+                        // Không cần làm gì thêm - service layer sẽ tạo entity mới
                     } else {
                         // Nếu không phải completed, trả về lỗi
                         return ResponseEntity.status(HttpStatus.CONFLICT)
@@ -292,7 +293,7 @@ public class VehicleServiceAPI {
 
             // Lưu vào database
             Vehicleservice savedService = vehicleServiceService.saveVehicleService(vehicleService);
-            
+                
             System.out.println("✅ [SUCCESS] Đã đăng ký dịch vụ thành công!");
             System.out.println("   - Service ID: " + savedService.getServiceId());
             System.out.println("   - Vehicle ID: " + savedService.getVehicleId());
@@ -310,12 +311,12 @@ public class VehicleServiceAPI {
                 return ResponseEntity.status(HttpStatus.CONFLICT).body(errorMessage);
             }
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorMessage);
-            
+                
         } catch (org.springframework.dao.DataIntegrityViolationException e) {
             System.err.println("❌ [DATABASE ERROR] " + e.getMessage());
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body("Lỗi ràng buộc dữ liệu: " + (e.getRootCause() != null ? e.getRootCause().getMessage() : e.getMessage()));
-                    
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                        .body("Lỗi ràng buộc dữ liệu: " + (e.getRootCause() != null ? e.getRootCause().getMessage() : e.getMessage()));
+            
         } catch (Exception e) {
             System.err.println("❌ [ERROR] " + e.getMessage());
             e.printStackTrace();
@@ -341,7 +342,7 @@ public class VehicleServiceAPI {
             }
 
             Vehicleservice service = serviceOpt.get();
-
+            
             if (requestData.containsKey("serviceDescription")) {
                 service.setServiceDescription((String) requestData.get("serviceDescription"));
             }

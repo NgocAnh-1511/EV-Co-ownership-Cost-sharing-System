@@ -40,20 +40,22 @@
         </div>
 
         <!-- Filter Section -->
-        <form action="/admin/staff-management" method="get">
+        <form action="/admin/staff-management" method="get" id="filterForm">
+            <input type="hidden" name="page" value="1" id="hiddenPage">
             <div class="filter-section">
                 <div class="filter-card">
                     <div class="filter-row">
                         <!-- Tìm nhóm theo tên -->
                         <div class="filter-group">
                             <label>Tìm nhóm...</label>
-                            <input type="text" th:value="${searchQuery}" name="searchQuery" placeholder="Nhập tên nhóm...">
+                            <input type="text" th:value="${searchQuery}" name="searchQuery" placeholder="Nhập tên nhóm..." 
+                                   onkeypress="if(event.key === 'Enter') { event.preventDefault(); document.getElementById('hiddenPage').value='1'; document.getElementById('filterForm').submit(); }">
                         </div>
 
                         <!-- Trạng thái -->
                         <div class="filter-group">
                             <label>Trạng thái</label>
-                            <select name="statusFilter" th:value="${statusFilter}">
+                            <select name="statusFilter" th:value="${statusFilter}" onchange="document.getElementById('hiddenPage').value='1'; document.getElementById('filterForm').submit();">
                                 <option value="Tất cả" th:selected="${statusFilter == 'Tất cả'}">Tất cả</option>
                                 <option value="active" th:selected="${statusFilter == 'active'}">Hoạt động</option>
                                 <option value="inactive" th:selected="${statusFilter == 'inactive'}">Tạm dừng</option>
@@ -61,7 +63,7 @@
                         </div>
 
                         <!-- Nút lọc -->
-                        <button class="btn-filter" type="submit">
+                        <button class="btn-filter" type="submit" onclick="document.getElementById('hiddenPage').value='1';">
                             <i class="fas fa-filter"></i> Lọc
                         </button>
                     </div>
@@ -97,14 +99,13 @@
                 <tr>
                     <th>Trạng Thái</th>
                     <th>Tên Nhóm</th>
-                    <th>Số Lượng Xe</th>
                     <th>Hành Động</th>
                 </tr>
                 </thead>
                 <tbody>
                 <!-- Hàng thêm nhóm xe -->
                 <tr style="background-color: #F9FAFB; border-bottom: 2px solid #E5E7EB;">
-                    <td colspan="3" style="text-align: right; font-weight: 600; padding: 12px;">
+                    <td colspan="2" style="text-align: right; font-weight: 600; padding: 12px;">
                         Thêm nhóm xe mới:
                     </td>
                     <td style="padding: 12px;">
@@ -122,35 +123,95 @@
                     <!-- Tên nhóm xe -->
                     <td th:text="${group.name}">Nhóm Nguyễn Gia Định</td>
 
-                    <!-- Số lượng xe -->
-                    <td th:text="${group.vehicleCount}">100</td>
-
                     <!-- Hành động -->
                     <td>
                         <a href="#"
                            class="btn btn-info btn-sm btn-view-group"
-                           th:href="@{/admin/staff-management(viewGroupId=${group.groupId}, searchQuery=${searchQuery}, statusFilter=${statusFilter})}">
+                           th:href="@{/admin/staff-management(viewGroupId=${group.groupId}, searchQuery=${searchQuery}, statusFilter=${statusFilter}, page=${currentPage})}">
                             <i class="fas fa-eye"></i> Xem
                         </a>
                         <a href="#"
                            class="btn btn-warning btn-sm btn-edit-group"
                            th:data-group-id="${group.groupId}"
                            th:data-group-name="${group.name}"
-                           th:data-vehicle-count="${group.vehicleCount}"
                            th:data-active="${group.active}"
                            th:data-description="${group.description != null ? group.description : ''}">
                             <i class="fas fa-edit"></i> Sửa
                         </a>
                         <a href="#"
-                           th:href="@{/admin/staff-management(deleteGroupId=${group.groupId}, searchQuery=${searchQuery}, statusFilter=${statusFilter})}"
+                           th:href="@{/admin/staff-management(deleteGroupId=${group.groupId}, searchQuery=${searchQuery}, statusFilter=${statusFilter}, page=${currentPage})}"
                            class="btn btn-danger btn-sm"
                            onclick="return confirm('Bạn có chắc chắn muốn xóa nhóm này?')">
                             <i class="fas fa-trash"></i> Xóa
                         </a>
                     </td>
                 </tr>
+                <tr th:if="${filteredGroups == null or filteredGroups.isEmpty()}">
+                    <td colspan="3" style="text-align: center; padding: 40px; color: #6B7280;">
+                        Không có dữ liệu nhóm xe
+                    </td>
+                </tr>
                 </tbody>
             </table>
+        </div>
+
+        <!-- Pagination -->
+        <div class="pagination" th:if="${totalPages > 0}">
+            <div class="pagination-info">
+                Hiển thị <span th:text="${startIndex}">1</span>-<span th:text="${endIndex}">10</span> 
+                trong tổng số <span th:text="${totalFiltered}">0</span> nhóm xe
+            </div>
+            <div class="pagination-buttons">
+                <a th:href="@{/admin/staff-management(searchQuery=${searchQuery}, statusFilter=${statusFilter}, page=${currentPage > 1 ? currentPage - 1 : 1})}"
+                   class="prev"
+                   th:classappend="${currentPage == 1} ? 'disabled' : ''"
+                   th:if="${currentPage > 1}">
+                    <i class="fas fa-chevron-left"></i> Trước
+                </a>
+                <!-- Hiển thị các nút trang với logic thông minh -->
+                <span th:if="${totalPages <= 7}">
+                    <a th:each="pageNum : ${#numbers.sequence(1, totalPages)}"
+                       th:href="@{/admin/staff-management(searchQuery=${searchQuery}, statusFilter=${statusFilter}, page=${pageNum})}"
+                       th:class="${pageNum == currentPage} ? 'active' : ''"
+                       th:text="${pageNum}">1</a>
+                </span>
+                <span th:if="${totalPages > 7}">
+                    <!-- Trang đầu -->
+                    <a th:href="@{/admin/staff-management(searchQuery=${searchQuery}, statusFilter=${statusFilter}, page=1)}"
+                       th:class="${currentPage == 1} ? 'active' : ''">1</a>
+                    <!-- Dấu ... trước khi có trang hiện tại -->
+                    <span th:if="${currentPage > 3}">...</span>
+                    <!-- Các trang xung quanh trang hiện tại -->
+                    <span th:if="${currentPage > 2}">
+                        <a th:href="@{/admin/staff-management(searchQuery=${searchQuery}, statusFilter=${statusFilter}, page=${currentPage - 1})}"
+                           th:text="${currentPage - 1}">1</a>
+                    </span>
+                    <a th:href="@{/admin/staff-management(searchQuery=${searchQuery}, statusFilter=${statusFilter}, page=${currentPage})}"
+                       class="active"
+                       th:text="${currentPage}">1</a>
+                    <span th:if="${currentPage < totalPages - 1}">
+                        <a th:href="@{/admin/staff-management(searchQuery=${searchQuery}, statusFilter=${statusFilter}, page=${currentPage + 1})}"
+                           th:text="${currentPage + 1}">1</a>
+                    </span>
+                    <!-- Dấu ... sau trang hiện tại -->
+                    <span th:if="${currentPage < totalPages - 2}">...</span>
+                    <!-- Trang cuối -->
+                    <a th:href="@{/admin/staff-management(searchQuery=${searchQuery}, statusFilter=${statusFilter}, page=${totalPages})}"
+                       th:class="${currentPage == totalPages} ? 'active' : ''"
+                       th:text="${totalPages}">1</a>
+                </span>
+                <a th:href="@{/admin/staff-management(searchQuery=${searchQuery}, statusFilter=${statusFilter}, page=${currentPage < totalPages ? currentPage + 1 : totalPages})}"
+                   class="next"
+                   th:classappend="${currentPage == totalPages} ? 'disabled' : ''"
+                   th:if="${currentPage < totalPages}">
+                    Sau <i class="fas fa-chevron-right"></i>
+                </a>
+            </div>
+        </div>
+        <div class="pagination" th:if="${totalPages == 0}">
+            <div class="pagination-info">
+                Không có dữ liệu để hiển thị
+            </div>
         </div>
 
         <!-- Modal Thêm Nhóm Xe -->
@@ -174,15 +235,6 @@
                             <input type="text" id="addGroupName" name="name" required placeholder="Nhập tên nhóm xe">
                         </div>
                         <div class="form-group">
-                            <label><i class="fas fa-car"></i> Số Lượng Xe</label>
-                            <input type="number" id="addVehicleCount" name="vehicleCount" min="0" value="0" placeholder="Nhập số lượng xe"
-                                   oninput="window.handleAddVehicleCountChange && window.handleAddVehicleCountChange(this.value)"
-                                   onchange="window.handleAddVehicleCountChange && window.handleAddVehicleCountChange(this.value)">
-                            <small style="color: #6B7280; font-size: 12px; display: block; margin-top: 5px;">
-                                Nhập số lượng xe bạn muốn. Các form nhập xe sẽ tự động hiển thị bên dưới khi cần thêm xe mới.
-                            </small>
-                        </div>
-                        <div class="form-group">
                             <label><i class="fas fa-info-circle"></i> Trạng Thái</label>
                             <select id="addActive" name="active">
                                 <option value="active" selected>Hoạt động</option>
@@ -200,10 +252,10 @@
                                 <i class="fas fa-car"></i> Thêm Xe Vào Nhóm
                             </h4>
                             <p style="margin-bottom: 15px; color: #6B7280; font-size: 14px;">
-                                Nhập số lượng xe ở trên, các form nhập thông tin xe sẽ tự động hiển thị ở đây.
+                                Mỗi nhóm chỉ có đúng 1 xe duy nhất. Vui lòng nhập thông tin xe bên dưới.
                             </p>
                             <div id="addVehiclesToAddContainer" style="margin-top: 15px; min-height: 50px; display: block; visibility: visible; opacity: 1;">
-                                <!-- Form nhập xe sẽ được thêm vào đây -->
+                                <!-- Form nhập xe sẽ được thêm vào đây - tự động hiển thị 1 form -->
                             </div>
                         </div>
 
@@ -230,27 +282,18 @@
                         <label><i class="fas fa-tag"></i> Tên Nhóm Xe</label>
                         <input type="text" id="editGroupName" name="name" required placeholder="Nhập tên nhóm xe">
                     </div>
-                    <div class="form-group">
-                        <label><i class="fas fa-car"></i> Số Lượng Xe</label>
-                        <input type="number" id="editVehicleCount" name="vehicleCount" min="0" required placeholder="Nhập số lượng xe"
-                               oninput="window.handleVehicleCountChange && window.handleVehicleCountChange(this.value)"
-                               onchange="window.handleVehicleCountChange && window.handleVehicleCountChange(this.value)">
-                        <small style="color: #6B7280; font-size: 12px; display: block; margin-top: 5px;">
-                            Nhập số lượng xe bạn muốn. Các form nhập xe sẽ tự động hiển thị bên dưới khi cần thêm xe mới.
-                        </small>
-                    </div>
 
-                    <!-- Phần thêm xe vào nhóm -->
+                    <!-- Phần thêm/xem xe trong nhóm -->
                     <div class="form-group" style="margin-top: 30px; border-top: 2px solid #E5E7EB; padding-top: 20px;">
                         <label style="font-weight: 600; color: #4F46E5; margin-bottom: 15px; display: block;">
-                            <i class="fas fa-plus-circle"></i> Thêm Xe Vào Nhóm
+                            <i class="fas fa-car"></i> Xe Trong Nhóm
                             <small style="font-weight: normal; color: #6B7280; font-size: 12px; display: block; margin-top: 5px;">
-                                Nhập số lượng xe ở trên, các form nhập thông tin xe sẽ tự động hiển thị ở đây.
+                                Mỗi nhóm chỉ có đúng 1 xe duy nhất. Xem chi tiết xe bằng nút "Xem" ở bảng danh sách.
                             </small>
                         </label>
                         <div id="vehiclesToAddContainer" style="margin-top: 15px; min-height: 50px; display: block; visibility: visible; opacity: 1;">
                             <p style="color: #6B7280; font-size: 14px; text-align: center; padding: 20px; margin: 0;">
-                                Nhập số lượng xe ở trên để hiển thị form nhập thông tin xe.
+                                Sử dụng nút "Xem" để xem và quản lý xe trong nhóm.
                             </p>
                         </div>
                     </div>
@@ -278,7 +321,7 @@
             <div class="modal-content" style="max-width: 900px;">
                 <div class="modal-header">
                     <h3><i class="fas fa-info-circle"></i> Chi Tiết Nhóm Xe</h3>
-                    <a th:href="@{/admin/staff-management(searchQuery=${searchQuery}, statusFilter=${statusFilter})}"
+                    <a th:href="@{/admin/staff-management(searchQuery=${searchQuery}, statusFilter=${statusFilter}, page=${currentPage})}"
                        class="close-modal" style="text-decoration: none; color: white; font-size: 28px; cursor: pointer; font-weight: bold;">&times;</a>
                 </div>
                 <div class="modal-body" style="padding: 24px;" th:if="${viewGroup != null}">
@@ -295,10 +338,6 @@
                             <div class="detail-item">
                                 <label><strong>Tên Nhóm:</strong></label>
                                 <span th:text="${viewGroup.name}">-</span>
-                            </div>
-                            <div class="detail-item">
-                                <label><strong>Số Lượng Xe:</strong></label>
-                                <span th:text="${viewGroup.vehicleCount}">-</span>
                             </div>
                             <div class="detail-item">
                                 <label><strong>Trạng Thái:</strong></label>
@@ -388,7 +427,7 @@
                     </div>
                 </div>
                 <div class="modal-footer">
-                    <a th:href="@{/admin/staff-management(searchQuery=${searchQuery}, statusFilter=${statusFilter})}"
+                    <a th:href="@{/admin/staff-management(searchQuery=${searchQuery}, statusFilter=${statusFilter}, page=${currentPage})}"
                        class="btn btn-secondary">Đóng</a>
                 </div>
             </div>
@@ -525,57 +564,8 @@ window.generateVehicleRows = function(count) {
     }
 };
 
-window.handleVehicleCountChange = function(value) {
-    console.log('🔹🔹🔹 handleVehicleCountChange được gọi với giá trị:', value);
-    const count = parseInt(value) || 0;
-    console.log('🔹🔹🔹 Parsed count:', count);
-
-    // Lấy groupId từ modal
-    const groupId = document.getElementById('editGroupId')?.value;
-    if (!groupId) {
-        console.error('❌ Không tìm thấy groupId');
-        return;
-    }
-
-    // Lấy số lượng xe thực tế trong nhóm
-    fetch(`http://localhost:8083/api/vehicle-groups/${groupId}/vehicles`)
-        .then(response => response.json())
-        .then(vehiclesList => {
-            const actualVehicleCount = vehiclesList ? vehiclesList.length : 0;
-            console.log('🔹 Số lượng xe thực tế trong nhóm:', actualVehicleCount);
-            console.log('🔹 Số lượng xe nhập vào:', count);
-
-            // Tính số lượng xe cần thêm = số lượng nhập - số lượng thực tế
-            const vehiclesToAdd = Math.max(0, count - actualVehicleCount);
-            console.log('🔹 Số lượng xe cần thêm:', vehiclesToAdd);
-
-            // Chỉ hiện form khi cần thêm xe
-            if (vehiclesToAdd > 0) {
-                if (window.generateVehicleRows) {
-                    window.generateVehicleRows(vehiclesToAdd);
-                }
-            } else {
-                const container = document.getElementById('vehiclesToAddContainer');
-                if (container) {
-                    if (count === actualVehicleCount) {
-                        container.innerHTML = '<p style="color: #6B7280; font-size: 14px; text-align: center; padding: 20px; margin: 0;">Nhóm xe đã có đủ số lượng xe. Nhập số lượng lớn hơn để thêm xe mới.</p>';
-                    } else if (count < actualVehicleCount) {
-                        container.innerHTML = '<p style="color: #F59E0B; font-size: 14px; text-align: center; padding: 20px; margin: 0;">Số lượng xe bạn nhập nhỏ hơn số lượng xe hiện tại. Khi lưu, bạn sẽ cần chọn xe để xóa.</p>';
-                    } else {
-                        container.innerHTML = '<p style="color: #6B7280; font-size: 14px; text-align: center; padding: 20px; margin: 0;">Nhập số lượng xe ở trên để hiển thị form nhập thông tin xe.</p>';
-                    }
-                }
-            }
-        })
-        .catch(error => {
-            console.error('❌ Lỗi khi lấy danh sách xe:', error);
-            // Nếu lỗi, không hiện form
-            const container = document.getElementById('vehiclesToAddContainer');
-            if (container) {
-                container.innerHTML = '<p style="color: #EF4444; font-size: 14px; text-align: center; padding: 20px; margin: 0;">Lỗi khi lấy thông tin xe trong nhóm. Vui lòng thử lại.</p>';
-            }
-        });
-};
+// Không cần hàm handleVehicleCountChange nữa vì mỗi nhóm chỉ có 1 xe
+// Quản lý xe sẽ được thực hiện qua modal xem chi tiết
 
 // Script cho inline editing trong modal xem chi tiết
 document.addEventListener('DOMContentLoaded', function() {
@@ -783,29 +773,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-// Hàm xử lý thay đổi số lượng xe trong modal thêm nhóm xe
-window.handleAddVehicleCountChange = function(value) {
-    console.log('🔹🔹🔹 handleAddVehicleCountChange được gọi với giá trị:', value);
-    const count = parseInt(value) || 0;
-    console.log('🔹🔹🔹 Parsed count:', count);
-
-    const container = document.getElementById('addVehiclesToAddContainer');
-    if (!container) {
-        console.error('❌ Không tìm thấy container addVehiclesToAddContainer');
-        return;
-    }
-
-    if (count > 0 && window.createVehicleRow) {
-        container.innerHTML = '';
-        for (let i = 0; i < count; i++) {
-            const row = window.createVehicleRow(i);
-            container.appendChild(row);
-        }
-        console.log('✅ Đã hiển thị ' + count + ' form nhập xe');
-    } else {
-        container.innerHTML = '<p style="color: #6B7280; font-size: 14px; text-align: center; padding: 20px; margin: 0;">Nhập số lượng xe ở trên để hiển thị form nhập thông tin xe.</p>';
-    }
-};
+// Không cần hàm handleAddVehicleCountChange nữa vì mỗi nhóm chỉ có 1 xe
+// Form xe sẽ được tự động hiển thị khi mở modal thêm nhóm
 
 // Script cho modal thêm nhóm xe
 document.addEventListener('DOMContentLoaded', function() {
@@ -826,15 +795,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 if (addGroupForm) {
                     addGroupForm.reset();
                 }
-                // Reset số lượng xe về 0
-                const addVehicleCount = document.getElementById('addVehicleCount');
-                if (addVehicleCount) {
-                    addVehicleCount.value = '0';
-                }
-                // Xóa các form nhập xe
+                // Tự động hiển thị 1 form nhập xe (mỗi nhóm chỉ có 1 xe)
                 const addVehiclesContainer = document.getElementById('addVehiclesToAddContainer');
-                if (addVehiclesContainer) {
-                    addVehiclesContainer.innerHTML = '<p style="color: #6B7280; font-size: 14px; text-align: center; padding: 20px; margin: 0;">Nhập số lượng xe ở trên để hiển thị form nhập thông tin xe.</p>';
+                if (addVehiclesContainer && window.createVehicleRow) {
+                    addVehiclesContainer.innerHTML = '';
+                    const row = window.createVehicleRow(0);
+                    addVehiclesContainer.appendChild(row);
                 }
                 // Ẩn thông báo
                 if (addGroupStatusMessage) {
@@ -887,7 +853,6 @@ document.addEventListener('DOMContentLoaded', function() {
             e.preventDefault();
 
             const name = document.getElementById('addGroupName').value.trim();
-            const vehicleCount = parseInt(document.getElementById('addVehicleCount').value) || 0;
             const active = document.getElementById('addActive').value;
             const description = document.getElementById('addDescription').value.trim();
             const groupId = document.getElementById('addGroupId').value.trim();
@@ -902,7 +867,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
 
-            // Lấy thông tin xe từ form
+            // Lấy thông tin xe từ form (mỗi nhóm chỉ có 1 xe)
             const vehicleRows = document.querySelectorAll('#addVehiclesToAddContainer .vehicle-row');
             const vehicles = [];
             vehicleRows.forEach(function(row) {
@@ -921,15 +886,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             });
 
-            // Kiểm tra nếu số lượng xe > 0 nhưng chưa có xe nào được nhập
-            if (vehicleCount > 0 && vehicles.length === 0) {
-                showAddGroupMessage('Vui lòng nhập thông tin cho ' + vehicleCount + ' xe!', 'error');
+            // Kiểm tra nếu chưa nhập thông tin xe
+            if (vehicles.length === 0) {
+                showAddGroupMessage('Vui lòng nhập thông tin cho xe! Mỗi nhóm cần có đúng 1 xe.', 'error');
                 return;
             }
 
-            // Kiểm tra nếu số lượng xe nhập không khớp với số lượng xe yêu cầu
-            if (vehicleCount > 0 && vehicles.length !== vehicleCount) {
-                showAddGroupMessage('Vui lòng nhập đủ thông tin cho ' + vehicleCount + ' xe! (Đã nhập: ' + vehicles.length + ')', 'error');
+            // Kiểm tra số lượng xe (chỉ cho phép 1 xe)
+            if (vehicles.length > 1) {
+                showAddGroupMessage('Mỗi nhóm chỉ được có đúng 1 xe! Vui lòng xóa các xe thừa (chỉ giữ lại 1 xe).', 'error');
                 return;
             }
 
@@ -937,11 +902,10 @@ document.addEventListener('DOMContentLoaded', function() {
             const formData = new FormData();
             formData.append('groupId', groupId);
             formData.append('name', name);
-            formData.append('vehicleCount', vehicleCount);
             formData.append('active', active);
             formData.append('description', description);
 
-            // Thêm danh sách xe nếu có
+            // Thêm danh sách xe (chỉ 1 xe)
             if (vehicles.length > 0) {
                 formData.append('vehicles', JSON.stringify(vehicles));
             }

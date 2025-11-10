@@ -256,31 +256,74 @@ body {
     justify-content: space-between;
     align-items: center;
     background: #fff;
-    padding: 20px;
+    padding: 20px 24px;
     margin-top: 20px;
     border-radius: 12px;
     box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
-.pagination-buttons button {
-    background: #F3F4F6;
-    border: none;
+.pagination-info {
+    font-size: 14px;
+    color: #6B7280;
+}
+
+.pagination-buttons {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.pagination-buttons a {
     padding: 8px 12px;
     border-radius: 6px;
-    cursor: pointer;
-    margin: 0 2px;
+    text-decoration: none;
+    font-size: 14px;
     min-width: 40px;
+    text-align: center;
+    transition: all 0.2s;
+    display: inline-block;
+}
+
+.pagination-buttons a:not(.active):not(.disabled) {
+    background: #F3F4F6;
+    color: #374151;
+    border: 1px solid #E5E7EB;
+}
+
+.pagination-buttons a:not(.active):not(.disabled):hover {
+    background: #E5E7EB;
+    border-color: #D1D5DB;
 }
 
 .pagination-buttons .active {
     background: #4F46E5;
     color: white;
+    border: 1px solid #4F46E5;
 }
 
-.prev,
-.next {
+.pagination-buttons .disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
+}
+
+.pagination-buttons .prev,
+.pagination-buttons .next {
     background: white;
     border: 1px solid #E5E7EB;
+    color: #374151;
+}
+
+.pagination-buttons .prev:hover:not(.disabled),
+.pagination-buttons .next:hover:not(.disabled) {
+    background: #F9FAFB;
+    border-color: #D1D5DB;
+}
+
+.pagination-buttons span {
+    padding: 0 4px;
+    color: #6B7280;
+    font-size: 14px;
 }
 
 /* Responsive */

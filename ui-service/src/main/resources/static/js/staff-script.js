@@ -16,8 +16,7 @@ document.addEventListener('DOMContentLoaded', function () {
     console.log('Modal found:', editModal);
     console.log('Edit buttons found:', document.querySelectorAll('.btn-edit-group').length);
 
-    // Biến lưu số lượng xe hiện tại khi mở modal
-    let currentVehicleCountInModal = 0;
+    // Biến lưu groupId hiện tại khi mở modal
     let currentGroupIdInModal = '';
 
     // Mở modal sửa khi click nút Sửa
@@ -33,28 +32,23 @@ document.addEventListener('DOMContentLoaded', function () {
             
             const groupId = this.getAttribute('data-group-id');
             const groupName = this.getAttribute('data-group-name');
-            const vehicleCount = this.getAttribute('data-vehicle-count');
             const active = this.getAttribute('data-active');
             const description = this.getAttribute('data-description') || '';
             
-            console.log('Dữ liệu nhóm xe:', { groupId, groupName, vehicleCount, active, description });
+            console.log('Dữ liệu nhóm xe:', { groupId, groupName, active, description });
             
-            // Lưu số lượng xe hiện tại và groupId
-            currentVehicleCountInModal = parseInt(vehicleCount) || 0;
+            // Lưu groupId
             currentGroupIdInModal = groupId || '';
-            console.log('🔹 Lưu số lượng xe hiện tại:', currentVehicleCountInModal);
             console.log('🔹 Lưu groupId:', currentGroupIdInModal);
             
             // Điền dữ liệu vào form
             const editGroupId = document.getElementById('editGroupId');
             const editGroupName = document.getElementById('editGroupName');
-            const editVehicleCount = document.getElementById('editVehicleCount');
             const editActive = document.getElementById('editActive');
             const editDescription = document.getElementById('editDescription');
             
             if (editGroupId) editGroupId.value = groupId || '';
             if (editGroupName) editGroupName.value = groupName || '';
-            if (editVehicleCount) editVehicleCount.value = vehicleCount || 0;
             if (editActive) editActive.value = active || 'active';
             if (editDescription) editDescription.value = description || '';
             
@@ -62,40 +56,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 editModal.classList.add('show');
                 editModal.style.display = 'block';
                 console.log('Modal đã được mở');
-                
-                // Lấy số lượng xe thực tế trong nhóm và tính số lượng xe cần thêm
-                if (groupId) {
-                    fetch(`http://localhost:8083/api/vehicle-groups/${groupId}/vehicles`)
-                        .then(response => response.json())
-                        .then(vehiclesList => {
-                            const actualVehicleCount = vehiclesList ? vehiclesList.length : 0;
-                            console.log('🔹 Số lượng xe thực tế trong nhóm:', actualVehicleCount);
-                            
-                            // Tính số lượng xe cần thêm = số lượng nhập - số lượng thực tế
-                            const inputCount = parseInt(vehicleCount) || 0;
-                            const vehiclesToAdd = Math.max(0, inputCount - actualVehicleCount);
-                            
-                            console.log('🔹 Số lượng xe cần thêm:', vehiclesToAdd);
-                            
-                            // Chỉ hiện form khi cần thêm xe
-                            if (vehiclesToAdd > 0 && window.generateVehicleRows) {
-                                window.generateVehicleRows(vehiclesToAdd);
-                            } else {
-                                const container = document.getElementById('vehiclesToAddContainer');
-                                if (container) {
-                                    container.innerHTML = '<p style="color: #6B7280; font-size: 14px; text-align: center; padding: 20px; margin: 0;">Nhóm xe đã có đủ số lượng xe. Nhập số lượng lớn hơn để thêm xe mới.</p>';
-                                }
-                            }
-                        })
-                        .catch(error => {
-                            console.error('❌ Lỗi khi lấy danh sách xe:', error);
-                            // Nếu lỗi, vẫn hiện form theo số lượng trong attribute
-                            const initialCount = parseInt(vehicleCount) || 0;
-                            if (window.generateVehicleRows && initialCount > 0) {
-                                window.generateVehicleRows(initialCount);
-                            }
-                        });
-                }
             } else {
                 console.error('Không thể mở modal - editModal không tồn tại');
             }
@@ -139,285 +99,15 @@ document.addEventListener('DOMContentLoaded', function () {
             
             const groupId = document.getElementById('editGroupId').value;
             const groupName = document.getElementById('editGroupName').value.trim();
-            const vehicleCount = parseInt(document.getElementById('editVehicleCount').value) || 0;
             const active = document.getElementById('editActive').value;
             const description = document.getElementById('editDescription').value.trim();
             
-            // Kiểm tra nếu số lượng xe giảm xuống
-            const vehiclesNeeded = vehicleCount - currentVehicleCountInModal;
-            
-            console.log('🔹 Kiểm tra trước khi submit:');
-            console.log('  - Số lượng xe hiện tại (khi mở modal):', currentVehicleCountInModal);
-            console.log('  - Số lượng xe mới:', vehicleCount);
-            console.log('  - Số lượng xe cần thay đổi:', vehiclesNeeded);
-            
-            // Nếu số lượng xe mới < số lượng xe hiện tại, cần chọn xe để xóa
-            if (vehiclesNeeded < 0) {
-                const vehiclesToDelete = Math.abs(vehiclesNeeded);
-                console.log('🔹 Cần xóa ' + vehiclesToDelete + ' xe');
-                
-                // Đóng modal chỉnh sửa nhóm xe
-                if (editModal) {
-                    editModal.classList.remove('show');
-                    editModal.style.display = 'none';
-                    console.log('✅ Đã đóng modal chỉnh sửa nhóm xe');
-                }
-                
-                // Lấy danh sách xe hiện tại trong nhóm
-                fetch(`http://localhost:8083/api/vehicle-groups/${groupId}/vehicles`)
-                    .then(response => response.json())
-                    .then(vehiclesList => {
-                        console.log('🔹 Danh sách xe trong nhóm:', vehiclesList);
-                        
-                        // Mở modal chọn xe xóa
-                        const deleteVehiclesModal = document.getElementById('deleteVehiclesModal');
-                        const deleteVehiclesContainer = document.getElementById('deleteVehiclesContainer');
-                        const deleteVehiclesGroupId = document.getElementById('deleteVehiclesGroupId');
-                        const deleteVehiclesCount = document.getElementById('deleteVehiclesCount');
-                        const vehiclesToDeleteCount = document.getElementById('vehiclesToDeleteCount');
-                        
-                        if (deleteVehiclesModal && deleteVehiclesContainer && deleteVehiclesGroupId && deleteVehiclesCount && vehiclesToDeleteCount) {
-                            // Lưu thông tin vào modal (bao gồm cả thông tin nhóm xe để cập nhật sau khi xóa)
-                            deleteVehiclesGroupId.value = groupId;
-                            deleteVehiclesCount.value = vehiclesToDelete;
-                            vehiclesToDeleteCount.textContent = vehiclesToDelete;
-                            
-                            // Lưu thông tin nhóm xe vào data attributes để sử dụng sau khi xóa
-                            deleteVehiclesModal.setAttribute('data-group-name', groupName);
-                            deleteVehiclesModal.setAttribute('data-group-active', active);
-                            deleteVehiclesModal.setAttribute('data-group-description', description);
-                            deleteVehiclesModal.setAttribute('data-new-vehicle-count', vehicleCount);
-                            
-                            // Tạo danh sách checkbox để chọn xe xóa
-                            deleteVehiclesContainer.innerHTML = '';
-                            
-                            vehiclesList.forEach(function(vehicle) {
-                                const vehicleId = vehicle.vehicleId || vehicle.vehicle_id;
-                                const vehicleNumber = vehicle.vehicleNumber || vehicle.vehicle_number || '';
-                                const vehicleType = vehicle.vehicleType || vehicle.vehicle_type || '';
-                                const status = vehicle.status || '';
-                                
-                                const row = document.createElement('div');
-                                row.style.cssText = 'display: flex; align-items: center; padding: 12px; margin-bottom: 10px; background: #F9FAFB; border-radius: 8px; border: 1px solid #E5E7EB;';
-                                row.innerHTML = `
-                                    <input type="checkbox" class="vehicle-delete-checkbox" value="${vehicleId}" style="margin-right: 15px; width: 20px; height: 20px; cursor: pointer;">
-                                    <div style="flex: 1;">
-                                        <div style="font-weight: 600; color: #111827; margin-bottom: 4px;">${vehicleNumber || vehicleId}</div>
-                                        <div style="font-size: 14px; color: #6B7280;">${vehicleType || 'N/A'} - ${status || 'N/A'}</div>
-                                    </div>
-                                `;
-                                deleteVehiclesContainer.appendChild(row);
-                            });
-                            
-                            // Mở modal
-                            deleteVehiclesModal.classList.add('show');
-                            deleteVehiclesModal.style.display = 'block';
-                            deleteVehiclesModal.style.visibility = 'visible';
-                            deleteVehiclesModal.style.opacity = '1';
-                            deleteVehiclesModal.style.zIndex = '1000';
-                            
-                            console.log('✅ Đã mở modal chọn xe xóa với ' + vehiclesList.length + ' xe');
-                        } else {
-                            console.error('❌ Không tìm thấy modal xóa xe hoặc các elements liên quan');
-                            alert('Lỗi: Không tìm thấy modal xóa xe. Vui lòng làm mới trang và thử lại.');
-                        }
-                    })
-                    .catch(error => {
-                        console.error('❌ Lỗi khi lấy danh sách xe:', error);
-                        alert('Lỗi khi lấy danh sách xe: ' + error.message);
-                    });
-                
-                return false; // Không submit form, đợi user chọn xe xóa
-            }
-            
-            // Nếu số lượng xe tăng lên, cần thêm xe mới
-            if (vehiclesNeeded > 0) {
-                console.log('🔹 Cần thêm ' + vehiclesNeeded + ' xe mới');
-                
-                // Thu thập thông tin xe từ các form trong modal edit
-                const vehicleRows = document.querySelectorAll('#vehiclesToAddContainer .vehicle-row');
-                const vehicles = [];
-                vehicleRows.forEach(function(row) {
-                    const vehicleId = row.querySelector('.vehicle-id-input')?.value.trim();
-                    const vehicleType = row.querySelector('.vehicle-type-input')?.value.trim();
-                    const vehicleNumber = row.querySelector('.vehicle-number-input')?.value.trim();
-                    const status = row.querySelector('.vehicle-status-input')?.value;
-                    
-                    if (vehicleId && vehicleType && vehicleNumber) {
-                        vehicles.push({
-                            vehicleId: vehicleId,
-                            type: vehicleType,
-                            vehicleNumber: vehicleNumber,
-                            status: status || 'available'
-                        });
-                    }
-                });
-                
-                // Nếu chưa có đủ xe trong form, đóng modal edit và mở modal thêm xe
-                if (vehicles.length < vehiclesNeeded) {
-                    const remainingVehicles = vehiclesNeeded - vehicles.length;
-                    console.log('🔹 Chưa đủ xe, cần thêm ' + remainingVehicles + ' xe nữa');
-                    
-                    // Đóng modal chỉnh sửa nhóm xe
-                    if (editModal) {
-                        editModal.classList.remove('show');
-                        editModal.style.display = 'none';
-                        console.log('✅ Đã đóng modal chỉnh sửa nhóm xe');
-                    }
-                    
-                    // Cập nhật nhóm xe trước (không có vehicles)
-                    const groupData = {
-                        name: groupName,
-                        vehicleCount: vehicleCount,
-                        active: active,
-                        description: description
-                    };
-                    
-                    fetch(`http://localhost:8083/api/vehicle-groups/${groupId}`, {
-                        method: 'PUT',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify(groupData)
-                    })
-                    .then(response => {
-                        if (response.ok) {
-                            return response.json();
-                        } else {
-                            return response.text().then(text => {
-                                throw new Error(text);
-                            });
-                        }
-                    })
-                    .then(data => {
-                        console.log('✅ Đã cập nhật nhóm xe thành công');
-                        
-                        // Mở modal thêm xe
-                        const addVehiclesModal = document.getElementById('addVehiclesModal');
-                        const addVehiclesContainer = document.getElementById('addVehiclesContainer');
-                        const addVehiclesGroupId = document.getElementById('addVehiclesGroupId');
-                        const addVehiclesCount = document.getElementById('addVehiclesCount');
-                        const vehiclesToAddCount = document.getElementById('vehiclesToAddCount');
-                        
-                        if (addVehiclesModal && addVehiclesContainer && addVehiclesGroupId && addVehiclesCount && vehiclesToAddCount) {
-                            // Lưu thông tin vào modal
-                            addVehiclesGroupId.value = groupId;
-                            addVehiclesCount.value = remainingVehicles;
-                            vehiclesToAddCount.textContent = remainingVehicles;
-                            
-                            // Lưu vehicleCount mong muốn vào data attribute
-                            addVehiclesModal.setAttribute('data-desired-vehicle-count', vehicleCount);
-                            
-                            // Xóa container và tạo form nhập xe
-                            addVehiclesContainer.innerHTML = '';
-                            
-                            if (window.generateVehicleRows) {
-                                const tempContainer = document.getElementById('vehiclesToAddContainer');
-                                if (tempContainer) {
-                                    tempContainer.innerHTML = '';
-                                    window.generateVehicleRows(remainingVehicles);
-                                    
-                                    setTimeout(function() {
-                                        const vehicleRows = document.querySelectorAll('#vehiclesToAddContainer .vehicle-row');
-                                        vehicleRows.forEach(function(row) {
-                                            addVehiclesContainer.appendChild(row);
-                                        });
-                                        
-                                        // Mở modal
-                                        addVehiclesModal.classList.add('show');
-                                        addVehiclesModal.style.display = 'block';
-                                        addVehiclesModal.style.visibility = 'visible';
-                                        addVehiclesModal.style.opacity = '1';
-                                        addVehiclesModal.style.zIndex = '1000';
-                                        
-                                        console.log('✅ Đã mở modal thêm xe với ' + vehicleRows.length + ' form nhập xe');
-                                    }, 100);
-                                } else {
-                                    console.error('❌ Không tìm thấy vehiclesToAddContainer');
-                                }
-                            } else {
-                                console.error('❌ window.generateVehicleRows không tồn tại!');
-                            }
-                        } else {
-                            console.error('❌ Không tìm thấy modal thêm xe hoặc các elements liên quan');
-                            alert('Lỗi: Không tìm thấy modal thêm xe. Vui lòng làm mới trang và thử lại.');
-                        }
-                    })
-                    .catch(error => {
-                        console.error('❌ Lỗi khi cập nhật nhóm xe:', error);
-                        showUpdateMessage('Lỗi khi cập nhật nhóm xe: ' + error.message, 'error');
-                    });
-                    
-                    return false; // Không submit form, đợi user nhập xe
-                }
-            }
-            
-            // Nếu có xe trong form edit modal, gửi kèm theo
-            const vehicleRows = document.querySelectorAll('#vehiclesToAddContainer .vehicle-row');
-            const vehicles = [];
-            vehicleRows.forEach(function(row) {
-                const vehicleId = row.querySelector('.vehicle-id-input')?.value.trim();
-                const vehicleType = row.querySelector('.vehicle-type-input')?.value.trim();
-                const vehicleNumber = row.querySelector('.vehicle-number-input')?.value.trim();
-                const status = row.querySelector('.vehicle-status-input')?.value;
-                
-                if (vehicleId && vehicleType && vehicleNumber) {
-                    vehicles.push({
-                        vehicleId: vehicleId,
-                        type: vehicleType,
-                        vehicleNumber: vehicleNumber,
-                        status: status || 'available'
-                    });
-                }
-            });
-            
-            // Nếu không giảm số lượng xe, cập nhật bình thường
+            // Tạo dữ liệu nhóm xe (không có vehicleCount nữa)
             const groupData = {
                 name: groupName,
-                vehicleCount: vehicleCount,
                 active: active,
                 description: description
             };
-            
-            // Nếu có xe trong form, gửi qua FormData
-            if (vehicles.length > 0) {
-                const formData = new FormData();
-                formData.append('groupId', groupId);
-                formData.append('name', groupName);
-                formData.append('vehicleCount', vehicleCount);
-                formData.append('active', active);
-                formData.append('description', description);
-                formData.append('vehicles', JSON.stringify(vehicles));
-                
-                fetch('/admin/staff-management/update/' + groupId, {
-                    method: 'POST',
-                    body: formData,
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest'
-                    }
-                })
-                .then(response => {
-                    if (response.ok || response.status === 302 || response.redirected) {
-                        showUpdateMessage('Nhóm xe đã được cập nhật thành công!', 'success');
-                        if (editModal) {
-                            editModal.classList.remove('show');
-                            editModal.style.display = 'none';
-                        }
-                        setTimeout(() => {
-                            window.location.reload();
-                        }, 1500);
-                    } else {
-                        return response.text().then(text => {
-                            throw new Error(text);
-                        });
-                    }
-                })
-                .catch(error => {
-                    showUpdateMessage('Lỗi khi cập nhật nhóm xe: ' + error.message, 'error');
-                });
-                
-                return false;
-            }
 
             // Gọi API để cập nhật nhóm xe
             fetch(`http://localhost:8083/api/vehicle-groups/${groupId}`, {
@@ -537,56 +227,40 @@ document.addEventListener('DOMContentLoaded', function () {
                 return false;
             }
             
-            // Lấy thông tin nhóm xe hiện tại để cập nhật lại
-            fetch(`http://localhost:8083/api/vehicle-groups/${groupId}`, {
-                method: 'GET',
+            // Thêm xe trực tiếp qua API
+            const requestData = {
+                groupId: groupId,
+                vehicles: vehicles
+            };
+            
+            // Kiểm tra số lượng xe (chỉ cho phép 1 xe)
+            if (vehicles.length > 1) {
+                alert('Mỗi nhóm chỉ được có đúng 1 xe! Vui lòng chỉ nhập 1 xe.');
+                return false;
+            }
+            
+            return fetch('http://localhost:8083/api/vehicles/batch', {
+                method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
-                }
-            })
-            .then(response => response.json())
-            .then(groupData => {
-                // Lấy vehicleCount mong muốn từ modal (nếu có)
-                const addVehiclesModal = document.getElementById('addVehiclesModal');
-                const desiredVehicleCount = addVehiclesModal?.getAttribute('data-desired-vehicle-count');
-                const newVehicleCount = desiredVehicleCount ? parseInt(desiredVehicleCount) : ((groupData.vehicleCount || 0) + vehicles.length);
-                
-                console.log('🔹 Cập nhật vehicleCount:', {
-                    'Hiện tại': groupData.vehicleCount,
-                    'Mong muốn': desiredVehicleCount,
-                    'Số xe thêm': vehicles.length,
-                    'Số lượng mới': newVehicleCount
-                });
-                
-                // Cập nhật lại thông tin nhóm xe với vehicles và vehicleCount mới
-                const formData = new FormData();
-                formData.append('groupId', groupId);
-                formData.append('name', groupData.name || '');
-                formData.append('vehicleCount', newVehicleCount);
-                formData.append('active', groupData.active || 'active');
-                formData.append('description', groupData.description || '');
-                formData.append('vehicles', JSON.stringify(vehicles));
-                
-                return fetch('/admin/staff-management/update/' + groupId, {
-                    method: 'POST',
-                    body: formData,
-                    headers: {
-                        'X-Requested-With': 'XMLHttpRequest'
-                    }
-                });
+                },
+                body: JSON.stringify(requestData)
             })
             .then(response => {
-                if (response.ok || response.status === 302 || response.redirected) {
-                    showUpdateMessage('Đã thêm ' + vehicles.length + ' xe vào nhóm thành công!', 'success');
-                    closeAddVehiclesModal();
-                    setTimeout(() => {
-                        window.location.reload();
-                    }, 1500);
+                if (response.ok) {
+                    return response.json();
                 } else {
                     return response.text().then(text => {
                         throw new Error(text);
                     });
                 }
+            })
+            .then(data => {
+                showUpdateMessage('Đã thêm ' + vehicles.length + ' xe vào nhóm thành công!', 'success');
+                closeAddVehiclesModal();
+                setTimeout(() => {
+                    window.location.reload();
+                }, 1500);
             })
             .catch(error => {
                 console.error('❌ Lỗi khi thêm xe:', error);
@@ -744,53 +418,13 @@ document.addEventListener('DOMContentLoaded', function () {
             return new Promise(resolve => setTimeout(resolve, 200));
         })
         .then(() => {
-            // Lấy lại thông tin nhóm xe sau khi xóa để có số lượng xe chính xác
-            return fetch(`http://localhost:8083/api/vehicle-groups/${groupId}`, {
-                method: 'GET',
-                headers: {
-                    'Content-Type': 'application/json'
-                }
-            });
-        })
-        .then(response => response.json())
-        .then(groupData => {
-            console.log('🔹 Thông tin nhóm xe sau khi xóa:', groupData);
-            
-            // Lấy thông tin nhóm xe từ modal để cập nhật
-            const deleteVehiclesModal = document.getElementById('deleteVehiclesModal');
-            const groupName = deleteVehiclesModal?.getAttribute('data-group-name') || groupData.name || '';
-            const active = deleteVehiclesModal?.getAttribute('data-group-active') || groupData.active || 'active';
-            const description = deleteVehiclesModal?.getAttribute('data-group-description') || groupData.description || '';
-            const newVehicleCount = deleteVehiclesModal?.getAttribute('data-new-vehicle-count') || groupData.vehicleCount || 0;
-            
-            // Cập nhật vehicleCount theo số lượng xe thực tế sau khi xóa
-            const formData = new FormData();
-            formData.append('groupId', groupId);
-            formData.append('name', groupName);
-            formData.append('vehicleCount', newVehicleCount);
-            formData.append('active', active);
-            formData.append('description', description);
-            
-            return fetch('/admin/staff-management/update/' + groupId, {
-                method: 'POST',
-                body: formData,
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest'
-                }
-            });
-        })
-        .then(response => {
-            if (response.ok || response.status === 302 || response.redirected) {
+            // Không cần cập nhật vehicleCount nữa vì đã xóa cột này
+            // Chỉ cần hiển thị thông báo và reload trang
                 showUpdateMessage('Đã xóa ' + actualDeletedCount + ' xe khỏi nhóm thành công!', 'success');
                 closeDeleteVehiclesModal();
                 setTimeout(() => {
                     window.location.reload();
                 }, 1500);
-            } else {
-                return response.text().then(text => {
-                    throw new Error(text);
-                });
-            }
         })
         .catch(error => {
             console.error('❌ Lỗi khi xóa xe:', error);

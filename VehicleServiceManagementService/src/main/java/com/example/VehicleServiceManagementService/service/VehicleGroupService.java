@@ -36,6 +36,46 @@ public class VehicleGroupService {
     }
 
     /**
+     * Lấy danh sách nhóm xe chưa có xe nào
+     * @return Danh sách nhóm xe chưa có xe
+     */
+    public List<Vehiclegroup> getVehicleGroupsWithoutVehicles() {
+        // Lấy tất cả nhóm xe
+        List<Vehiclegroup> allGroups = vehicleGroupRepository.findAll();
+        
+        // Lọc chỉ lấy những nhóm chưa có xe
+        return allGroups.stream()
+                .filter(group -> {
+                    long vehicleCount = vehicleRepository.countByGroupId(group.getGroupId());
+                    return vehicleCount == 0;
+                })
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Lấy danh sách nhóm xe chưa có xe, bao gồm cả nhóm hiện tại (nếu có)
+     * @param currentGroupId ID của nhóm hiện tại (có thể null)
+     * @return Danh sách nhóm xe chưa có xe + nhóm hiện tại
+     */
+    public List<Vehiclegroup> getAvailableVehicleGroups(String currentGroupId) {
+        // Lấy tất cả nhóm xe
+        List<Vehiclegroup> allGroups = vehicleGroupRepository.findAll();
+        
+        // Lọc lấy những nhóm chưa có xe, hoặc là nhóm hiện tại
+        return allGroups.stream()
+                .filter(group -> {
+                    // Nếu là nhóm hiện tại, luôn bao gồm
+                    if (currentGroupId != null && currentGroupId.equals(group.getGroupId())) {
+                        return true;
+                    }
+                    // Nếu không phải nhóm hiện tại, chỉ lấy nhóm chưa có xe
+                    long vehicleCount = vehicleRepository.countByGroupId(group.getGroupId());
+                    return vehicleCount == 0;
+                })
+                .collect(Collectors.toList());
+    }
+
+    /**
      * Lấy chi tiết nhóm xe theo groupId
      * @param groupId ID của nhóm xe
      * @return Vehiclegroup nếu tìm thấy, null nếu không
@@ -77,7 +117,7 @@ public class VehicleGroupService {
 
     /**
      * Sửa thông tin nhóm xe
-     * Có thể sửa: tên, số lượng xe, trạng thái, mô tả
+     * Có thể sửa: tên, trạng thái, mô tả
      * 
      * @param groupId ID của nhóm xe cần sửa
      * @param vehicleGroup Đối tượng chứa thông tin cần cập nhật
@@ -95,11 +135,6 @@ public class VehicleGroupService {
         // Cập nhật tên nhóm xe (nếu có)
         if (vehicleGroup.getName() != null && !vehicleGroup.getName().trim().isEmpty()) {
             groupToUpdate.setName(vehicleGroup.getName().trim());
-        }
-        
-        // Cập nhật số lượng xe (nếu có)
-        if (vehicleGroup.getVehicleCount() != null) {
-            groupToUpdate.setVehicleCount(vehicleGroup.getVehicleCount());
         }
         
         // Cập nhật trạng thái (nếu có)

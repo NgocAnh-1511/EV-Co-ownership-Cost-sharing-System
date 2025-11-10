@@ -5,17 +5,15 @@ public class VehiclegroupDTO {
     private String groupId;
     private String name;
     private String description;
-    private Integer vehicleCount = 0;  // Giá trị mặc định 0
     private String active = "active";
 
     // Constructors
     public VehiclegroupDTO() {}
 
-    public VehiclegroupDTO(String groupId, String name, String description, Integer vehicleCount, String active) {
+    public VehiclegroupDTO(String groupId, String name, String description, String active) {
         this.groupId = groupId;
         this.name = name;
         this.description = description;
-        this.vehicleCount = vehicleCount;
         this.active = active;
     }
 
@@ -49,14 +47,4 @@ public class VehiclegroupDTO {
     public void setDescription(String description) {
         this.description = description;
     }
-
-    public Integer getVehicleCount() {
-        return vehicleCount;
-    }
-
-    public void setVehicleCount(Integer vehicleCount) {
-        this.vehicleCount = vehicleCount;
-    }
-
-
 }

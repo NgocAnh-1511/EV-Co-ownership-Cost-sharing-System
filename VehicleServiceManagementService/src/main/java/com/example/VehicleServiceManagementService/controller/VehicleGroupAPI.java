@@ -26,6 +26,22 @@ public class VehicleGroupAPI {
     }
 
     /**
+     * Lấy danh sách nhóm xe chưa có xe nào
+     * @return Danh sách nhóm xe chưa có xe
+     */
+    @GetMapping("/available")
+    public List<Vehiclegroup> getAvailableVehicleGroups(
+            @RequestParam(value = "currentGroupId", required = false) String currentGroupId) {
+        if (currentGroupId != null && !currentGroupId.trim().isEmpty()) {
+            // Nếu có currentGroupId, trả về nhóm chưa có xe + nhóm hiện tại
+            return vehicleGroupService.getAvailableVehicleGroups(currentGroupId);
+        } else {
+            // Nếu không có currentGroupId, chỉ trả về nhóm chưa có xe
+            return vehicleGroupService.getVehicleGroupsWithoutVehicles();
+        }
+    }
+
+    /**
      * Lấy chi tiết nhóm xe theo groupId
      * @param groupId ID của nhóm xe
      * @return ResponseEntity với Vehiclegroup hoặc thông báo lỗi
@@ -69,7 +85,7 @@ public class VehicleGroupAPI {
 
     /**
      * Sửa thông tin nhóm xe
-     * Có thể sửa: tên, số lượng xe, trạng thái, mô tả
+     * Có thể sửa: tên, trạng thái, mô tả
      * 
      * @param groupId ID của nhóm xe cần sửa
      * @param vehicleGroup Đối tượng chứa thông tin cần cập nhật

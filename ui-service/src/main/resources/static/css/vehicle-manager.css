@@ -503,7 +503,7 @@ body {
 
 .modal-body {
     padding: 24px;
-    max-height: 70vh;
+    max-height: 75vh;
     overflow-y: auto;
 }
 
@@ -571,6 +571,22 @@ body {
     margin-top: 16px;
 }
 
+/* Lịch sử dịch vụ */
+.services-history {
+    margin-top: 24px;
+    padding-top: 24px;
+    border-top: 2px solid #E5E7EB;
+    min-height: 100px;
+}
+
+.detail-section:has(.services-history) {
+    margin-top: 32px;
+}
+
+.detail-section h3 i.fa-history {
+    color: #8B5CF6;
+}
+
 .service-items {
     display: flex;
     flex-direction: column;
@@ -587,6 +603,25 @@ body {
 
 .service-item:hover {
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Style cho dịch vụ trong lịch sử */
+.service-history-item {
+    background: #F9FAFB;
+    border-color: #D1D5DB;
+    opacity: 0.9;
+}
+
+.service-history-item:hover {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.service-history-item .service-header h4 {
+    color: #64748B;
+}
+
+.service-history-item .service-details {
+    color: #6B7280;
 }
 
 .service-header {
@@ -721,6 +756,97 @@ body {
 .btn-cancel:hover {
     background: #E5E7EB;
     border-color: #9CA3AF;
+}
+
+/* Form Group */
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    font-size: 14px;
+    font-weight: 500;
+    color: #374151;
+    margin-bottom: 8px;
+}
+
+.form-group input[type="text"],
+.form-group input[type="number"],
+.form-group select,
+.form-group textarea {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #D1D5DB;
+    border-radius: 6px;
+    font-size: 14px;
+    font-family: 'Inter', sans-serif;
+    transition: border-color 0.2s;
+}
+
+.form-group input[type="text"]:focus,
+.form-group input[type="number"]:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+    outline: none;
+    border-color: #4F46E5;
+    box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+}
+
+.form-group textarea {
+    resize: vertical;
+    min-height: 80px;
+}
+
+.form-group small {
+    display: block;
+    margin-top: 4px;
+    font-size: 12px;
+    color: #6B7280;
+}
+
+/* Alert trong form */
+.alert {
+    padding: 12px 16px;
+    border-radius: 6px;
+    font-size: 14px;
+    margin-bottom: 16px;
+}
+
+.alert-success {
+    background-color: #D1FAE5;
+    color: #059669;
+    border: 1px solid #10B981;
+}
+
+.alert-danger {
+    background-color: #FEE2E2;
+    color: #DC2626;
+    border: 1px solid #EF4444;
+}
+
+/* Lịch Sử Dịch Vụ Section (trên trang chính) */
+.table-section:has(.table-header h3 i.fa-history) {
+    border: 2px solid #E9D5FF;
+    background: linear-gradient(to bottom, #FAF5FF 0%, white 5%);
+}
+
+.table-section:has(.table-header h3 i.fa-history) .table-header {
+    background: linear-gradient(135deg, #F3E8FF 0%, #FAF5FF 100%);
+    border-bottom: 2px solid #E9D5FF;
+}
+
+.table-section:has(.table-header h3 i.fa-history) .table-header h3 {
+    color: #7C3AED;
+}
+
+.table-section:has(.table-header h3 i.fa-history) .vehicle-table th {
+    background: #F5F3FF;
+    color: #6D28D9;
+}
+
+.table-section:has(.table-header h3 i.fa-history) .vehicle-table tbody tr:hover {
+    background: #F9FAFB;
 }
 
 /* Responsive */

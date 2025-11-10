@@ -47,6 +47,35 @@ public class VehicleGroupRestClient {
     }
 
     /**
+     * Lấy danh sách nhóm xe chưa có xe (available groups)
+     * @param currentGroupId ID của nhóm hiện tại (optional, để include khi edit)
+     * @return Danh sách nhóm xe chưa có xe
+     */
+    public List<VehiclegroupDTO> getAvailableVehicleGroups(String currentGroupId) {
+        try {
+            String url = BASE_URL + "/available";
+            if (currentGroupId != null && !currentGroupId.trim().isEmpty()) {
+                url += "?currentGroupId=" + currentGroupId;
+            }
+            ResponseEntity<VehiclegroupDTO[]> responseEntity = restTemplate.getForEntity(url, VehiclegroupDTO[].class);
+            
+            if (responseEntity.getStatusCode().is2xxSuccessful()) {
+                VehiclegroupDTO[] response = responseEntity.getBody();
+                if (response != null) {
+                    return List.of(response);
+                }
+            }
+            return new ArrayList<>();
+        } catch (HttpClientErrorException e) {
+            System.err.println("Lỗi khi lấy danh sách nhóm xe chưa có xe: " + e.getStatusCode() + " - " + e.getMessage());
+            return new ArrayList<>();
+        } catch (RestClientException e) {
+            System.err.println("Lỗi khi lấy danh sách nhóm xe chưa có xe: " + e.getMessage());
+            return new ArrayList<>();
+        }
+    }
+
+    /**
      * Lấy chi tiết nhóm xe theo groupId
      * @param groupId ID của nhóm xe
      * @return VehiclegroupDTO nếu tìm thấy, null nếu không

@@ -22,7 +22,16 @@
     <!-- Main Content -->
     <main class="main-content">
         <!-- Header -->
-        <div th:replace="fragments/header :: header" th:with="pageTitle='Quản Lý Các Dịch Vụ Xe', pageDescription='Quản lý dịch vụ bảo dưỡng, kiểm tra và sửa chữa cho xe'"></div>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+            <div>
+                <h1 style="margin: 0; font-size: 24px; font-weight: 600; color: #1E293B;">Quản Lý Các Dịch Vụ Xe</h1>
+                <p style="margin: 8px 0 0 0; color: #64748B; font-size: 14px;">Quản lý dịch vụ bảo dưỡng, kiểm tra và sửa chữa cho xe</p>
+            </div>
+            <button type="button" class="btn-add-new-service" onclick="openAddNewServiceModal()" 
+                    style="background: #10B981; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 500; display: flex; align-items: center; gap: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                <i class="fas fa-plus-circle"></i> Thêm Dịch Vụ Mới
+            </button>
+        </div>
 
 
         <!-- Stats Cards -->
@@ -158,6 +167,64 @@
                 </span>
             </div>
         </div>
+
+        <!-- Lịch Sử Dịch Vụ Section -->
+        <div class="table-section" style="margin-top: 32px;">
+            <div class="table-header">
+                <h3><i class="fas fa-history" style="color: #8B5CF6; margin-right: 8px;"></i> Lịch Sử Dịch Vụ</h3>
+            </div>
+
+            <div class="table-container">
+                <table class="vehicle-table">
+                    <thead>
+                    <tr>
+                        <th>TÊN XE</th>
+                        <th>BIỂN SỐ</th>
+                        <th>LOẠI XE</th>
+                        <th>TÊN DỊCH VỤ</th>
+                        <th>LOẠI DỊCH VỤ</th>
+                        <th>NGÀY YÊU CẦU</th>
+                        <th>NGÀY HOÀN THÀNH</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:if="${completedServices == null or completedServices.isEmpty()}">
+                        <td colspan="7" style="text-align: center; padding: 40px; color: #9CA3AF;">
+                            <i class="fas fa-inbox" style="font-size: 48px; margin-bottom: 16px; display: block; opacity: 0.3;"></i>
+                            Chưa có lịch sử dịch vụ
+                        </td>
+                    </tr>
+                    <tr th:each="service : ${completedServices}">
+                        <td>
+                            <div class="vehicle-info">
+                                <div class="vehicle-icon" style="background: #E9D5FF; display: flex; align-items: center; justify-content: center;">
+                                    <i class="fas fa-car" style="color: #7C3AED; font-size: 16px;"></i>
+                                </div>
+                                <div>
+                                    <div class="vehicle-name" th:text="${service.vehicleName}">-</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td th:text="${service.vehicleNumber}">-</td>
+                        <td th:text="${service.vehicleType}">-</td>
+                        <td th:text="${service.serviceName}">-</td>
+                        <td>
+                            <span class="status-badge status-complete" th:text="${service.serviceType}">-</span>
+                        </td>
+                        <td th:text="${service.formattedRequestDate}">-</td>
+                        <td th:text="${service.formattedCompletionDate}">-</td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Display total count -->
+            <div class="pagination" style="justify-content: center; padding: 20px;">
+                <span th:text="'Tổng số: ' + ${completedServices != null ? completedServices.size() : 0} + ' dịch vụ đã hoàn thành'">
+                    Tổng số: 0 dịch vụ đã hoàn thành
+                </span>
+            </div>
+        </div>
     </main>
 </div>
 
@@ -192,10 +259,28 @@
                 </div>
             </div>
 
-            <!-- Danh sách dịch vụ -->
+            <!-- Danh sách dịch vụ đang chờ -->
             <div class="detail-section">
-                <h3><i class="fas fa-tools"></i> Danh Sách Dịch Vụ</h3>
+                <h3 style="color: #4F46E5; border-bottom: 2px solid #E5E7EB; padding-bottom: 12px;">
+                    <i class="fas fa-tools" style="color: #4F46E5;"></i> Dịch Vụ Đang Chờ
+                    <small style="font-size: 12px; font-weight: normal; color: #6B7280; margin-left: 8px;">
+                        (Pending / In Progress)
+                    </small>
+                </h3>
                 <div id="modalServicesList" class="services-list">
+                    <div class="loading-message">Đang tải dữ liệu...</div>
+                </div>
+            </div>
+
+            <!-- Lịch sử dịch vụ -->
+            <div class="detail-section" style="margin-top: 32px;">
+                <h3 style="color: #8B5CF6; border-bottom: 2px solid #E5E7EB; padding-bottom: 12px;">
+                    <i class="fas fa-history" style="color: #8B5CF6;"></i> Lịch Sử Dịch Vụ
+                    <small style="font-size: 12px; font-weight: normal; color: #6B7280; margin-left: 8px;">
+                        (Các dịch vụ đã hoàn thành - status = completed)
+                    </small>
+                </h3>
+                <div id="modalServicesHistory" class="services-list services-history">
                     <div class="loading-message">Đang tải dữ liệu...</div>
                 </div>
             </div>
@@ -203,6 +288,56 @@
         <div class="modal-footer">
             <button type="button" class="btn-save" onclick="saveChangesAndClose()">Lưu và Đóng</button>
             <button type="button" class="btn-cancel" onclick="closeVehicleDetailModal()">Hủy</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Thêm Dịch Vụ Mới Vào Hệ Thống -->
+<div id="addNewServiceModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2><i class="fas fa-plus-circle"></i> Thêm Dịch Vụ Mới Vào Hệ Thống</h2>
+            <span class="modal-close" onclick="closeAddNewServiceModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <form id="addNewServiceForm">
+                <div class="form-group">
+                    <label for="newServiceId">Mã dịch vụ <span style="color: red;">*</span></label>
+                    <input type="text" id="newServiceId" name="serviceId" required 
+                           placeholder="VD: SRV001, MAINT001" 
+                           pattern="[A-Za-z0-9]+" 
+                           maxlength="20">
+                    <small style="color: #6B7280; font-size: 12px; display: block; margin-top: 5px;">
+                        Mã dịch vụ duy nhất (chữ và số, tối đa 20 ký tự)
+                    </small>
+                </div>
+                <div class="form-group">
+                    <label for="newServiceName">Tên dịch vụ <span style="color: red;">*</span></label>
+                    <input type="text" id="newServiceName" name="serviceName" required 
+                           placeholder="VD: Bảo dưỡng định kỳ, Kiểm tra tổng thể" 
+                           maxlength="255">
+                    <small style="color: #6B7280; font-size: 12px; display: block; margin-top: 5px;">
+                        Tên dịch vụ (tối đa 255 ký tự)
+                    </small>
+                </div>
+                <div class="form-group">
+                    <label for="newServiceType">Loại dịch vụ <span style="color: red;">*</span></label>
+                    <select id="newServiceType" name="serviceType" required>
+                        <option value="">-- Chọn loại dịch vụ --</option>
+                        <option value="Bảo dưỡng">Bảo dưỡng</option>
+                        <option value="Kiểm tra">Kiểm tra</option>
+                        <option value="Sửa chữa">Sửa chữa</option>
+                    </select>
+                    <small style="color: #6B7280; font-size: 12px; display: block; margin-top: 5px;">
+                        Chọn loại dịch vụ (Bảo dưỡng, Kiểm tra, Sửa chữa)
+                    </small>
+                </div>
+                <div id="addNewServiceMessage" style="display: none; margin-top: 15px;"></div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn-cancel" onclick="closeAddNewServiceModal()">Hủy</button>
+            <button type="button" class="btn-save" onclick="submitAddNewService()">Thêm Dịch Vụ</button>
         </div>
     </div>
 </div>
@@ -288,12 +423,7 @@
         currentVehicleId = null;
     }
 
-    window.onclick = function(event) {
-        const modal = document.getElementById('vehicleDetailModal');
-        if (event.target == modal) {
-            closeVehicleDetailModal();
-        }
-    }
+    // Đóng modal khi click bên ngoài (sẽ được override ở cuối file)
 
     async function loadVehicleDetail(vehicleId) {
         try {
@@ -314,58 +444,107 @@
                 updateSaveButtonState(); // Cập nhật trạng thái nút Lưu
             } else {
                 document.getElementById('modalServicesList').innerHTML = '<div class="error-message">Không thể tải danh sách dịch vụ</div>';
+                document.getElementById('modalServicesHistory').innerHTML = '<div class="no-data">Không có lịch sử dịch vụ</div>';
             }
         } catch (error) {
             console.error('Lỗi khi load chi tiết xe:', error);
             document.getElementById('modalServicesList').innerHTML = '<div class="error-message">Đã xảy ra lỗi khi tải dữ liệu</div>';
+            document.getElementById('modalServicesHistory').innerHTML = '<div class="error-message">Đã xảy ra lỗi khi tải lịch sử</div>';
         }
     }
 
     function displayServices(services) {
         const servicesList = document.getElementById('modalServicesList');
+        const servicesHistory = document.getElementById('modalServicesHistory');
+        
         if (!services || services.length === 0) {
-            servicesList.innerHTML = '<div class="no-data">Không có dịch vụ nào</div>';
+            servicesList.innerHTML = '<div class="no-data">Không có dịch vụ đang chờ</div>';
+            servicesHistory.innerHTML = '<div class="no-data">Không có lịch sử dịch vụ</div>';
             return;
         }
-        let html = '<div class="service-items">';
+        
+        // Phân tách dịch vụ từ bảng vehicleservice:
+        // - Dịch vụ đang chờ: pending, in_progress (từ bảng vehicleservice với status != 'completed')
+        // - Lịch sử dịch vụ: completed (lọc từ bảng vehicleservice với status = 'completed')
+        const pendingServices = [];
+        const completedServices = [];
+        
         services.forEach(service => {
-            const serviceId = service.serviceId || (service.id && service.id.serviceId) || '-';
-            const vehicleId = service.vehicleId || (service.id && service.id.vehicleId) || '-';
-            const serviceName = service.serviceName || '-';
-            const serviceType = service.serviceType || '-';
-            const serviceDescription = service.serviceDescription || 'Không có mô tả';
-            const status = service.status || 'pending';
-            const requestDate = formatDate(service.requestDate);
-            const completionDate = service.completionDate ? formatDate(service.completionDate) : null;
-            const isCompleted = status === 'completed' || status === 'Completed';
-            const disabledAttr = isCompleted ? 'disabled' : '';
-            const readonlyClass = isCompleted ? 'status-readonly' : '';
-            
-            html += `<div class="service-item">
-                <div class="service-header">
-                    <h4>${serviceName}</h4>
-                    <select class="status-select ${readonlyClass}" 
-                            data-service-id="${serviceId}" 
-                            data-vehicle-id="${vehicleId}" 
-                            data-original-status="${status}"
-                            ${disabledAttr}
-                            onchange="trackStatusChange(this)">
-                        <option value="pending" ${status === 'pending' ? 'selected' : ''}>Pending</option>
-                        <option value="in_progress" ${status === 'in_progress' || status === 'in progress' ? 'selected' : ''}>In Progress</option>
-                        <option value="completed" ${status === 'completed' ? 'selected' : ''}>Completed</option>
-                    </select>
-                    ${isCompleted ? '<span class="readonly-badge">Chỉ xem</span>' : ''}
-                </div>
-                <div class="service-details">
-                    <div class="detail-row"><label>Loại dịch vụ:</label><span>${serviceType}</span></div>
-                    <div class="detail-row"><label>Mô tả:</label><span>${serviceDescription}</span></div>
-                    <div class="detail-row"><label>Ngày yêu cầu:</label><span>${requestDate}</span></div>
-                    ${completionDate ? `<div class="detail-row"><label>Ngày hoàn thành:</label><span>${completionDate}</span></div>` : ''}
-                </div>
-            </div>`;
+            const status = (service.status || 'pending').toLowerCase().trim();
+            // Lọc dịch vụ completed từ bảng vehicleservice để hiển thị trong lịch sử
+            if (status === 'completed' || status === 'complete') {
+                completedServices.push(service);
+            } else {
+                // Dịch vụ đang chờ: pending hoặc in_progress
+                pendingServices.push(service);
+            }
         });
-        html += '</div>';
-        servicesList.innerHTML = html;
+        
+        console.log('📊 Phân tách dịch vụ từ bảng vehicleservice:');
+        console.log('   - Dịch vụ đang chờ (pending/in_progress):', pendingServices.length);
+        console.log('   - Lịch sử dịch vụ (completed):', completedServices.length);
+        
+        // Hiển thị dịch vụ đang chờ
+        if (pendingServices.length === 0) {
+            servicesList.innerHTML = '<div class="no-data">Không có dịch vụ đang chờ</div>';
+        } else {
+            let html = '<div class="service-items">';
+            pendingServices.forEach(service => {
+                html += buildServiceItem(service, false);
+            });
+            html += '</div>';
+            servicesList.innerHTML = html;
+        }
+        
+        // Hiển thị lịch sử dịch vụ (completed)
+        if (completedServices.length === 0) {
+            servicesHistory.innerHTML = '<div class="no-data">Không có lịch sử dịch vụ</div>';
+        } else {
+            let html = '<div class="service-items">';
+            completedServices.forEach(service => {
+                html += buildServiceItem(service, true);
+            });
+            html += '</div>';
+            servicesHistory.innerHTML = html;
+        }
+    }
+    
+    function buildServiceItem(service, isHistory) {
+        const serviceId = service.serviceId || (service.id && service.id.serviceId) || '-';
+        const vehicleId = service.vehicleId || (service.id && service.id.vehicleId) || '-';
+        const serviceName = service.serviceName || '-';
+        const serviceType = service.serviceType || '-';
+        const serviceDescription = service.serviceDescription || 'Không có mô tả';
+        const status = service.status || 'pending';
+        const requestDate = formatDate(service.requestDate);
+        const completionDate = service.completionDate ? formatDate(service.completionDate) : null;
+        const isCompleted = status === 'completed' || status === 'Completed' || isHistory;
+        const disabledAttr = isCompleted ? 'disabled' : '';
+        const readonlyClass = isCompleted ? 'status-readonly' : '';
+        const historyClass = isHistory ? 'service-history-item' : '';
+        
+        return `<div class="service-item ${historyClass}" data-service-id="${serviceId}" data-vehicle-id="${vehicleId}">
+            <div class="service-header">
+                <h4>${serviceName}</h4>
+                <select class="status-select ${readonlyClass}" 
+                        data-service-id="${serviceId}" 
+                        data-vehicle-id="${vehicleId}" 
+                        data-original-status="${status}"
+                        ${disabledAttr}
+                        onchange="trackStatusChange(this)">
+                    <option value="pending" ${status === 'pending' ? 'selected' : ''}>Pending</option>
+                    <option value="in_progress" ${status === 'in_progress' || status === 'in progress' ? 'selected' : ''}>In Progress</option>
+                    <option value="completed" ${status === 'completed' ? 'selected' : ''}>Completed</option>
+                </select>
+                ${isCompleted ? '<span class="readonly-badge">Chỉ xem</span>' : ''}
+            </div>
+            <div class="service-details">
+                <div class="detail-row"><label>Loại dịch vụ:</label><span>${serviceType}</span></div>
+                <div class="detail-row"><label>Mô tả:</label><span>${serviceDescription}</span></div>
+                <div class="detail-row"><label>Ngày yêu cầu:</label><span>${requestDate}</span></div>
+                ${completionDate ? `<div class="detail-row"><label>Ngày hoàn thành:</label><span>${completionDate}</span></div>` : ''}
+            </div>
+        </div>`;
     }
 
     function formatDate(dateString) {
@@ -473,9 +652,23 @@
                 return;
             }
             
-            // Lưu thành công, reload trang và đóng modal
-            statusChanges = {};
-            window.location.reload();
+            // Kiểm tra nếu có dịch vụ được chuyển sang completed
+            const completedChanges = changes.filter(c => c.newStatus === 'completed' || c.newStatus === 'Completed');
+            
+            // Nếu có dịch vụ chuyển sang completed, reload lại dữ liệu để cập nhật vị trí
+            if (completedChanges.length > 0 && currentVehicleId) {
+                // Reload lại dữ liệu dịch vụ để cập nhật vị trí (chuyển xuống lịch sử)
+                statusChanges = {};
+                await loadVehicleDetail(currentVehicleId);
+                updateSaveButtonState();
+                
+                // Hiển thị thông báo
+                alert(`Đã lưu thành công! ${completedChanges.length} dịch vụ đã được chuyển xuống lịch sử.`);
+            } else {
+                // Lưu thành công, reload trang và đóng modal
+                statusChanges = {};
+                window.location.reload();
+            }
             
         } catch (error) {
             console.error('Lỗi khi lưu thay đổi:', error);
@@ -486,6 +679,142 @@
             }
         }
     }
+
+    // Modal Thêm Dịch Vụ Mới Vào Hệ Thống
+    function openAddNewServiceModal() {
+        const modal = document.getElementById('addNewServiceModal');
+        if (modal) {
+            modal.style.display = 'block';
+            
+            // Reset form
+            document.getElementById('addNewServiceForm').reset();
+            
+            // Ẩn thông báo
+            const messageDiv = document.getElementById('addNewServiceMessage');
+            if (messageDiv) {
+                messageDiv.style.display = 'none';
+            }
+        }
+    }
+
+    function closeAddNewServiceModal() {
+        const modal = document.getElementById('addNewServiceModal');
+        if (modal) {
+            modal.style.display = 'none';
+            // Reset form
+            document.getElementById('addNewServiceForm').reset();
+            // Ẩn thông báo
+            const messageDiv = document.getElementById('addNewServiceMessage');
+            if (messageDiv) {
+                messageDiv.style.display = 'none';
+            }
+        }
+    }
+
+    // Submit form thêm dịch vụ mới vào hệ thống
+    async function submitAddNewService() {
+        const serviceId = document.getElementById('newServiceId').value.trim();
+        const serviceName = document.getElementById('newServiceName').value.trim();
+        const serviceType = document.getElementById('newServiceType').value;
+        
+        // Validation
+        if (!serviceId) {
+            showAddNewServiceMessage('Vui lòng nhập mã dịch vụ', 'error');
+            return;
+        }
+        
+        if (!serviceName) {
+            showAddNewServiceMessage('Vui lòng nhập tên dịch vụ', 'error');
+            return;
+        }
+        
+        if (!serviceType) {
+            showAddNewServiceMessage('Vui lòng chọn loại dịch vụ', 'error');
+            return;
+        }
+        
+        // Disable nút submit
+        const submitBtn = document.querySelector('#addNewServiceModal .btn-save');
+        if (submitBtn) {
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Đang thêm...';
+        }
+        
+        try {
+            const requestData = {
+                serviceId: serviceId,
+                serviceName: serviceName,
+                serviceType: serviceType
+            };
+            
+            console.log('📡 [ADD NEW SERVICE] Gửi request thêm dịch vụ mới:', requestData);
+            
+            const response = await fetch('/admin/vehicle-manager/api/services/create', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(requestData)
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                console.log('✅ [ADD NEW SERVICE] Đã thêm dịch vụ mới thành công');
+                showAddNewServiceMessage('Đã thêm dịch vụ mới vào hệ thống thành công!', 'success');
+                
+                // Đóng modal sau 1.5 giây và reload trang
+                setTimeout(() => {
+                    closeAddNewServiceModal();
+                    window.location.reload();
+                }, 1500);
+            } else {
+                console.error('❌ [ADD NEW SERVICE] Lỗi khi thêm dịch vụ:', data.message);
+                showAddNewServiceMessage(data.message || 'Lỗi khi thêm dịch vụ', 'error');
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.textContent = 'Thêm Dịch Vụ';
+                }
+            }
+        } catch (error) {
+            console.error('❌ [ADD NEW SERVICE] Lỗi khi thêm dịch vụ:', error);
+            showAddNewServiceMessage('Lỗi khi thêm dịch vụ: ' + error.message, 'error');
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Thêm Dịch Vụ';
+            }
+        }
+    }
+
+    // Hiển thị thông báo trong modal thêm dịch vụ mới
+    function showAddNewServiceMessage(message, type) {
+        const messageDiv = document.getElementById('addNewServiceMessage');
+        if (messageDiv) {
+            messageDiv.textContent = message;
+            messageDiv.className = type === 'success' ? 'alert alert-success' : 'alert alert-danger';
+            messageDiv.style.display = 'block';
+            
+            if (type === 'success') {
+                setTimeout(() => {
+                    messageDiv.style.display = 'none';
+                }, 3000);
+            }
+        }
+    }
+
+    // Đóng modal khi click bên ngoài
+    window.addEventListener('click', function(event) {
+        const vehicleDetailModal = document.getElementById('vehicleDetailModal');
+        const addNewServiceModal = document.getElementById('addNewServiceModal');
+        
+        if (event.target == vehicleDetailModal) {
+            closeVehicleDetailModal();
+        }
+        
+        if (event.target == addNewServiceModal) {
+            closeAddNewServiceModal();
+        }
+    });
 </script>
 <script th:src="@{/js/vehicle-manager.js}"></script>
 </body>

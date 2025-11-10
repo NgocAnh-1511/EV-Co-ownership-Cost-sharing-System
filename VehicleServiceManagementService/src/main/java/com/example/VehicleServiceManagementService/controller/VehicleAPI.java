@@ -12,6 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -47,6 +48,27 @@ public class VehicleAPI {
     }
 
     /**
+     * Lấy chi tiết xe theo ID
+     * @param vehicleId ID của xe
+     * @return ResponseEntity với Vehicle hoặc thông báo lỗi
+     */
+    @GetMapping("/{vehicleId}")
+    public ResponseEntity<?> getVehicleById(@PathVariable String vehicleId) {
+        try {
+            Optional<Vehicle> vehicleOpt = vehicleRepository.findById(vehicleId);
+            if (vehicleOpt.isEmpty()) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                        .body("Không tìm thấy xe với ID: " + vehicleId);
+            }
+            return ResponseEntity.ok(vehicleOpt.get());
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Đã xảy ra lỗi khi lấy thông tin xe: " + e.getMessage());
+        }
+    }
+
+    /**
      * Thêm nhiều xe vào nhóm
      * @param requestData Map chứa groupId và danh sách vehicles
      * @return ResponseEntity với danh sách xe đã được tạo hoặc thông báo lỗi
@@ -56,16 +78,6 @@ public class VehicleAPI {
     public ResponseEntity<?> addVehicles(@RequestBody Map<String, Object> requestData) {
         try {
             String groupId = (String) requestData.get("groupId");
-            if (groupId == null || groupId.isEmpty()) {
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                        .body("groupId là bắt buộc");
-            }
-            
-            Optional<Vehiclegroup> groupOpt = vehicleGroupRepository.findById(groupId);
-            if (groupOpt.isEmpty()) {
-                return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                        .body("Không tìm thấy nhóm xe với ID: " + groupId);
-            }
             
             @SuppressWarnings("unchecked")
             List<Map<String, Object>> vehiclesData = (List<Map<String, Object>>) requestData.get("vehicles");
@@ -75,12 +87,55 @@ public class VehicleAPI {
                         .body("Danh sách xe không được để trống");
             }
             
-            Vehiclegroup group = groupOpt.get();
-            List<Vehicle> vehicles = vehiclesData.stream().map(vehicleData -> {
+            Vehiclegroup group = null;
+            
+            // Nếu có groupId, kiểm tra và lấy nhóm xe
+            if (groupId != null && !groupId.isEmpty()) {
+                Optional<Vehiclegroup> groupOpt = vehicleGroupRepository.findById(groupId);
+                if (groupOpt.isEmpty()) {
+                    return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                            .body("Không tìm thấy nhóm xe với ID: " + groupId);
+                }
+                group = groupOpt.get();
+                
+                // Kiểm tra số lượng xe hiện tại trong nhóm
+                long currentVehicleCount = vehicleRepository.countByGroupId(groupId);
+                
+                // Đảm bảo mỗi nhóm chỉ có đúng 1 xe
+                if (currentVehicleCount >= 1) {
+                    return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                            .body("Nhóm này đã có xe. Mỗi nhóm chỉ được có đúng 1 xe duy nhất.");
+                }
+                
+                if (vehiclesData.size() > 1) {
+                    return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                            .body("Mỗi nhóm chỉ được có đúng 1 xe. Không thể thêm " + vehiclesData.size() + " xe cùng lúc.");
+                }
+            }
+            
+            List<Vehicle> vehicles = new ArrayList<>();
+            for (Map<String, Object> vehicleData : vehiclesData) {
                 Vehicle vehicle = new Vehicle();
                 
+                // Kiểm tra và set vehicleId
+                String vehicleId = null;
                 if (vehicleData.containsKey("vehicleId")) {
-                    vehicle.setVehicleId((String) vehicleData.get("vehicleId"));
+                    vehicleId = (String) vehicleData.get("vehicleId");
+                    if (vehicleId != null && !vehicleId.trim().isEmpty()) {
+                        vehicleId = vehicleId.trim();
+                        // Kiểm tra trùng mã xe
+                        if (vehicleRepository.existsById(vehicleId)) {
+                            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                                    .body("Mã xe \"" + vehicleId + "\" đã tồn tại trong hệ thống. Vui lòng nhập mã xe khác.");
+                        }
+                        vehicle.setVehicleId(vehicleId);
+                    } else {
+                        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                                .body("Mã xe là bắt buộc và không được để trống.");
+                    }
+                } else {
+                    return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                            .body("Mã xe là bắt buộc.");
                 }
                 
                 if (vehicleData.containsKey("type")) {
@@ -89,31 +144,58 @@ public class VehicleAPI {
                     vehicle.setVehicleType((String) vehicleData.get("vehicleType"));
                 }
                 
+                // Kiểm tra biển số xe trùng lặp
+                String vehicleNumber = null;
                 if (vehicleData.containsKey("vehicleNumber")) {
-                    vehicle.setVehicleNumber((String) vehicleData.get("vehicleNumber"));
+                    vehicleNumber = (String) vehicleData.get("vehicleNumber");
+                    if (vehicleNumber != null && !vehicleNumber.trim().isEmpty()) {
+                        // Kiểm tra trùng biển số xe
+                        if (vehicleRepository.existsByVehicleNumber(vehicleNumber.trim())) {
+                            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                                    .body("Biển số xe \"" + vehicleNumber + "\" đã tồn tại trong hệ thống. Vui lòng nhập biển số khác.");
+                        }
+                        vehicle.setVehicleNumber(vehicleNumber.trim());
+                    }
+                }
+                
+                if (vehicleData.containsKey("vehicleName") || vehicleData.containsKey("vehiclename")) {
+                    String name = (String) vehicleData.getOrDefault("vehicleName", 
+                                                                    vehicleData.get("vehiclename"));
+                    vehicle.setVehicleName(name);
                 }
                 
                 if (vehicleData.containsKey("status")) {
                     vehicle.setStatus((String) vehicleData.get("status"));
                 } else {
-                    vehicle.setStatus("available");
+                    vehicle.setStatus("ready"); // Default status: ready (sẵn sàng)
                 }
                 
                 vehicle.setGroup(group);
-                return vehicle;
-            }).toList();
+                vehicles.add(vehicle);
+            }
             
             List<Vehicle> savedVehicles = vehicleRepository.saveAll(vehicles);
             
-            // Cập nhật lại số lượng xe trong nhóm
-            long actualVehicleCount = vehicleRepository.countByGroupId(groupId);
-            group.setVehicleCount((int) actualVehicleCount);
-            vehicleGroupRepository.save(group);
-            
-            System.out.println("DEBUG: Đã thêm " + savedVehicles.size() + " xe vào nhóm " + groupId);
-            System.out.println("DEBUG: Số lượng xe trong nhóm sau khi thêm: " + actualVehicleCount);
+            System.out.println("DEBUG: Đã thêm " + savedVehicles.size() + " xe" + 
+                             (groupId != null ? " vào nhóm " + groupId : " (không thuộc nhóm nào)"));
             
             return ResponseEntity.ok(savedVehicles);
+        } catch (org.springframework.dao.DataIntegrityViolationException e) {
+            e.printStackTrace();
+            String errorMessage = e.getMessage();
+            // Kiểm tra nếu lỗi do unique constraint
+            if (errorMessage != null) {
+                if (errorMessage.contains("vehicle_number") || errorMessage.contains("uk_vehicle_number")) {
+                    return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                            .body("Biển số xe đã tồn tại trong hệ thống. Vui lòng nhập biển số khác.");
+                }
+                if (errorMessage.contains("vehicle_id") || errorMessage.contains("PRIMARY")) {
+                    return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                            .body("Mã xe đã tồn tại trong hệ thống. Vui lòng nhập mã xe khác.");
+                }
+            }
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body("Đã xảy ra lỗi khi thêm xe: " + (errorMessage != null ? errorMessage : e.getClass().getSimpleName()));
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -139,6 +221,33 @@ public class VehicleAPI {
             
             Vehicle vehicle = vehicleOpt.get();
             
+            // Kiểm tra nếu cố gắng thay đổi group_id
+            if (vehicleData.containsKey("groupId")) {
+                String newGroupId = (String) vehicleData.get("groupId");
+                String currentGroupId = vehicle.getGroup() != null ? vehicle.getGroup().getGroupId() : null;
+                
+                // Nếu newGroupId là null hoặc rỗng, xóa nhóm khỏi xe
+                if (newGroupId == null || newGroupId.trim().isEmpty()) {
+                    vehicle.setGroup(null);
+                } else if (currentGroupId == null || !newGroupId.equals(currentGroupId)) {
+                    // Nếu group_id thay đổi (hoặc xe chưa có nhóm)
+                    // Kiểm tra nhóm mới đã có xe chưa
+                    long vehicleCountInNewGroup = vehicleRepository.countByGroupId(newGroupId);
+                    if (vehicleCountInNewGroup >= 1) {
+                        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                                .body("Không thể chuyển xe sang nhóm này. Nhóm đã có xe. Mỗi nhóm chỉ được có đúng 1 xe.");
+                    }
+                    
+                    // Cập nhật group_id
+                    Optional<Vehiclegroup> newGroupOpt = vehicleGroupRepository.findById(newGroupId);
+                    if (newGroupOpt.isEmpty()) {
+                        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                                .body("Không tìm thấy nhóm xe với ID: " + newGroupId);
+                    }
+                    vehicle.setGroup(newGroupOpt.get());
+                }
+            }
+            
             // Cập nhật loại xe
             if (vehicleData.containsKey("type")) {
                 vehicle.setVehicleType((String) vehicleData.get("type"));
@@ -146,9 +255,30 @@ public class VehicleAPI {
                 vehicle.setVehicleType((String) vehicleData.get("vehicleType"));
             }
             
-            // Cập nhật biển số xe
+            // Cập nhật biển số xe và kiểm tra trùng lặp
             if (vehicleData.containsKey("vehicleNumber")) {
-                vehicle.setVehicleNumber((String) vehicleData.get("vehicleNumber"));
+                String newVehicleNumber = (String) vehicleData.get("vehicleNumber");
+                if (newVehicleNumber != null && !newVehicleNumber.trim().isEmpty()) {
+                    String currentVehicleNumber = vehicle.getVehicleNumber();
+                    // Chỉ kiểm tra nếu biển số mới khác biển số hiện tại
+                    if (currentVehicleNumber == null || !currentVehicleNumber.equals(newVehicleNumber.trim())) {
+                        // Kiểm tra trùng biển số xe (trừ xe hiện tại)
+                        if (vehicleRepository.existsByVehicleNumberAndVehicleIdNot(newVehicleNumber.trim(), vehicleId)) {
+                            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                                    .body("Biển số xe \"" + newVehicleNumber + "\" đã tồn tại trong hệ thống. Vui lòng nhập biển số khác.");
+                        }
+                    }
+                    vehicle.setVehicleNumber(newVehicleNumber.trim());
+                } else {
+                    vehicle.setVehicleNumber(null);
+                }
+            }
+            
+            // Cập nhật tên xe
+            if (vehicleData.containsKey("vehicleName") || vehicleData.containsKey("vehiclename")) {
+                String name = (String) vehicleData.getOrDefault("vehicleName", 
+                                                                vehicleData.get("vehiclename"));
+                vehicle.setVehicleName(name);
             }
             
             // Cập nhật trạng thái xe
@@ -160,6 +290,22 @@ public class VehicleAPI {
             System.out.println("DEBUG: Đã cập nhật xe " + vehicleId);
             
             return ResponseEntity.ok(updatedVehicle);
+        } catch (org.springframework.dao.DataIntegrityViolationException e) {
+            e.printStackTrace();
+            String errorMessage = e.getMessage();
+            // Kiểm tra nếu lỗi do unique constraint
+            if (errorMessage != null) {
+                if (errorMessage.contains("vehicle_number") || errorMessage.contains("uk_vehicle_number")) {
+                    return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                            .body("Biển số xe đã tồn tại trong hệ thống. Vui lòng nhập biển số khác.");
+                }
+                if (errorMessage.contains("vehicle_id") || errorMessage.contains("PRIMARY")) {
+                    return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                            .body("Mã xe đã tồn tại trong hệ thống. Vui lòng nhập mã xe khác.");
+                }
+            }
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body("Đã xảy ra lỗi khi cập nhật xe: " + (errorMessage != null ? errorMessage : e.getClass().getSimpleName()));
         } catch (Exception e) {
             e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -198,17 +344,6 @@ public class VehicleAPI {
                 // Xóa xe
                 vehicleRepository.deleteById(vehicleId);
                 vehicleRepository.flush(); // Đảm bảo xóa được thực thi ngay
-                
-                // Cập nhật lại số lượng xe trong nhóm nếu có
-                if (groupId != null) {
-                    long actualVehicleCount = vehicleRepository.countByGroupId(groupId);
-                    vehicleGroupRepository.findById(groupId).ifPresent(group -> {
-                        group.setVehicleCount((int) actualVehicleCount);
-                        vehicleGroupRepository.save(group);
-                        vehicleGroupRepository.flush(); // Đảm bảo cập nhật được thực thi ngay
-                        System.out.println("DEBUG: Đã cập nhật số lượng xe trong nhóm " + groupId + " thành " + actualVehicleCount);
-                    });
-                }
                 
                 System.out.println("DEBUG: Đã xóa xe " + vehicleId + " thành công");
             } finally {

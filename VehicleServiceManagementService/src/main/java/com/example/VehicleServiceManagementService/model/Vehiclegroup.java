@@ -20,9 +20,6 @@ public class Vehiclegroup {
     @Column(name = "description", length = 255)
     private String description;
 
-    // Thay đổi kiểu từ int thành Integer để chấp nhận giá trị null
-    @Column(name = "vehicle_count")
-    private Integer vehicleCount;
     @Column(name = "active")
     private String active;  // Đổi kiểu thành String
 
@@ -58,14 +55,5 @@ public class Vehiclegroup {
 
     public void setDescription(String description) {
         this.description = description;
-    }
-
-    // Getter và Setter cho vehicleCount
-    public Integer getVehicleCount() {
-        return vehicleCount;
-    }
-
-    public void setVehicleCount(Integer vehicleCount) {
-        this.vehicleCount = vehicleCount;
     }
 }
