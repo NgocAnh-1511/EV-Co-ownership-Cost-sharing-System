@@ -161,19 +161,38 @@ function createContractItem(contract) {
     const item = template.content.cloneNode(true);
 
     item.querySelector('.service-name').textContent = contract.contractCode || 'Chưa có mã';
-    item.querySelector('.service-vehicle').textContent = 'Hợp đồng đồng sở hữu';
     
-    const creationDate = new Date(contract.creationDate);
-    item.querySelector('.service-date').textContent = `Ngày: ${creationDate.toLocaleDateString('vi-VN')}`;
+    // Display contract type
+    const contractTypeMap = {
+        'co_ownership': 'Đồng sở hữu',
+        'rental': 'Cho thuê',
+        'maintenance': 'Bảo trì',
+        'insurance': 'Bảo hiểm'
+    };
+    const contractTypeText = contractTypeMap[contract.contractType] || contract.contractType || 'Hợp đồng';
+    item.querySelector('.service-vehicle').textContent = contractTypeText;
+    
+    // Display creation date
+    if (contract.creationDate) {
+        const creationDate = new Date(contract.creationDate);
+        item.querySelector('.service-date').textContent = `Ngày: ${creationDate.toLocaleDateString('vi-VN')}`;
+    } else {
+        item.querySelector('.service-date').textContent = 'Ngày: N/A';
+    }
 
     const statusBadge = item.querySelector('.status-badge');
     statusBadge.textContent = getStatusText(contract.contractStatus);
     statusBadge.className = `status-badge status-${contract.contractStatus}`;
 
+    // Hide sign button if contract is already signed or archived
+    if (contract.contractStatus === 'signed' || contract.contractStatus === 'archived') {
+        item.querySelector('.btn-sign-contract').style.display = 'none';
+    }
+
     // Add handlers
     item.querySelector('.btn-edit-contract').addEventListener('click', () => editContract(contract));
-    item.querySelector('.btn-sign-contract').addEventListener('click', () => signContract(contract.id));
-    item.querySelector('.btn-delete-contract').addEventListener('click', () => deleteContract(contract.id));
+    item.querySelector('.btn-sign-contract').addEventListener('click', () => signContract(contract.contractId || contract.id));
+    item.querySelector('.btn-delete-contract').addEventListener('click', () => deleteContract(contract.contractId || contract.id));
 
     return item;
 }
@@ -199,76 +218,159 @@ function updateStats() {
 
 // Edit Contract
 function editContract(contract) {
-    selectedContractId = contract.id;
+    selectedContractId = contract.contractId || contract.id;
 
-    document.getElementById('contract-code').value = contract.contractCode;
-    document.getElementById('contract-status').value = contract.contractStatus;
+    document.getElementById('contract-code').value = contract.contractCode || '';
+    document.getElementById('contract-type').value = contract.contractType || 'co_ownership';
+    document.getElementById('contract-status').value = contract.contractStatus || 'draft';
     document.getElementById('contract-description').value = contract.description || '';
+    document.getElementById('vehicle-group').value = contract.groupId || '';
+
+    // Load parties if available
+    if (contract.parties) {
+        try {
+            const parties = typeof contract.parties === 'string' ? JSON.parse(contract.parties) : contract.parties;
+            const partiesList = document.getElementById('parties-list');
+            partiesList.innerHTML = '';
+            if (Array.isArray(parties)) {
+                parties.forEach(party => {
+                    addPartyItem(party);
+                });
+            }
+        } catch (e) {
+            console.error('Error parsing parties:', e);
+        }
+    }
 
     if (contract.creationDate) {
-        document.getElementById('creation-date').value = new Date(contract.creationDate).toISOString().split('T')[0];
+        const creationDate = new Date(contract.creationDate);
+        document.getElementById('creation-date').value = creationDate.toISOString().split('T')[0];
     }
 
     if (contract.signedDate) {
-        document.getElementById('signed-date').value = new Date(contract.signedDate).toISOString().split('T')[0];
+        const signedDate = new Date(contract.signedDate);
+        document.getElementById('signed-date').value = signedDate.toISOString().split('T')[0];
     }
+
+    // Scroll to form
+    document.getElementById('contract-form-panel').scrollIntoView({ behavior: 'smooth' });
 }
 
 // Sign Contract
-function signContract(id) {
+function signContract(id, signatureDataParam = null) {
     if (!confirm('Bạn có chắc muốn ký hợp đồng này?')) {
         return;
     }
 
+    // Get signature data from parameter or canvas or hidden input
+    let signatureData = signatureDataParam;
+    if (!signatureData) {
+        signatureData = document.getElementById('signature-image')?.value || null;
+    }
+    if (!signatureData && signatureCanvas && signatureCtx) {
+        // Try to get from canvas
+        const imageData = signatureCtx.getImageData(0, 0, signatureCanvas.width, signatureCanvas.height);
+        const hasDrawing = imageData.data.some((channel, index) => {
+            return index % 4 !== 3 && channel !== 0;
+        });
+        if (hasDrawing) {
+            signatureData = signatureCanvas.toDataURL('image/png');
+        }
+    }
+    
+    const signerId = 'ADMIN'; // TODO: Get from session/user context
+
+    const requestData = {
+        signerId: signerId
+    };
+    
+    if (signatureData) {
+        requestData.signatureData = signatureData;
+    }
+
     fetch(`${CONTRACT_API_URL}/sign/${id}`, {
-        method: 'PUT'
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(requestData)
     })
-        .then(res => res.json())
+        .then(res => {
+            if (!res.ok) {
+                return res.text().then(text => {
+                    throw new Error(text);
+                });
+            }
+            return res.json();
+        })
         .then(contract => {
             console.log('Contract signed:', contract);
             alert('✅ Đã ký hợp đồng thành công!');
+            resetForm();
             loadContracts();
         })
         .catch(err => {
             console.error('Error signing contract:', err);
-            alert('❌ Không thể ký hợp đồng');
+            alert('❌ Không thể ký hợp đồng: ' + err.message);
         });
 }
 
 // Delete Contract
 function deleteContract(id) {
-    if (!confirm('Bạn có chắc muốn xóa hợp đồng này?')) {
+    if (!confirm('Bạn có chắc muốn xóa hợp đồng này? Hành động này không thể hoàn tác.')) {
         return;
     }
 
     fetch(`${CONTRACT_API_URL}/${id}`, {
         method: 'DELETE'
     })
-        .then(() => {
-            loadContracts();
+        .then(res => {
+            if (!res.ok) {
+                return res.text().then(text => {
+                    throw new Error(text);
+                });
+            }
+            return res.json();
+        })
+        .then(result => {
+            console.log('Contract deleted:', result);
             alert('✅ Đã xóa hợp đồng thành công');
+            loadContracts();
         })
         .catch(err => {
             console.error('Error deleting contract:', err);
-            alert('❌ Không thể xóa hợp đồng');
+            alert('❌ Không thể xóa hợp đồng: ' + err.message);
         });
 }
 
 // Handle Confirm
 function handleConfirm() {
     const contractCode = document.getElementById('contract-code').value;
+    const contractType = document.getElementById('contract-type').value;
     const contractStatus = document.getElementById('contract-status').value;
     const description = document.getElementById('contract-description').value;
+    const groupId = document.getElementById('vehicle-group').value;
 
-    if (!contractCode) {
+    if (!contractCode || contractCode.trim() === '') {
         alert('⚠️ Vui lòng nhập mã hợp đồng!');
         return;
     }
 
+    // Collect parties
+    const parties = [];
+    document.querySelectorAll('#parties-list .party-item input').forEach(input => {
+        if (input.value && input.value.trim() !== '') {
+            parties.push(input.value.trim());
+        }
+    });
+
     const data = {
-        contractCode: contractCode,
+        contractCode: contractCode.trim(),
+        contractType: contractType,
         contractStatus: contractStatus,
-        description: description
+        description: description ? description.trim() : null,
+        groupId: groupId || null,
+        parties: parties.length > 0 ? JSON.stringify(parties) : null
     };
 
     if (selectedContractId) {
@@ -287,7 +389,14 @@ function createContract(data) {
         },
         body: JSON.stringify(data)
     })
-        .then(res => res.json())
+        .then(res => {
+            if (!res.ok) {
+                return res.text().then(text => {
+                    throw new Error(text);
+                });
+            }
+            return res.json();
+        })
         .then(contract => {
             console.log('Contract created:', contract);
             alert('✅ Tạo hợp đồng thành công!');
@@ -296,7 +405,7 @@ function createContract(data) {
         })
         .catch(err => {
             console.error('Error creating contract:', err);
-            alert('❌ Không thể tạo hợp đồng');
+            alert('❌ Không thể tạo hợp đồng: ' + err.message);
         });
 }
 
@@ -309,7 +418,14 @@ function updateContract(id, data) {
         },
         body: JSON.stringify(data)
     })
-        .then(res => res.json())
+        .then(res => {
+            if (!res.ok) {
+                return res.text().then(text => {
+                    throw new Error(text);
+                });
+            }
+            return res.json();
+        })
         .then(contract => {
             console.log('Contract updated:', contract);
             alert('✅ Cập nhật hợp đồng thành công!');
@@ -318,28 +434,51 @@ function updateContract(id, data) {
         })
         .catch(err => {
             console.error('Error updating contract:', err);
-            alert('❌ Không thể cập nhật hợp đồng');
+            alert('❌ Không thể cập nhật hợp đồng: ' + err.message);
         });
 }
 
 // Handle Sign
 function handleSign() {
     if (!selectedContractId) {
-        alert('Vui lòng chọn hợp đồng để ký');
+        alert('⚠️ Vui lòng chọn hoặc tạo hợp đồng để ký');
         return;
     }
 
-    signContract(selectedContractId);
+    // Get signature from canvas
+    let signatureData = null;
+    if (signatureCanvas && signatureCtx) {
+        // Check if canvas has any drawing
+        const imageData = signatureCtx.getImageData(0, 0, signatureCanvas.width, signatureCanvas.height);
+        const hasDrawing = imageData.data.some((channel, index) => {
+            return index % 4 !== 3 && channel !== 0; // Check if any pixel is not transparent
+        });
+        
+        if (hasDrawing) {
+            signatureData = signatureCanvas.toDataURL('image/png');
+        } else {
+            if (!confirm('Bạn chưa ký vào canvas. Bạn có muốn tiếp tục ký hợp đồng mà không có chữ ký?')) {
+                return;
+            }
+        }
+    }
+
+    signContract(selectedContractId, signatureData);
 }
 
 // Add Party
 function addParty() {
+    addPartyItem();
+}
+
+// Add Party Item
+function addPartyItem(partyName = '') {
     const partiesList = document.getElementById('parties-list');
     const partyItem = document.createElement('div');
     partyItem.className = 'party-item';
     partyItem.innerHTML = `
-        <input type="text" placeholder="Nhập tên bên">
-        <button class="btn-remove-party"><i class="fas fa-times"></i></button>
+        <input type="text" placeholder="Nhập tên bên" value="${partyName}">
+        <button class="btn-remove-party" type="button"><i class="fas fa-times"></i></button>
     `;
     partiesList.appendChild(partyItem);
 
@@ -384,9 +523,24 @@ function saveSignature() {
 // Reset Form
 function resetForm() {
     document.getElementById('contract-code').value = '';
+    document.getElementById('contract-type').value = 'co_ownership';
     document.getElementById('contract-status').value = 'draft';
     document.getElementById('contract-description').value = '';
+    document.getElementById('vehicle-group').value = '';
+    document.getElementById('parties-list').innerHTML = '<div class="party-item"><input type="text" placeholder="Tên bên thứ nhất"><button class="btn-remove-party" type="button"><i class="fas fa-times"></i></button></div>';
+    document.getElementById('creation-date').value = '';
+    document.getElementById('signed-date').value = '';
+    if (signatureCanvas && signatureCtx) {
+        clearSignature();
+    }
     selectedContractId = null;
+    
+    // Re-initialize remove party buttons
+    document.querySelectorAll('#parties-list .btn-remove-party').forEach(btn => {
+        btn.addEventListener('click', function() {
+            this.closest('.party-item').remove();
+        });
+    });
 }
 
 
