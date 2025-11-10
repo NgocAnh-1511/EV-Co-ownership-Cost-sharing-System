@@ -36,9 +36,23 @@ public class AdminReservationController {
             @PathVariable Long id,
             @RequestBody ReservationDTO dto) {
         try {
+            System.out.println("🔄 [ADMIN CONTROLLER] Nhận request cập nhật reservation ID: " + id);
+            System.out.println("   → Status: " + dto.getStatus());
+            System.out.println("   → DTO: " + dto);
+            
             ReservationDTO updated = service.updateReservation(id, dto);
+            System.out.println("✅ [ADMIN CONTROLLER] Đã cập nhật thành công reservation ID: " + id);
             return ResponseEntity.ok(updated);
+        } catch (RuntimeException e) {
+            System.err.println("❌ [ADMIN CONTROLLER ERROR] Lỗi khi cập nhật reservation ID: " + id);
+            System.err.println("   → Error: " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.badRequest().build();
         } catch (Exception e) {
+            System.err.println("❌ [ADMIN CONTROLLER ERROR] Lỗi không xác định khi cập nhật reservation ID: " + id);
+            System.err.println("   → Error type: " + e.getClass().getName());
+            System.err.println("   → Error: " + e.getMessage());
+            e.printStackTrace();
             return ResponseEntity.badRequest().build();
         }
     }

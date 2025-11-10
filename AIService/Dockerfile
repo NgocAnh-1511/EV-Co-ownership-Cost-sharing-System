@@ -40,3 +40,15 @@ ENTRYPOINT ["java", "-jar", "/app/app.jar"]
 ENV JAVA_OPTS="-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0"
 
 
+
+
+
+
+
+
+
+
+
+
+
+
