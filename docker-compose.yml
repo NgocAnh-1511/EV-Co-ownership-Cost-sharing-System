@@ -1,161 +1,83 @@
-version: '3.8'
-
 services:
-  # MySQL Database
-  mysql:
+  # MySQL Database for Cost Payment Service
+  payment-mysql:
     image: mysql:8.0
-    container_name: ev-mysql
+    container_name: payment-mysql
     environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: co_ownership_booking
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: Cost_Payment_DB
     ports:
       - "3306:3306"
     volumes:
-      - mysql-data:/var/lib/mysql
-      - ./init-db:/docker-entrypoint-initdb.d
+      - payment_mysql_data:/var/lib/mysql
+      - ./cost_database_setup.sql:/docker-entrypoint-initdb.d/01-setup.sql
     networks:
       - ev-network
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 30s
 
-  # Reservation Admin Service (Port 8082)
-  admin-service:
-    build:
-      context: ./ReservationAdminService
-      dockerfile: Dockerfile
-    container_name: ev-admin-service
-    ports:
-      - "8082:8082"
+  # MySQL Database for Group Management Service
+  group-mysql:
+    image: mysql:8.0
+    container_name: group-mysql
     environment:
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/co_ownership_admin?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
-      SPRING_DATASOURCE_USERNAME: root
-      SPRING_DATASOURCE_PASSWORD: root
-      RESERVATION_SERVICE_URL: http://reservation-service:8081
-    depends_on:
-      mysql:
-        condition: service_healthy
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: Group_Management_DB
+    ports:
+      - "3307:3306"
+    volumes:
+      - group_mysql_data:/var/lib/mysql
+      - ./group_database_setup.sql:/docker-entrypoint-initdb.d/01-setup.sql
     networks:
       - ev-network
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8082/actuator/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
 
-  # Reservation Service (Port 8081)
-  reservation-service:
-    build:
-      context: ./ReservationService
-      dockerfile: Dockerfile
-    container_name: ev-reservation-service
+  # Cost Payment Service
+  cost-payment-service:
+    build: ./cost-payment-service
+    container_name: cost-payment-service
     ports:
       - "8081:8081"
     environment:
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/co_ownership_booking?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
-      SPRING_DATASOURCE_USERNAME: root
-      SPRING_DATASOURCE_PASSWORD: root
-      ADMIN_SERVICE_URL: http://admin-service:8082
+      - SPRING_DATASOURCE_URL=jdbc:mysql://payment-mysql:3306/Cost_Payment_DB?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=password
     depends_on:
-      mysql:
-        condition: service_healthy
+      - payment-mysql
     networks:
       - ev-network
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8081/actuator/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
 
-  # AI Service (Port 8083)
-  ai-service:
-    build:
-      context: ./AIService
-      dockerfile: Dockerfile
-    container_name: ev-ai-service
+  # Group Management Service
+  group-management-service:
+    build: ./group-management-service
+    container_name: group-management-service
     ports:
-      - "8083:8083"
+      - "8082:8082"
     environment:
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/ai_ev?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
-      SPRING_DATASOURCE_USERNAME: root
-      SPRING_DATASOURCE_PASSWORD: root
-      ADMIN_SERVICE_URL: http://admin-service:8082
-      RESERVATION_SERVICE_URL: http://reservation-service:8081
+      - SPRING_DATASOURCE_URL=jdbc:mysql://group-mysql:3306/Group_Management_DB?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+      - SPRING_DATASOURCE_USERNAME=root
+      - SPRING_DATASOURCE_PASSWORD=password
     depends_on:
-      mysql:
-        condition: service_healthy
-      admin-service:
-        condition: service_healthy
-      reservation-service:
-        condition: service_healthy
+      - group-mysql
     networks:
       - ev-network
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8083/actuator/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
 
-  # UI Service (Port 8080)
+  # UI Service
   ui-service:
-    build:
-      context: ./ui-service
-      dockerfile: Dockerfile
-    container_name: ev-ui-service
+    build: ./ui-service
+    container_name: ui-service
     ports:
       - "8080:8080"
     environment:
-      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/co_ownership_booking?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
-      SPRING_DATASOURCE_USERNAME: root
-      SPRING_DATASOURCE_PASSWORD: root
-      ADMIN_SERVICE_URL: http://admin-service:8082
-      RESERVATION_SERVICE_URL: http://reservation-service:8081
-      AI_SERVICE_URL: http://ai-service:8083
+      - MICROSERVICES_COST_PAYMENT_URL=http://cost-payment-service:8081
+      - MICROSERVICES_GROUP_MANAGEMENT_URL=http://group-management-service:8082
     depends_on:
-      mysql:
-        condition: service_healthy
-      admin-service:
-        condition: service_healthy
-      reservation-service:
-        condition: service_healthy
-      ai-service:
-        condition: service_healthy
+      - cost-payment-service
+      - group-management-service
     networks:
       - ev-network
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/actuator/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
+
+volumes:
+  payment_mysql_data:
+  group_mysql_data:
 
 networks:
   ev-network:
     driver: bridge
-
-volumes:
-  mysql-data:
-
-
-
-
-
-
-
-
-
-
-
-
-
-

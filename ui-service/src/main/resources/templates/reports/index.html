@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Báo Cáo - CarShare Manager</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link th:href="@{/css/layout.css}" rel="stylesheet">
+    <link th:href="@{/css/reports.css}" rel="stylesheet">
+</head>
+<body>
+    <!-- Layout Container -->
+    <div class="layout-container">
+        <!-- Include Sidebar Fragment -->
+        <div th:replace="fragments/sidebar :: sidebar"></div>
+        
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Top Bar -->
+            <div class="top-bar">
+                <div class="top-bar-left">
+                    <button class="mobile-menu-toggle" id="mobileMenuToggle">
+                        <i class="fas fa-bars"></i>
+                    </button>
+                    <div class="page-info">
+                        <h1 class="page-title">
+                            <i class="fas fa-chart-bar"></i>
+                            Báo Cáo & Thống Kê
+                        </h1>
+                        <p class="page-subtitle">Tổng hợp báo cáo chi phí, quỹ chung và hoạt động nhóm</p>
+                    </div>
+                </div>
+                <div class="top-bar-actions">
+                    <button class="btn btn-outline" onclick="exportAllReports()">
+                        <i class="fas fa-download"></i>
+                        Xuất tất cả
+                    </button>
+                    <button class="btn btn-primary" onclick="generateCustomReport()">
+                        <i class="fas fa-chart-bar"></i>
+                        Tạo báo cáo tùy chỉnh
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Content Area -->
+            <div class="content-area">
+                <!-- Report Navigation -->
+                <div class="report-nav">
+                    <button class="nav-btn active" onclick="showReportSection('overview')">
+                        <i class="fas fa-chart-pie"></i>
+                        Tổng quan
+                    </button>
+                    <button class="nav-btn" onclick="showReportSection('costs')">
+                        <i class="fas fa-receipt"></i>
+                        Chi phí
+                    </button>
+                    <button class="nav-btn" onclick="showReportSection('groups')">
+                        <i class="fas fa-users"></i>
+                        Nhóm
+                    </button>
+                    <button class="nav-btn" onclick="showReportSection('voting')">
+                        <i class="fas fa-vote-yea"></i>
+                        Bỏ phiếu
+                    </button>
+                    <button class="nav-btn" onclick="showReportSection('fund')">
+                        <i class="fas fa-wallet"></i>
+                        Quỹ chung
+                    </button>
+                </div>
+
+                <!-- Overview Section -->
+                <div id="overviewSection" class="report-section active">
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-icon">
+                                <i class="fas fa-dollar-sign"></i>
+                            </div>
+                            <div class="stat-content">
+                                <div class="stat-value" id="totalCosts">0 VNĐ</div>
+                                <div class="stat-label">Tổng chi phí</div>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon">
+                                <i class="fas fa-users"></i>
+                            </div>
+                            <div class="stat-content">
+                                <div class="stat-value" id="totalGroups">0</div>
+                                <div class="stat-label">Nhóm sở hữu</div>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon">
+                                <i class="fas fa-vote-yea"></i>
+                            </div>
+                            <div class="stat-content">
+                                <div class="stat-value" id="totalVotings">0</div>
+                                <div class="stat-label">Cuộc bỏ phiếu</div>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon">
+                                <i class="fas fa-wallet"></i>
+                            </div>
+                            <div class="stat-content">
+                                <div class="stat-value" id="totalFundBalance">0 VNĐ</div>
+                                <div class="stat-label">Tổng quỹ</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="content-grid">
+                        <div class="card">
+                            <div class="card-header">
+                                <h3 class="card-title">Chi phí theo loại</h3>
+                            </div>
+                            <div class="card-body">
+                                <div class="chart-container">
+                                    <canvas id="costsByTypeChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card">
+                            <div class="card-header">
+                                <h3 class="card-title">Hoạt động nhóm</h3>
+                            </div>
+                            <div class="card-body">
+                                <div class="chart-container">
+                                    <canvas id="groupActivityChart"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Costs Section -->
+                <div id="costsSection" class="report-section">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">Báo cáo chi phí</h3>
+                            <div class="card-actions">
+                                <select id="costReportPeriod" class="filter-select">
+                                    <option value="month">Tháng này</option>
+                                    <option value="quarter">Quý này</option>
+                                    <option value="year">Năm này</option>
+                                </select>
+                                <button class="btn btn-primary" onclick="generateCostReport()">
+                                    <i class="fas fa-chart-bar"></i>
+                                    Tạo báo cáo
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="report-content" id="costReportContent">
+                                <!-- Cost report content will be loaded here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Groups Section -->
+                <div id="groupsSection" class="report-section">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">Báo cáo nhóm</h3>
+                            <div class="card-actions">
+                                <button class="btn btn-primary" onclick="generateGroupReport()">
+                                    <i class="fas fa-chart-bar"></i>
+                                    Tạo báo cáo
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="report-content" id="groupReportContent">
+                                <!-- Group report content will be loaded here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Voting Section -->
+                <div id="votingSection" class="report-section">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">Báo cáo bỏ phiếu</h3>
+                            <div class="card-actions">
+                                <button class="btn btn-primary" onclick="generateVotingReport()">
+                                    <i class="fas fa-chart-bar"></i>
+                                    Tạo báo cáo
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="report-content" id="votingReportContent">
+                                <!-- Voting report content will be loaded here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Fund Section -->
+                <div id="fundSection" class="report-section">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">Báo cáo quỹ chung</h3>
+                            <div class="card-actions">
+                                <button class="btn btn-primary" onclick="generateFundReport()">
+                                    <i class="fas fa-chart-bar"></i>
+                                    Tạo báo cáo
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="report-content" id="fundReportContent">
+                                <!-- Fund report content will be loaded here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Custom Report Modal -->
+    <div id="customReportModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Tạo báo cáo tùy chỉnh</h3>
+                <button class="modal-close" onclick="closeCustomReportModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="customReportForm">
+                    <div class="form-group">
+                        <label for="reportType">Loại báo cáo</label>
+                        <select id="reportType" name="reportType" required>
+                            <option value="">Chọn loại báo cáo</option>
+                            <option value="costs">Chi phí</option>
+                            <option value="groups">Nhóm</option>
+                            <option value="voting">Bỏ phiếu</option>
+                            <option value="fund">Quỹ chung</option>
+                            <option value="comprehensive">Tổng hợp</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="reportPeriod">Kỳ báo cáo</label>
+                        <select id="reportPeriod" name="reportPeriod" required>
+                            <option value="month">Tháng này</option>
+                            <option value="quarter">Quý này</option>
+                            <option value="year">Năm này</option>
+                            <option value="custom">Tùy chỉnh</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-group" id="customDateRange" style="display: none;">
+                        <label for="startDate">Từ ngày</label>
+                        <input type="date" id="startDate" name="startDate">
+                        
+                        <label for="endDate">Đến ngày</label>
+                        <input type="date" id="endDate" name="endDate">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="reportFormat">Định dạng</label>
+                        <select id="reportFormat" name="reportFormat" required>
+                            <option value="pdf">PDF</option>
+                            <option value="excel">Excel</option>
+                            <option value="csv">CSV</option>
+                        </select>
+                    </div>
+                    
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-outline" onclick="closeCustomReportModal()">Hủy</button>
+                        <button type="submit" class="btn btn-primary">Tạo báo cáo</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script th:src="@{/js/layout.js}"></script>
+    <script th:src="@{/js/reports.js}"></script>
+</body>
+</html>
