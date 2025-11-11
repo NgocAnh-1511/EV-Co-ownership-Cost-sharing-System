@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản lý Tài khoản</title>
+    <script th:src="@{/js/user-guard.js}"></script>
+
+    <link rel="stylesheet" th:href="@{/css/user-layout.css}">
+    <link rel="stylesheet" th:href="@{/css/user-account.css}"> <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+</head>
+<body>
+<div class="user-layout-container">
+
+    <div th:insert="~{fragments/sidebar-user :: sidebar-user(currentPage='account')}"></div>
+
+    <main class="main-content">
+        <div th:insert="~{fragments/header-user :: header-user(pageTitle='Quản Lý Tài Khoản')}"></div>
+        <p class="page-subtitle">Quản lý thông tin cá nhân và hoạt động của bạn.</p>
+
+        <div class="account-grid">
+
+            <div class="main-column">
+
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Thông Tin Tài Khoản</h3>
+                        <a href="/user/onboarding" class="btn-edit-link">
+                            <i class="fas fa-pen"></i> Chỉnh Sửa
+                        </a>
+                    </div>
+                    <div class="profile-info-grid">
+                        <div class="info-item">
+                            <label>Tên Người Dùng</label>
+                            <span id="name-view">Đang tải...</span>
+                        </div>
+                        <div class="info-item">
+                            <label>Ngày Tham Gia</label>
+                            <span id="joindate-view">Đang tải...</span>
+                        </div>
+                        <div class="info-item">
+                            <label>Địa Chỉ Email</label>
+                            <span id="email-view">Đang tải...</span>
+                        </div>
+                        <div class="info-item">
+                            <label>Trạng Thái</label>
+                            <span id="status-view" class="status-pill pending">Đang tải...</span>
+                        </div>
+                        <div class="info-item">
+                            <label>Số Điện Thoại</label>
+                            <span id="phone-view">Đang tải...</span>
+                        </div>
+                        <div class="info-item">
+                            <label>Điểm Tín Nhiệm</label>
+                            <span id="rating-view" class="rating-stars">
+                                4.8 <i class="fas fa-star"></i>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3 class="card-title">Tỷ Lệ Sở Hữu Xe</h3>
+                    <div class="stats-grid" id="ownership-stats-grid">
+
+                        <div class="stat-widget">
+                            <div class="stat-widget-icon blue">
+                                <i class="fas fa-car"></i>
+                            </div>
+                            <div class="stat-widget-info">
+                                <h3>Xe Sở Hữu</h3>
+                                <span id="widget-total-vehicles">0</span>
+                            </div>
+                        </div>
+
+                        <div class="stat-widget">
+                            <div class="stat-widget-icon green">
+                                <i class="fas fa-chart-pie"></i>
+                            </div>
+                            <div class="stat-widget-info">
+                                <h3>Tổng Tỷ Lệ</h3>
+                                <span id="widget-total-percentage">0%</span>
+                            </div>
+                        </div>
+
+                        <div class="stat-widget">
+                            <div class="stat-widget-icon orange">
+                                <i class="fas fa-dollar-sign"></i>
+                            </div>
+                            <div class="stat-widget-info">
+                                <h3>Thu Nhập (Beta)</h3>
+                                <span>N/A</span>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3 class="card-title">Hoạt Động Gần Đây</h3>
+                    <div class="stats-placeholder">
+                        (Phần này sẽ hiển thị lịch sử đặt xe, thanh toán chi phí...)
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="sidebar-column">
+
+                <div class="card">
+                    <h3 class="card-title">Thao Tác Nhanh</h3>
+                    <div class="quick-actions">
+                        <a href="/user/onboarding" class="action-item primary">
+                            <i class="fas fa-user-edit"></i>
+                            <span>Chỉnh Sửa Thông Tin</span>
+                        </a>
+                        <a href="#" class="action-item">
+                            <i class="fas fa-key"></i>
+                            <span>Thay Đổi Mật Khẩu</span>
+                        </a>
+                        <a href="/user/contracts" class="action-item">
+                            <i class="fas fa-file-contract"></i>
+                            <span>Quản Lý Hợp Đồng</span>
+                        </a>
+                        <a href="/user/ownerships" class="action-item">
+                            <i class="fas fa-chart-pie"></i>
+                            <span>Quản Lý Tỷ Lệ</span>
+                        </a>
+                        <a href="#" class="action-item">
+                            <i class="fas fa-history"></i>
+                            <span>Lịch Sử Chi Tiết</span>
+                        </a>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3 class="card-title">Thống Kê Tháng Này</h3>
+                    <div class="stats-placeholder">
+                        (Phần này sẽ hiển thị thống kê chuyến đi, chi phí...)
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3 class="card-title">Thông Báo</h3>
+                    <div class="stats-placeholder">
+                        (Phần này sẽ hiển thị các thông báo mới)
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+    </main>
+</div>
+
+<script th:src="@{/js/auth-utils.js}"></script>
+<script th:src="@{/js/user-account.js}"></script> </body>
+</html>

@@ -123,4 +123,12 @@ public class UIController {
         model.addAttribute("currentPage", "ty-le"); // Dành cho sidebar user
         return "user-ownerships"; // Trả về file /templates/user-ownerships.html
     }
+    @GetMapping("/user/account")
+    public String showAccountManagementPage(Model model) {
+        model.addAttribute("pageTitle", "Quản Lý Tài Khoản");
+        model.addAttribute("currentPage", "account"); // Dành cho sidebar user
+        return "user-account"; // Trả về file /templates/user-account.html
+    }
 }
+
+
