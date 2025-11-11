@@ -43,7 +43,6 @@ document.addEventListener('DOMContentLoaded', function() {
         const vehicles = new Map();
         data.forEach(item => {
             if (item.vehicle) {
-                // SỬA LỖI: Dùng vehicleName
                 vehicles.set(item.vehicle.vehicleId, item.vehicle.vehicleName || 'Xe không tên');
             }
         });
@@ -69,6 +68,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function renderStats(data) {
+        // (Không thay đổi)
         const total = data.length;
         const active = data.filter(c => c.contract.status === 'ACTIVE').length;
         const pending = data.filter(c => c.contract.status === 'PENDING').length;
@@ -93,6 +93,7 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function renderTable(data) {
+        // (Không thay đổi)
         tableBody.innerHTML = '';
         if (data.length === 0) {
             tableBody.innerHTML = '<tr><td colspan="6" style="text-align: center;">Không tìm thấy hợp đồng nào.</td></tr>';
@@ -108,10 +109,8 @@ document.addEventListener('DOMContentLoaded', function() {
             else if (contract.status === 'PENDING') statusText = 'Chờ ký';
             else if (contract.status === 'EXPIRED') statusText = 'Đã kết thúc';
 
-            // SỬA LỖI: Dùng vehicleName và vehicleNumber (biển số)
             const vehicleName = vehicle ? (vehicle.vehicleName || 'Xe không rõ') : 'Không có dữ liệu xe';
             const vehiclePlate = vehicle ? (vehicle.vehicleNumber || 'N/A') : 'N/A';
-            // SỬA LỖI: Dùng ảnh mặc định vì Vehicle.java không có imageUrl
             const vehicleImage = 'https://via.placeholder.com/40/808080/FFFFFF?text=CAR';
 
             row.innerHTML = `
@@ -139,6 +138,9 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    // --- LOGIC CHO MODAL TẠO MỚI ---
+    // (Toàn bộ logic modal không thay đổi)
+
     async function openCreateContractModal() {
         modalError.style.display = 'none';
         vehicleSelect.innerHTML = '<option value="">Đang tải danh sách xe...</option>';
@@ -153,7 +155,6 @@ document.addEventListener('DOMContentLoaded', function() {
             const vehicles = await response.json();
 
             const contractedVehicleIds = new Set(allContracts.map(item => item.contract.vehicleId));
-            // SỬA LỖI: Lọc các xe có status là 'ACTIVE'
             const availableVehicles = vehicles.filter(v =>
                 !contractedVehicleIds.has(v.vehicleId) &&
                 (v.status ? v.status.toUpperCase() === 'ACTIVE' : true)
@@ -168,7 +169,6 @@ document.addEventListener('DOMContentLoaded', function() {
             availableVehicles.forEach(v => {
                 const option = document.createElement('option');
                 option.value = v.vehicleId;
-                // SỬA LỖI: Dùng vehicleName và vehicleNumber (biển số)
                 option.textContent = `${v.vehicleName || 'Xe không tên'} (BKS: ${v.vehicleNumber || 'N/A'})`;
                 vehicleSelect.appendChild(option);
             });
@@ -185,21 +185,17 @@ document.addEventListener('DOMContentLoaded', function() {
     async function handleCreateContractSubmit(e) {
         e.preventDefault();
         modalError.style.display = 'none';
-
         const vehicleId = vehicleSelect.value;
         const durationMonths = durationSelect.value;
-
         if (!vehicleId) {
             modalError.textContent = 'Vui lòng chọn một xe.';
             modalError.style.display = 'block';
             return;
         }
-
         try {
             const formData = new URLSearchParams();
             formData.append('vehicleId', vehicleId);
             formData.append('durationMonths', durationMonths);
-
             const response = await fetch(CONTRACT_API_URL, {
                 method: 'POST',
                 headers: {
@@ -208,38 +204,64 @@ document.addEventListener('DOMContentLoaded', function() {
                 },
                 body: formData
             });
-
             if (!response.ok) {
                 const errorText = await response.text();
                 throw new Error(errorText || 'Tạo hợp đồng thất bại.');
             }
-
             alert('Tạo hợp đồng mới thành công!');
             closeCreateContractModal();
             loadContracts();
-
         } catch (error) {
             modalError.textContent = `Lỗi: ${error.message}`;
             modalError.style.display = 'block';
         }
     }
 
+    // --- HÀM MỚI ĐỂ XỬ LÝ KÝ HỢP ĐỒNG ---
+    async function handleSignContract(contractId) {
+        if (!confirm(`Bạn có chắc muốn ký hợp đồng HĐ#${contractId} không?`)) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`${CONTRACT_API_URL}/${contractId}/sign`, {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            if (response.ok) {
+                alert('Ký hợp đồng thành công!');
+                loadContracts(); // Tải lại danh sách để cập nhật trạng thái
+            } else {
+                const errorText = await response.text();
+                throw new Error(errorText || 'Ký hợp đồng thất bại.');
+            }
+        } catch (error) {
+            alert(`Lỗi: ${error.message}`);
+        }
+    }
+
     // --- GẮN KẾT SỰ KIỆN ---
+
     createContractButton.addEventListener('click', openCreateContractModal);
     modalCloseButton.addEventListener('click', closeCreateContractModal);
     modalCancelButton.addEventListener('click', closeCreateContractModal);
     createContractForm.addEventListener('submit', handleCreateContractSubmit);
     statusFilterSelect.addEventListener('change', () => updateDashboard(allContracts));
     vehicleFilterSelect.addEventListener('change', () => updateDashboard(allContracts));
+
+    // --- CẬP NHẬT EVENT LISTENER CHO BẢNG ---
     tableBody.addEventListener('click', function(e) {
         const signButton = e.target.closest('.action-sign');
         if (signButton) {
             e.preventDefault();
             const contractId = signButton.dataset.id;
-            if (confirm(`Bạn có chắc muốn ký hợp đồng HĐ#${contractId} không?`)) {
-                alert(`Đã gửi yêu cầu ký HĐ#${contractId}. (Chức năng ký chưa được cài đặt)`);
-            }
+            handleSignContract(contractId); // Gọi hàm ký mới
         }
+
+        // (Bạn có thể thêm logic cho các nút khác ở đây)
     });
 
     // --- TẢI DỮ LIỆU BAN ĐẦU ---
