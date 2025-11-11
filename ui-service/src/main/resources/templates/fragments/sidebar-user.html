@@ -6,6 +6,10 @@
         </div>
     </div>
     <nav class="sidebar-nav">
+        <a href="/user/account" class="nav-item" th:classappend="${currentPage == 'account'} ? 'active' : ''">
+            <i class="fas fa-user-circle"></i>
+            <span>Tài khoản của tôi</span>
+        </a>
         <a href="/user/onboarding" class="nav-item" th:classappend="${currentPage == 'onboarding'} ? 'active' : ''">
             <i class="fas fa-user-check"></i>
             <span>Đăng ký & Xác thực</span>

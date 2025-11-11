@@ -2,10 +2,13 @@ package com.example.user_account_service.service;
 
 import com.example.user_account_service.dto.OwnershipShareCreateReq;
 import com.example.user_account_service.dto.OwnershipShareDTO;
+import com.example.user_account_service.dto.OwnershipShareDetailDTO; // <-- Import DTO mới
 import com.example.user_account_service.dto.OwnershipShareUpdateReq;
+import com.example.user_account_service.dto.VehicleDTO; // <-- Import DTO xe
 import com.example.user_account_service.entity.OwnershipShare;
 import com.example.user_account_service.repository.OwnershipShareRepository;
 import com.example.user_account_service.repository.UserRepository;
+import org.springframework.beans.factory.annotation.Autowired; // <-- Thêm Autowired
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,7 +21,11 @@ import java.util.stream.Collectors;
 @Service
 public class OwnershipShareService {
     private final OwnershipShareRepository repo;
-    private final UserRepository userRepository; // <-- Thêm UserRepository
+    private final UserRepository userRepository;
+
+    // NÂNG CẤP: Tiêm (Inject) VehicleDataClient
+    @Autowired
+    private VehicleDataClient vehicleDataClient;
 
     public OwnershipShareService(OwnershipShareRepository repo, UserRepository userRepository) {
         this.repo = repo;
@@ -37,6 +44,24 @@ public class OwnershipShareService {
                                 .map(user -> user.getFullName())
                                 .orElse("Không rõ User")
                 ))
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * NÂNG CẤP: Service mới để lấy tất cả tỷ lệ sở hữu (và thông tin xe)
+     * của một người dùng.
+     */
+    public List<OwnershipShareDetailDTO> listSharesByUserId(Long userId) {
+        // 1. Lấy tất cả bản ghi tỷ lệ của user
+        List<OwnershipShare> shares = repo.findByUserId(userId);
+
+        // 2. "Hydrate" thông tin xe cho mỗi bản ghi
+        return shares.stream()
+                .map(share -> {
+                    // Gọi VehicleService (port 8082) để lấy thông tin xe
+                    VehicleDTO vehicle = vehicleDataClient.getVehicleById(share.getVehicleId());
+                    return new OwnershipShareDetailDTO(share, vehicle);
+                })
                 .collect(Collectors.toList());
     }
 
@@ -85,7 +110,6 @@ public class OwnershipShareService {
     public void delete(Long id) {
         var entity = repo.findById(id).orElseThrow(() -> new IllegalArgumentException("Không tìm thấy record"));
         repo.delete(entity);
-        // NÂNG CẤP LOGIC: Không cần validate 100% khi xóa.
     }
 
     /**
