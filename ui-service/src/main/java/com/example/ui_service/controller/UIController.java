@@ -102,4 +102,12 @@ public class UIController {
         model.addAttribute("currentPage", "contracts"); // Dành cho sidebar user
         return "user-contracts"; // Trả về file /templates/user-contracts.html
     }
+
+    @GetMapping("/admin/disputes")
+    public String showAdminDisputesPage(Model model) {
+        model.addAttribute("pageTitle", "Giám sát Tranh chấp");
+        model.addAttribute("currentPage", "disputes"); // Dành cho sidebar admin
+        return "admin/admin-disputes"; // Trả về file /templates/admin/admin-disputes.html
+    }
 }
+

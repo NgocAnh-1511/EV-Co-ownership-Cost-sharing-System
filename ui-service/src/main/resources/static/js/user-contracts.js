@@ -1,34 +1,78 @@
 // user-contracts.js
-// (File user-guard.js đã được chèn vào <head> để bảo vệ)
-
 document.addEventListener('DOMContentLoaded', function() {
     const token = localStorage.getItem('jwtToken');
+    const CONTRACT_API_URL = "http://localhost:8081/api/contracts";
 
-    // --- (Lệnh gọi checkAuthAndLoadUser() đã được XÓA khỏi đây) ---
-    // (File auth-utils.js sẽ tự động chạy)
-
-    const contractList = document.getElementById('contract-list');
+    const tableBody = document.getElementById('contract-table-body');
     const statsGrid = document.getElementById('stats-grid');
-    const statusMessage = document.getElementById('status-message');
-    const tabs = document.querySelectorAll('.tab-item');
+    const statusFilterSelect = document.getElementById('statusFilter');
+    const vehicleFilterSelect = document.getElementById('vehicleFilter');
 
-    let currentStatusFilter = 'PENDING';
+    // --- Biến cho Modal ---
+    const createContractModal = document.getElementById('createContractModal');
+    const createContractButton = document.querySelector('.btn-create-contract');
+    const modalCloseButton = document.getElementById('modalCloseButton');
+    const modalCancelButton = document.getElementById('modalCancelButton');
+    const createContractForm = document.getElementById('createContractForm');
+    const vehicleSelect = document.getElementById('vehicleSelect');
+    const durationSelect = document.getElementById('durationSelect');
+    const modalError = document.getElementById('modal-error-message');
+    // -------------------------
+
     let allContracts = [];
 
-    // DỮ LIỆU MẪU (Sẽ thay bằng API thật)
-    const MOCK_CONTRACTS = [
-        { id: 1, title: 'HĐ Đồng sở hữu Vinfast VF8', vehicle: 'VF8 2024', plate: '29A-12345', img: 'https://via.placeholder.com/40/FF0000/FFFFFF?text=TC', date: '15/03/2024', time: '10:30 AM', duration: '24 tháng', expiry: '15/03/2026', status: 'PENDING' },
-        { id: 2, title: 'HĐ Đồng sở hữu Vinfast VF9', vehicle: 'VF9 2023', plate: '30B-87890', img: 'https://via.placeholder.com/40/0000FF/FFFFFF?text=HC', date: '2025-09-15', time: '02:15 PM', duration: '36 tháng', expiry: '22/03/2027', status: 'ACTIVE' },
-        { id: 3, title: 'HĐ Thuê xe VF E34', vehicle: 'VF E34', plate: '51F-11111', img: 'https://via.placeholder.com/40/000000/FFFFFF?text=BX', date: '2024-01-10', time: '09:45 AM', duration: '12 tháng', expiry: '28/03/2025', status: 'EXPIRED' },
-    ];
+    async function loadContracts() {
+        try {
+            const response = await fetch(`${CONTRACT_API_URL}/my-contracts`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (!response.ok) {
+                if (response.status === 401 || response.status === 403) logout();
+                throw new Error('Không thể tải hợp đồng.');
+            }
+            allContracts = await response.json();
+            populateVehicleFilter(allContracts);
+            updateDashboard(allContracts);
+        } catch (error) {
+            console.error('Lỗi tải hợp đồng:', error);
+            tableBody.innerHTML = `<tr><td colspan="6" style="text-align: center; color: red;">${error.message}</td></tr>`;
+        }
+    }
 
-    // 1. Hàm tải Thống kê
-    function loadStats() {
-        const total = MOCK_CONTRACTS.length;
-        const active = MOCK_CONTRACTS.filter(c => c.status === 'ACTIVE').length;
-        const pending = MOCK_CONTRACTS.filter(c => c.status === 'PENDING').length;
-        const expired = MOCK_CONTRACTS.filter(c => c.status === 'EXPIRED').length;
+    function populateVehicleFilter(data) {
+        const vehicles = new Map();
+        data.forEach(item => {
+            if (item.vehicle) {
+                // SỬA LỖI: Dùng vehicleName
+                vehicles.set(item.vehicle.vehicleId, item.vehicle.vehicleName || 'Xe không tên');
+            }
+        });
+        vehicleFilterSelect.innerHTML = '<option value="">Tất cả loại xe</option>';
+        vehicles.forEach((name, id) => {
+            const option = document.createElement('option');
+            option.value = id;
+            option.textContent = name;
+            vehicleFilterSelect.appendChild(option);
+        });
+    }
 
+    function updateDashboard(data) {
+        const statusFilter = statusFilterSelect.value;
+        const vehicleFilter = vehicleFilterSelect.value;
+        const filteredData = data.filter(item => {
+            const statusMatch = statusFilter ? item.contract.status === statusFilter : true;
+            const vehicleMatch = vehicleFilter ? (item.vehicle && item.vehicle.vehicleId === vehicleFilter) : true;
+            return statusMatch && vehicleMatch;
+        });
+        renderStats(data);
+        renderTable(filteredData);
+    }
+
+    function renderStats(data) {
+        const total = data.length;
+        const active = data.filter(c => c.contract.status === 'ACTIVE').length;
+        const pending = data.filter(c => c.contract.status === 'PENDING').length;
+        const expired = data.filter(c => c.contract.status === 'EXPIRED').length;
         statsGrid.innerHTML = `
             <div class="stat-card">
                 <div class="stat-icon blue"><i class="fas fa-file-alt"></i></div>
@@ -45,100 +89,159 @@ document.addEventListener('DOMContentLoaded', function() {
             <div class="stat-card">
                 <div class="stat-icon gray"><i class="fas fa-times-circle"></i></div>
                 <div class="stat-info"><h3>Đã kết thúc</h3><span>${expired}</span></div>
-            </div>
-        `;
+            </div>`;
     }
 
-    // 2. Hàm render Bảng (đã sửa lại để gọi tableBody)
     function renderTable(data) {
-        const tableBody = document.getElementById('contract-table-body');
         tableBody.innerHTML = '';
-
-        const filteredData = data.filter(c => c.status === currentStatusFilter);
-
-        if (filteredData.length === 0) {
+        if (data.length === 0) {
             tableBody.innerHTML = '<tr><td colspan="6" style="text-align: center;">Không tìm thấy hợp đồng nào.</td></tr>';
             return;
         }
-
-        filteredData.forEach(contract => {
+        data.forEach(item => {
+            const contract = item.contract;
+            const vehicle = item.vehicle;
             const row = document.createElement('tr');
+            let statusClass = (contract.status || 'pending').toLowerCase();
+            let statusText = 'N/A';
+            if (contract.status === 'ACTIVE') statusText = 'Đang hoạt động';
+            else if (contract.status === 'PENDING') statusText = 'Chờ ký';
+            else if (contract.status === 'EXPIRED') statusText = 'Đã kết thúc';
 
-            let statusClass = contract.status.toLowerCase();
-            let statusText = contract.status === 'ACTIVE' ? 'Đang hoạt động' : (contract.status === 'PENDING' ? 'Chờ ký' : 'Đã kết thúc');
-
-            let actions = `
-                <a href="#" title="Tải xuống"><i class="fas fa-download"></i></a>
-                <a href="#" title="Chi tiết xe"><i class="fas fa-car"></i></a>
-            `;
-            if (contract.status === 'PENDING') {
-                actions += `<a href="#" class="action-sign" data-id="${contract.id}" title="Ký hợp đồng"><i class="fas fa-edit"></i></a>`;
-            } else {
-                actions += `<a href="#" title="Xem chi tiết"><i class="fas fa-eye"></i></a>`;
-            }
-            actions += `<a href="#" title="Thêm..."><i class="fas fa-ellipsis-v"></i></a>`;
+            // SỬA LỖI: Dùng vehicleName và vehicleNumber (biển số)
+            const vehicleName = vehicle ? (vehicle.vehicleName || 'Xe không rõ') : 'Không có dữ liệu xe';
+            const vehiclePlate = vehicle ? (vehicle.vehicleNumber || 'N/A') : 'N/A';
+            // SỬA LỖI: Dùng ảnh mặc định vì Vehicle.java không có imageUrl
+            const vehicleImage = 'https://via.placeholder.com/40/808080/FFFFFF?text=CAR';
 
             row.innerHTML = `
                 <td>
-                    <div class="contract-id"><h4>${contract.id}</h4><p>${contract.title}</p></div>
+                    <div class="contract-id"><h4>HĐ#${contract.contractId}</h4><p>${contract.title}</p></div>
                 </td>
                 <td>
                     <div class="vehicle-info">
-                        <img src="${contract.img}" alt="Xe">
-                        <div><span>${contract.vehicle}</span><p>${contract.plate}</p></div>
+                        <img src="${vehicleImage}" alt="Xe">
+                        <div><span>${vehicleName}</span><p>${vehiclePlate}</p></div>
                     </div>
                 </td>
-                <td>${contract.date}<br><small>${contract.time}</small></td>
-                <td>${contract.duration}<br><small>Đến ${contract.expiry}</small></td>
+                <td>${contract.signDate || 'N/A'}</td>
+                <td>${contract.expiryDate ? 'Đến ' + contract.expiryDate : 'N/A'}</td>
                 <td><span class="status-pill ${statusClass}">${statusText}</span></td>
-                <td class="action-icons">${actions}</td>
+                <td class="action-icons">
+                     <a href="#" title="Tải xuống"><i class="fas fa-download"></i></a>
+                     <a href="#" title="Chi tiết xe"><i class="fas fa-car"></i></a>
+                     ${contract.status === 'PENDING' ?
+                        `<a href="#" class="action-sign" data-id="${contract.contractId}" title="Ký hợp đồng"><i class="fas fa-edit"></i></a>` :
+                        `<a href="#" title="Xem chi tiết"><i class="fas fa-eye"></i></a>`}
+                </td>
             `;
             tableBody.appendChild(row);
         });
     }
 
-    // 3. Xử lý sự kiện (Filter, Ký)
-    tabs.forEach(tab => {
-        tab.addEventListener('click', () => {
-            tabs.forEach(t => t.classList.remove('active'));
-            tab.classList.add('active');
-            currentStatusFilter = tab.dataset.status;
-            renderTable(MOCK_DATA);
-        });
-    });
+    async function openCreateContractModal() {
+        modalError.style.display = 'none';
+        vehicleSelect.innerHTML = '<option value="">Đang tải danh sách xe...</option>';
+        createContractModal.style.display = 'flex';
 
-    document.getElementById('contract-table-body').addEventListener('click', function(e) {
+        try {
+            const response = await fetch(`${CONTRACT_API_URL}/available-vehicles`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (!response.ok) throw new Error('Không thể tải danh sách xe. (Cổng 8082 có đang chạy không?)');
+
+            const vehicles = await response.json();
+
+            const contractedVehicleIds = new Set(allContracts.map(item => item.contract.vehicleId));
+            // SỬA LỖI: Lọc các xe có status là 'ACTIVE'
+            const availableVehicles = vehicles.filter(v =>
+                !contractedVehicleIds.has(v.vehicleId) &&
+                (v.status ? v.status.toUpperCase() === 'ACTIVE' : true)
+            );
+
+            if (availableVehicles.length === 0) {
+                vehicleSelect.innerHTML = '<option value="">Không tìm thấy xe nào có sẵn</option>';
+                return;
+            }
+
+            vehicleSelect.innerHTML = '<option value="">-- Vui lòng chọn xe --</option>';
+            availableVehicles.forEach(v => {
+                const option = document.createElement('option');
+                option.value = v.vehicleId;
+                // SỬA LỖI: Dùng vehicleName và vehicleNumber (biển số)
+                option.textContent = `${v.vehicleName || 'Xe không tên'} (BKS: ${v.vehicleNumber || 'N/A'})`;
+                vehicleSelect.appendChild(option);
+            });
+
+        } catch (error) {
+            vehicleSelect.innerHTML = `<option value="">${error.message}</option>`;
+        }
+    }
+
+    function closeCreateContractModal() {
+        createContractModal.style.display = 'none';
+    }
+
+    async function handleCreateContractSubmit(e) {
+        e.preventDefault();
+        modalError.style.display = 'none';
+
+        const vehicleId = vehicleSelect.value;
+        const durationMonths = durationSelect.value;
+
+        if (!vehicleId) {
+            modalError.textContent = 'Vui lòng chọn một xe.';
+            modalError.style.display = 'block';
+            return;
+        }
+
+        try {
+            const formData = new URLSearchParams();
+            formData.append('vehicleId', vehicleId);
+            formData.append('durationMonths', durationMonths);
+
+            const response = await fetch(CONTRACT_API_URL, {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/x-www-form-urlencoded'
+                },
+                body: formData
+            });
+
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(errorText || 'Tạo hợp đồng thất bại.');
+            }
+
+            alert('Tạo hợp đồng mới thành công!');
+            closeCreateContractModal();
+            loadContracts();
+
+        } catch (error) {
+            modalError.textContent = `Lỗi: ${error.message}`;
+            modalError.style.display = 'block';
+        }
+    }
+
+    // --- GẮN KẾT SỰ KIỆN ---
+    createContractButton.addEventListener('click', openCreateContractModal);
+    modalCloseButton.addEventListener('click', closeCreateContractModal);
+    modalCancelButton.addEventListener('click', closeCreateContractModal);
+    createContractForm.addEventListener('submit', handleCreateContractSubmit);
+    statusFilterSelect.addEventListener('change', () => updateDashboard(allContracts));
+    vehicleFilterSelect.addEventListener('change', () => updateDashboard(allContracts));
+    tableBody.addEventListener('click', function(e) {
         const signButton = e.target.closest('.action-sign');
         if (signButton) {
             e.preventDefault();
             const contractId = signButton.dataset.id;
-            if (confirm(`Bạn có chắc muốn ký hợp đồng ${contractId} không?`)) {
-                signContract(contractId);
+            if (confirm(`Bạn có chắc muốn ký hợp đồng HĐ#${contractId} không?`)) {
+                alert(`Đã gửi yêu cầu ký HĐ#${contractId}. (Chức năng ký chưa được cài đặt)`);
             }
         }
     });
 
-    // 4. Hàm ký hợp đồng (Giả lập)
-    async function signContract(contractId) {
-        statusMessage.className = 'status-message success';
-        statusMessage.textContent = 'Đang ký hợp đồng...';
-        statusMessage.style.display = 'block';
-
-        setTimeout(() => {
-            statusMessage.textContent = `Hợp đồng #${contractId} đã được ký thành công!`;
-            const signed = MOCK_CONTRACTS.find(c => c.id == contractId);
-            if(signed) signed.status = 'ACTIVE';
-            loadStats();
-            renderTable(MOCK_CONTRACTS);
-        }, 1000);
-    }
-
-    // 5. Tải dữ liệu ban đầu
-    function loadData() {
-        allContracts = MOCK_CONTRACTS;
-        loadStats();
-        renderTable(allContracts);
-    }
-
-    loadData();
+    // --- TẢI DỮ LIỆU BAN ĐẦU ---
+    loadContracts();
 });
