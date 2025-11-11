@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản lý Tỷ lệ Sở hữu</title>
+    <script th:src="@{/js/user-guard.js}"></script>
+    <link rel="stylesheet" th:href="@{/css/user-layout.css}">
+    <link rel="stylesheet" th:href="@{/css/user-contracts.css}"> <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+
+    <link rel="stylesheet" th:href="@{/css/user-ownerships.css}">
+
+</head>
+<body>
+<div class="user-layout-container">
+
+    <div th:insert="~{fragments/sidebar-user :: sidebar-user(currentPage='ty-le')}"></div>
+
+    <main class="main-content">
+        <div th:insert="~{fragments/header-user :: header-user(pageTitle='Quản lý Tỷ lệ Sở hữu')}"></div>
+
+        <div class="ownership-container">
+
+            <div class="filter-card">
+                <div class="filter-group">
+                    <label for="contractSelect">Chọn Hợp đồng (Xe) để quản lý</label>
+                    <select id="contractSelect">
+                        <option value="">Đang tải danh sách hợp đồng...</option>
+                    </select>
+                </div>
+                <div id="sumInfo" class="total-info" style="display: none;"></div>
+            </div>
+
+            <div class="table-container" id="table-wrapper" style="display: none;">
+                <h3>Chi tiết Tỷ lệ Sở hữu</h3>
+                <table class="contract-table">
+                    <thead>
+                    <tr>
+                        <th>ID Tỷ lệ</th>
+                        <th>Tên Người dùng</th>
+                        <th>User ID</th>
+                        <th>Tỷ lệ (%)</th>
+                        <th>Ngày hiệu lực</th>
+                        <th>Ngày hết hạn</th>
+                        <th>Hành động</th>
+                    </tr>
+                    </thead>
+                    <tbody id="ownership-table-body">
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="create-form-card" id="create-form-wrapper" style="display: none;">
+                <h3>Thêm Tỷ lệ Sở hữu Mới</h3>
+                <form id="createShareForm">
+                    <div class="create-form-grid">
+                        <div class="form-group">
+                            <label for="newUserId">User ID</label>
+                            <input id="newUserId" type="number" placeholder="Nhập User ID" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="newPercentage">Tỷ lệ (%)</label>
+                            <input id="newPercentage" type="number" step="0.01" min="0.01" max="100" placeholder="%" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="newFrom">Từ ngày</label>
+                            <input id="newFrom" type="date">
+                        </div>
+                        <div class="form-group">
+                            <label for="newTo">Đến ngày</label>
+                            <input id="newTo" type="date">
+                        </div>
+                        <button type="submit" class="btn-create-contract" style="padding: 8px 12px; height: 38px;">
+                            <i class="fas fa-plus"></i> Thêm
+                        </button>
+                    </div>
+                </form>
+                <p id="createMsg"></p>
+            </div>
+
+        </div>
+    </main>
+</div>
+
+<script th:src="@{/js/auth-utils.js}"></script>
+<script th:src="@{/js/user-ownerships.js}"></script>
+
+</body>
+</html>
