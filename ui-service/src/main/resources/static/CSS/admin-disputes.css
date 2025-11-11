@@ -1,0 +1,39 @@
+/* admin-disputes.css */
+/* File này chứa style riêng cho trang Giám sát Tranh chấp */
+
+/* (Bạn vẫn cần admin-layout.css để có layout chung) */
+
+/* Style cho ô <select> Trạng thái */
+.status-select {
+    width: 100%;
+    padding: 8px 10px;
+    border: 1px solid #D1D5DB;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    font-weight: 500;
+    background-color: #F9FAFB;
+    cursor: pointer;
+}
+
+.status-select:focus {
+    border-color: #4F46E5;
+    outline: none;
+    box-shadow: 0 0 0 1px rgba(79, 70, 229, 0.5);
+}
+
+/* Style cho nút Lưu (icon Save) */
+.btn-save {
+    background-color: #3B82F6; /* Xanh dương */
+    color: white;
+}
+.btn-save:hover {
+    background-color: #2563EB;
+}
+
+/* Các style nút khác (nếu cần) */
+.btn-view {
+    background-color: #6B7280; /* Xám */
+}
+.btn-view:hover {
+    background-color: #4B5563;
+}

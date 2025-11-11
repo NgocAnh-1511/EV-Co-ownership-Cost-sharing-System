@@ -12,8 +12,8 @@
         <outputRelativeToContentRoot value="true" />
         <processorPath useClasspath="false">
           <entry name="$MAVEN_REPOSITORY$/org/projectlombok/lombok/1.18.40/lombok-1.18.40.jar" />
-          <entry name="$MAVEN_REPOSITORY$/org/projectlombok/lombok/1.18.40/lombok-1.18.40.jar" />
         </processorPath>
+        <module name="LegalContractService" />
         <module name="VehicleServiceManagementService" />
       </profile>
       <profile name="Maven default annotation processors profile" enabled="true">
@@ -21,14 +21,6 @@
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
         <module name="ui-service" />
-      </profile>
-      <profile name="Annotation profile for eureka-server" enabled="true">
-        <sourceOutputDir name="target/generated-sources/annotations" />
-        <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
-        <outputRelativeToContentRoot value="true" />
-        <processorPath useClasspath="false">
-          <entry name="$MAVEN_REPOSITORY$/org/projectlombok/lombok/1.18.36/lombok-1.18.36.jar" />
-        </processorPath>
       </profile>
       <profile name="Annotation profile for user-account-service" enabled="true">
         <sourceOutputDir name="target/generated-sources/annotations" />
@@ -46,7 +38,6 @@
       <module name="CheckInOutService" target="21" />
       <module name="DisputeResolutionService" target="21" />
       <module name="eureka-server" target="21" />
-      <module name="LegalContractService" target="21" />
     </bytecodeTargetLevel>
   </component>
   <component name="JavacSettings">

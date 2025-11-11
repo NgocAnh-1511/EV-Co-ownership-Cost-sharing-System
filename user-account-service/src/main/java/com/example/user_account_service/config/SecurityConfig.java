@@ -12,7 +12,7 @@ import org.springframework.security.config.annotation.authentication.configurati
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
-import org.springframework.security.core.authority.SimpleGrantedAuthority; // <-- THÊM IMPORT NÀY
+import org.springframework.security.core.authority.SimpleGrantedAuthority; // <-- Đảm bảo đã import
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -21,7 +21,7 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 
-import java.util.List; // <-- THÊM IMPORT NÀY
+import java.util.List; // <-- Đảm bảo đã import
 
 @Configuration
 @EnableWebSecurity
@@ -30,7 +30,6 @@ public class SecurityConfig {
     @Autowired
     private UserRepository userRepository;
 
-    // (Bean PasswordEncoder, AuthenticationProvider, AuthenticationManager giữ nguyên)
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
@@ -49,24 +48,18 @@ public class SecurityConfig {
         return authProvider;
     }
 
-    /**
-     * CẬP NHẬT: "Dạy" Spring Security cách tìm user VÀ VAI TRÒ (ROLE)
-     */
     @Bean
     public UserDetailsService userDetailsService() {
         return email -> userRepository.findByEmail(email)
                 .map(user -> new org.springframework.security.core.userdetails.User(
                         user.getEmail(),
                         user.getPasswordHash(),
-                        // Thêm vai trò (role) của user vào (Rất quan trọng)
+                        // Thêm vai trò (role) của user vào
                         List.of(new SimpleGrantedAuthority(user.getRole()))
                 ))
                 .orElseThrow(() -> new UsernameNotFoundException("Không tìm thấy user với email: " + email));
     }
 
-    /**
-     * CẬP NHẬT: Chuỗi lọc bảo mật (Thêm bảo vệ cho API Admin)
-     */
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtAuthenticationFilter jwtAuthFilter) throws Exception {
         http
@@ -85,6 +78,9 @@ public class SecurityConfig {
 
                         // API User (Yêu cầu đăng nhập, cả USER và ADMIN đều có thể gọi)
                         .requestMatchers("/api/users/profile", "/api/users/profile/**").hasAnyRole("USER", "ADMIN")
+
+                        // CẬP NHẬT: Thêm API hợp đồng vào đây
+                        .requestMatchers("/api/contracts/**").hasAnyRole("USER", "ADMIN")
 
                         // API ADMIN (CHỈ ROLE_ADMIN MỚI ĐƯỢC VÀO)
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
