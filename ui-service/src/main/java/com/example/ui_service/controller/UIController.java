@@ -71,10 +71,21 @@ public class UIController {
         return "admin/profile-approval";
     }
 
+    /**
+     * 6. Trang Admin Giám sát Tranh chấp
+     */
+    @GetMapping("/admin/disputes")
+    public String showAdminDisputesPage(Model model) {
+        model.addAttribute("pageTitle", "Giám sát Tranh chấp");
+        model.addAttribute("currentPage", "disputes"); // Dành cho sidebar admin
+        return "admin/admin-disputes"; // Trả về file /templates/admin/admin-disputes.html
+    }
+
+
     // --- Trang USER ---
 
     /**
-     * 6. Trang User Onboarding (Đăng ký hồ sơ)
+     * 7. Trang User Onboarding (Đăng ký hồ sơ)
      */
     @GetMapping("/user/onboarding")
     public String showUserOnboardingPage(Model model) {
@@ -84,7 +95,7 @@ public class UIController {
     }
 
     /**
-     * 7. Trang xem Tình trạng Hồ sơ (User)
+     * 8. Trang xem Tình trạng Hồ sơ (User)
      */
     @GetMapping("/user/profile-status")
     public String showProfileStatusPage(Model model) {
@@ -94,7 +105,7 @@ public class UIController {
     }
 
     /**
-     * 8. NÂNG CẤP: Trang Quản lý Hợp đồng (User)
+     * 9. Trang Quản lý Hợp đồng (User)
      */
     @GetMapping("/user/contracts")
     public String showContractsPage(Model model) {
@@ -103,11 +114,13 @@ public class UIController {
         return "user-contracts"; // Trả về file /templates/user-contracts.html
     }
 
-    @GetMapping("/admin/disputes")
-    public String showAdminDisputesPage(Model model) {
-        model.addAttribute("pageTitle", "Giám sát Tranh chấp");
-        model.addAttribute("currentPage", "disputes"); // Dành cho sidebar admin
-        return "admin/admin-disputes"; // Trả về file /templates/admin/admin-disputes.html
+    /**
+     * 10. Trang Quản lý Tỷ lệ Sở hữu (User)
+     */
+    @GetMapping("/user/ownerships")
+    public String showOwnershipsPage(Model model) {
+        model.addAttribute("pageTitle", "Quản lý Tỷ lệ Sở hữu");
+        model.addAttribute("currentPage", "ty-le"); // Dành cho sidebar user
+        return "user-ownerships"; // Trả về file /templates/user-ownerships.html
     }
 }
-

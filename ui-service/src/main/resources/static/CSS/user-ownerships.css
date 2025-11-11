@@ -1,0 +1,82 @@
+/* user-ownerships.css */
+/* CSS cho trang Quản lý Tỷ lệ Sở hữu */
+
+.ownership-container {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 24px;
+}
+
+.filter-card {
+     background-color: white;
+     padding: 20px;
+     border-radius: 12px;
+     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.filter-group {
+    margin-bottom: 0;
+}
+
+.filter-group label {
+    font-weight: 600;
+    color: #374151;
+    margin-bottom: 8px;
+}
+
+#contractSelect {
+    width: 100%;
+    padding: 10px;
+    border-radius: 8px;
+    border: 1px solid #D1D5DB;
+}
+
+.total-info {
+    font-size: 1.1rem;
+    font-weight: 600;
+    padding: 12px;
+    border-radius: 8px;
+    margin-top: 16px;
+}
+.total-info.ok {
+    background-color: #E6F9F0;
+    color: #0A6C4D;
+}
+.total-info.warning {
+    background-color: #FFFBEB;
+    color: #B45309;
+}
+
+.create-form-card {
+    background-color: white;
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.create-form-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1fr auto;
+    gap: 16px;
+    align-items: end;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-size: 0.9rem;
+}
+
+.form-group input,
+.form-group select {
+    width: 100%;
+    padding: 8px;
+    border: 1px solid #D1D5DB;
+    border-radius: 6px;
+}
+
+#createMsg {
+    color: #D92D2D;
+    font-size: 0.9rem;
+    margin-top: 10px;
+}

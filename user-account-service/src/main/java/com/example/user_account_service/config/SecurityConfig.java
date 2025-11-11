@@ -78,9 +78,10 @@ public class SecurityConfig {
 
                         // API User (Yêu cầu đăng nhập, cả USER và ADMIN đều có thể gọi)
                         .requestMatchers("/api/users/profile", "/api/users/profile/**").hasAnyRole("USER", "ADMIN")
-
-                        // CẬP NHẬT: Thêm API hợp đồng vào đây
                         .requestMatchers("/api/contracts/**").hasAnyRole("USER", "ADMIN")
+
+                        // NÂNG CẤP: Thêm API tỷ lệ sở hữu vào đây
+                        .requestMatchers("/api/ownerships/**").hasAnyRole("USER", "ADMIN")
 
                         // API ADMIN (CHỈ ROLE_ADMIN MỚI ĐƯỢC VÀO)
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
