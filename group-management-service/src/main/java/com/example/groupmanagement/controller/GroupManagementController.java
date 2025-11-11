@@ -3,17 +3,21 @@ package com.example.groupmanagement.controller;
 import com.example.groupmanagement.dto.GroupResponseDto;
 import com.example.groupmanagement.entity.Group;
 import com.example.groupmanagement.entity.GroupMember;
+import com.example.groupmanagement.entity.LeaveRequest;
 import com.example.groupmanagement.entity.Voting;
 import com.example.groupmanagement.entity.VotingResult;
 import com.example.groupmanagement.repository.GroupRepository;
 import com.example.groupmanagement.repository.GroupMemberRepository;
+import com.example.groupmanagement.repository.LeaveRequestRepository;
 import com.example.groupmanagement.repository.VotingRepository;
 import com.example.groupmanagement.repository.VotingResultRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import jakarta.persistence.EntityManager;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
 
@@ -41,6 +45,12 @@ public class GroupManagementController {
 
     @Autowired
     private VotingResultRepository votingResultRepository;
+
+    @Autowired
+    private LeaveRequestRepository leaveRequestRepository;
+
+    @Autowired
+    private EntityManager entityManager;
 
     @Autowired
     private RestTemplate restTemplate;
@@ -764,6 +774,538 @@ public class GroupManagementController {
             logger.error("Error submitting vote", e);
             String errorMessage = e.getMessage() != null ? e.getMessage() : "An unexpected error occurred";
             return ResponseEntity.status(500).body(Map.of("error", errorMessage));
+        }
+    }
+
+    // ========================================
+    // USER MEMBERSHIP INFO ENDPOINTS
+    // ========================================
+
+    /**
+     * Lấy thông tin membership của user trong nhóm
+     * GET /api/groups/{groupId}/members/me/{userId}
+     */
+    @GetMapping("/{groupId}/members/me/{userId}")
+    public ResponseEntity<?> getMyMembershipInfo(
+            @PathVariable Integer groupId,
+            @PathVariable Integer userId) {
+        try {
+            logger.info("🔵 [GroupManagementController] GET /api/groups/{}/members/me/{}", groupId, userId);
+            
+            // Tìm member trong nhóm
+            List<GroupMember> members = groupMemberRepository.findByGroup_GroupId(groupId);
+            Optional<GroupMember> memberOpt = members.stream()
+                .filter(m -> m.getUserId().equals(userId))
+                .findFirst();
+            
+            if (!memberOpt.isPresent()) {
+                return ResponseEntity.status(404).body(Map.of(
+                    "error", "Not found",
+                    "message", "Bạn không phải là thành viên của nhóm này"
+                ));
+            }
+            
+            GroupMember member = memberOpt.get();
+            Map<String, Object> response = new HashMap<>();
+            response.put("memberId", member.getMemberId());
+            response.put("userId", member.getUserId());
+            response.put("role", member.getRole().toString());
+            response.put("ownershipPercent", member.getOwnershipPercent());
+            response.put("joinedAt", member.getJoinedAt());
+            response.put("groupId", groupId);
+            response.put("groupName", member.getGroup().getGroupName());
+            
+            // Tính tổng thành viên và tổng tỷ lệ sở hữu
+            int totalMembers = members.size();
+            double totalOwnership = members.stream()
+                .mapToDouble(m -> m.getOwnershipPercent() != null ? m.getOwnershipPercent() : 0.0)
+                .sum();
+            
+            response.put("totalMembers", totalMembers);
+            response.put("totalOwnership", totalOwnership);
+            
+            logger.info("✅ [GroupManagementController] Membership info retrieved successfully");
+            return ResponseEntity.ok(response);
+            
+        } catch (Exception e) {
+            logger.error("❌ [GroupManagementController] Error getting membership info: {}", e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(500).body(Map.of("error", "Failed to get membership info", "message", e.getMessage()));
+        }
+    }
+
+    /**
+     * Lấy danh sách thành viên trong nhóm (cho user xem)
+     * GET /api/groups/{groupId}/members/view
+     */
+    @GetMapping("/{groupId}/members/view")
+    public ResponseEntity<?> viewGroupMembers(@PathVariable Integer groupId) {
+        try {
+            logger.info("🔵 [GroupManagementController] GET /api/groups/{}/members/view", groupId);
+            
+            List<GroupMember> members = groupMemberRepository.findByGroup_GroupId(groupId);
+            
+            List<Map<String, Object>> memberList = members.stream()
+                .map(m -> {
+                    Map<String, Object> memberInfo = new HashMap<>();
+                    memberInfo.put("memberId", m.getMemberId());
+                    memberInfo.put("userId", m.getUserId());
+                    memberInfo.put("role", m.getRole().toString());
+                    memberInfo.put("ownershipPercent", m.getOwnershipPercent());
+                    memberInfo.put("joinedAt", m.getJoinedAt());
+                    return memberInfo;
+                })
+                .collect(Collectors.toList());
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("members", memberList);
+            response.put("totalMembers", members.size());
+            response.put("totalOwnership", members.stream()
+                .mapToDouble(m -> m.getOwnershipPercent() != null ? m.getOwnershipPercent() : 0.0)
+                .sum());
+            
+            return ResponseEntity.ok(response);
+            
+        } catch (Exception e) {
+            logger.error("❌ [GroupManagementController] Error viewing members: {}", e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(500).body(Map.of("error", "Failed to view members", "message", e.getMessage()));
+        }
+    }
+
+    // ========================================
+    // LEAVE REQUEST ENDPOINTS
+    // ========================================
+
+    /**
+     * User tạo yêu cầu rời nhóm
+     * POST /api/groups/{groupId}/leave-request
+     */
+    @PostMapping("/{groupId}/leave-request")
+    public ResponseEntity<?> createLeaveRequest(
+            @PathVariable Integer groupId,
+            @RequestBody Map<String, Object> requestData) {
+        try {
+            Integer userId = requestData.containsKey("userId") ? 
+                ((Number) requestData.get("userId")).intValue() : null;
+            String reason = requestData.containsKey("reason") ? 
+                (String) requestData.get("reason") : null;
+            
+            logger.info("🔵 [GroupManagementController] POST /api/groups/{}/leave-request", groupId);
+            logger.info("Request: userId={}, reason={}", userId, reason);
+            
+            // Validation
+            if (userId == null) {
+                return ResponseEntity.status(400).body(Map.of(
+                    "error", "userId is required",
+                    "message", "Vui lòng cung cấp ID của người dùng"
+                ));
+            }
+            
+            // Kiểm tra user có phải là thành viên không
+            List<GroupMember> members = groupMemberRepository.findByGroup_GroupId(groupId);
+            Optional<GroupMember> memberOpt = members.stream()
+                .filter(m -> m.getUserId().equals(userId))
+                .findFirst();
+            
+            if (!memberOpt.isPresent()) {
+                return ResponseEntity.status(404).body(Map.of(
+                    "error", "Not found",
+                    "message", "Bạn không phải là thành viên của nhóm này"
+                ));
+            }
+            
+            GroupMember member = memberOpt.get();
+            
+            // Cho phép admin cuối cùng rời nhóm - hệ thống sẽ tự động chuyển quyền admin
+            // cho người có tỉ lệ sở hữu cao nhất khi approve leave request
+            
+            // Kiểm tra xem đã có yêu cầu đang chờ chưa
+            Optional<LeaveRequest> existingRequest = leaveRequestRepository
+                .findByGroup_GroupIdAndUserIdAndStatus(groupId, userId, LeaveRequest.LeaveStatus.Pending);
+            
+            if (existingRequest.isPresent()) {
+                return ResponseEntity.status(400).body(Map.of(
+                    "error", "Request exists",
+                    "message", "Bạn đã có yêu cầu rời nhóm đang chờ phê duyệt",
+                    "requestId", existingRequest.get().getRequestId()
+                ));
+            }
+            
+            // Tạo yêu cầu mới
+            LeaveRequest leaveRequest = new LeaveRequest();
+            leaveRequest.setGroup(member.getGroup());
+            leaveRequest.setGroupMember(member);
+            leaveRequest.setUserId(userId);
+            leaveRequest.setReason(reason);
+            leaveRequest.setStatus(LeaveRequest.LeaveStatus.Pending);
+            
+            LeaveRequest saved = leaveRequestRepository.save(leaveRequest);
+            logger.info("✅ [GroupManagementController] Leave request created: requestId={}", saved.getRequestId());
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "Yêu cầu rời nhóm đã được gửi. Vui lòng chờ Admin phê duyệt");
+            response.put("requestId", saved.getRequestId());
+            response.put("status", saved.getStatus().toString());
+            
+            return ResponseEntity.ok(response);
+            
+        } catch (Exception e) {
+            logger.error("❌ [GroupManagementController] Error creating leave request: {}", e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(500).body(Map.of("error", "Failed to create leave request", "message", e.getMessage()));
+        }
+    }
+
+    /**
+     * Admin xem danh sách yêu cầu rời nhóm
+     * GET /api/groups/{groupId}/leave-requests
+     */
+    @GetMapping("/{groupId}/leave-requests")
+    public ResponseEntity<?> getLeaveRequests(
+            @PathVariable Integer groupId,
+            @RequestParam(required = false) Integer currentUserId) {
+        try {
+            logger.info("🔵 [GroupManagementController] GET /api/groups/{}/leave-requests", groupId);
+            
+            // Kiểm tra quyền Admin
+            if (currentUserId != null && !isAdminOfGroup(currentUserId, groupId)) {
+                return ResponseEntity.status(403).body(Map.of(
+                    "error", "Forbidden",
+                    "message", "Chỉ Admin mới có quyền xem yêu cầu rời nhóm"
+                ));
+            }
+            
+            List<LeaveRequest> requests = leaveRequestRepository.findByGroup_GroupId(groupId);
+            
+            List<Map<String, Object>> requestList = requests.stream()
+                .map(r -> {
+                    Map<String, Object> reqInfo = new HashMap<>();
+                    reqInfo.put("requestId", r.getRequestId());
+                    reqInfo.put("userId", r.getUserId());
+                    reqInfo.put("memberId", r.getGroupMember().getMemberId());
+                    reqInfo.put("reason", r.getReason());
+                    reqInfo.put("status", r.getStatus().toString());
+                    reqInfo.put("requestedAt", r.getRequestedAt());
+                    reqInfo.put("processedAt", r.getProcessedAt());
+                    reqInfo.put("processedBy", r.getProcessedBy());
+                    reqInfo.put("adminNote", r.getAdminNote());
+                    reqInfo.put("ownershipPercent", r.getGroupMember().getOwnershipPercent());
+                    reqInfo.put("role", r.getGroupMember().getRole().toString());
+                    return reqInfo;
+                })
+                .collect(Collectors.toList());
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("requests", requestList);
+            response.put("total", requests.size());
+            response.put("pending", requests.stream()
+                .filter(r -> r.getStatus() == LeaveRequest.LeaveStatus.Pending)
+                .count());
+            
+            return ResponseEntity.ok(response);
+            
+        } catch (Exception e) {
+            logger.error("❌ [GroupManagementController] Error getting leave requests: {}", e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(500).body(Map.of("error", "Failed to get leave requests", "message", e.getMessage()));
+        }
+    }
+
+    /**
+     * Admin phê duyệt yêu cầu rời nhóm
+     * POST /api/groups/{groupId}/leave-requests/{requestId}/approve
+     */
+    @PostMapping("/{groupId}/leave-requests/{requestId}/approve")
+    @Transactional
+    public ResponseEntity<?> approveLeaveRequest(
+            @PathVariable Integer groupId,
+            @PathVariable Integer requestId,
+            @RequestBody(required = false) Map<String, Object> requestData) {
+        try {
+            // Handle null requestData
+            if (requestData == null) {
+                requestData = new java.util.HashMap<>();
+            }
+            
+            Integer currentUserId = requestData.containsKey("currentUserId") ? 
+                ((Number) requestData.get("currentUserId")).intValue() : null;
+            String adminNote = requestData.containsKey("adminNote") ? 
+                (String) requestData.get("adminNote") : null;
+            
+            logger.info("🔵 [GroupManagementController] POST /api/groups/{}/leave-requests/{}/approve", groupId, requestId);
+            
+            // Validation
+            if (currentUserId == null) {
+                return ResponseEntity.status(400).body(Map.of(
+                    "error", "currentUserId is required",
+                    "message", "Vui lòng cung cấp ID của Admin"
+                ));
+            }
+            
+            // Kiểm tra quyền Admin
+            if (!isAdminOfGroup(currentUserId, groupId)) {
+                return ResponseEntity.status(403).body(Map.of(
+                    "error", "Forbidden",
+                    "message", "Chỉ Admin mới có quyền phê duyệt yêu cầu rời nhóm"
+                ));
+            }
+            
+            // Tìm yêu cầu
+            Optional<LeaveRequest> requestOpt = leaveRequestRepository.findById(requestId);
+            if (!requestOpt.isPresent()) {
+                return ResponseEntity.status(404).body(Map.of("error", "Leave request not found"));
+            }
+            
+            LeaveRequest leaveRequest = requestOpt.get();
+            
+            // Kiểm tra yêu cầu thuộc nhóm này
+            if (!leaveRequest.getGroup().getGroupId().equals(groupId)) {
+                return ResponseEntity.status(400).body(Map.of("error", "Request does not belong to this group"));
+            }
+            
+            // Kiểm tra status
+            if (leaveRequest.getStatus() != LeaveRequest.LeaveStatus.Pending) {
+                return ResponseEntity.status(400).body(Map.of(
+                    "error", "Request already processed",
+                    "message", "Yêu cầu này đã được xử lý"
+                ));
+            }
+            
+            // Lấy thông tin member cần xóa TRƯỚC khi thay đổi
+            GroupMember memberToDelete = leaveRequest.getGroupMember();
+            Integer memberIdToDelete = memberToDelete.getMemberId();
+            Integer userIdToDelete = memberToDelete.getUserId();
+            boolean wasAdmin = memberToDelete.getRole() == GroupMember.MemberRole.Admin;
+            
+            // Kiểm tra nếu đây là admin cuối cùng, tự động chuyển quyền admin
+            // cho người có tỉ lệ sở hữu cao nhất
+            GroupMember newAdmin = null;
+            if (wasAdmin) {
+                // Đếm số admin còn lại (không tính admin đang rời)
+                List<GroupMember> allMembers = groupMemberRepository.findByGroup_GroupId(groupId);
+                long remainingAdminCount = allMembers.stream()
+                    .filter(m -> !m.getMemberId().equals(memberIdToDelete))
+                    .filter(m -> m.getRole() == GroupMember.MemberRole.Admin)
+                    .count();
+                
+                if (remainingAdminCount == 0) {
+                    // Tìm member có tỉ lệ sở hữu cao nhất (không phải admin đang rời)
+                    List<GroupMember> remainingMembers = groupMemberRepository.findByGroup_GroupId(groupId);
+                    Optional<GroupMember> highestOwnershipMember = remainingMembers.stream()
+                        .filter(m -> !m.getMemberId().equals(memberIdToDelete))
+                        .filter(m -> m.getRole() != GroupMember.MemberRole.Admin)
+                        .max((m1, m2) -> {
+                            // So sánh theo tỉ lệ sở hữu (cao nhất)
+                            double own1 = m1.getOwnershipPercent() != null ? m1.getOwnershipPercent() : 0.0;
+                            double own2 = m2.getOwnershipPercent() != null ? m2.getOwnershipPercent() : 0.0;
+                            int compare = Double.compare(own2, own1); // Descending order
+                            if (compare != 0) {
+                                return compare;
+                            }
+                            // Nếu tỉ lệ bằng nhau, chọn người join sớm nhất
+                            if (m1.getJoinedAt() != null && m2.getJoinedAt() != null) {
+                                return m1.getJoinedAt().compareTo(m2.getJoinedAt());
+                            }
+                            return compare;
+                        });
+                    
+                    if (highestOwnershipMember.isPresent()) {
+                        newAdmin = highestOwnershipMember.get();
+                        newAdmin.setRole(GroupMember.MemberRole.Admin);
+                        groupMemberRepository.save(newAdmin);
+                        logger.info("✅ [GroupManagementController] Auto-transferred admin role to member with highest ownership: memberId={}, userId={}, ownershipPercent={}%", 
+                            newAdmin.getMemberId(), newAdmin.getUserId(), newAdmin.getOwnershipPercent());
+                    } else {
+                        logger.warn("⚠️ [GroupManagementController] No member found to transfer admin role to");
+                    }
+                }
+            }
+            
+            // LƯU LeaveRequest TRƯỚC khi xóa GroupMember
+            // Vì database có ON DELETE CASCADE, nếu xóa GroupMember trước thì LeaveRequest sẽ bị xóa
+            leaveRequest.setStatus(LeaveRequest.LeaveStatus.Approved);
+            leaveRequest.setProcessedAt(java.time.LocalDateTime.now());
+            leaveRequest.setProcessedBy(currentUserId);
+            leaveRequest.setAdminNote(adminNote);
+            leaveRequestRepository.save(leaveRequest);
+            
+            // Flush để đảm bảo LeaveRequest được lưu vào database trước khi xóa GroupMember
+            entityManager.flush();
+            entityManager.clear(); // Clear persistence context để tránh lỗi Hibernate
+            
+            // Xóa GroupMember bằng native query để tránh lỗi Hibernate validation
+            // Vì có ON DELETE CASCADE, LeaveRequest sẽ tự động bị xóa trong database
+            // Nhưng vì đã flush và clear, nên Hibernate không còn tham chiếu đến các entity
+            int deleted = entityManager.createNativeQuery(
+                "DELETE FROM GroupMember WHERE memberId = :memberId"
+            )
+            .setParameter("memberId", memberIdToDelete)
+            .executeUpdate();
+            
+            if (deleted == 0) {
+                logger.warn("⚠️ [GroupManagementController] No member deleted with memberId={}", memberIdToDelete);
+            }
+            
+            logger.info("✅ [GroupManagementController] Leave request approved and member removed: memberId={}", 
+                memberIdToDelete);
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "Đã phê duyệt yêu cầu rời nhóm và xóa thành viên");
+            response.put("requestId", requestId);
+            response.put("memberId", memberIdToDelete);
+            response.put("userId", userIdToDelete); // User ID của người bị xóa
+            
+            // Thông tin về việc chuyển quyền admin (nếu có)
+            if (newAdmin != null) {
+                response.put("adminTransferred", true);
+                response.put("newAdmin", Map.of(
+                    "memberId", newAdmin.getMemberId(),
+                    "userId", newAdmin.getUserId(),
+                    "ownershipPercent", newAdmin.getOwnershipPercent()
+                ));
+                response.put("message", "Đã phê duyệt yêu cầu rời nhóm. Quyền Admin đã được tự động chuyển cho thành viên có tỉ lệ sở hữu cao nhất");
+            } else {
+                response.put("adminTransferred", false);
+            }
+            
+            return ResponseEntity.ok(response);
+            
+        } catch (Exception e) {
+            logger.error("❌ [GroupManagementController] Error approving leave request: {}", e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(500).body(Map.of("error", "Failed to approve leave request", "message", e.getMessage()));
+        }
+    }
+
+    /**
+     * Admin từ chối yêu cầu rời nhóm
+     * POST /api/groups/{groupId}/leave-requests/{requestId}/reject
+     */
+    @PostMapping("/{groupId}/leave-requests/{requestId}/reject")
+    public ResponseEntity<?> rejectLeaveRequest(
+            @PathVariable Integer groupId,
+            @PathVariable Integer requestId,
+            @RequestBody(required = false) Map<String, Object> requestData) {
+        try {
+            // Handle null requestData
+            if (requestData == null) {
+                requestData = new java.util.HashMap<>();
+            }
+            
+            Integer currentUserId = requestData.containsKey("currentUserId") ? 
+                ((Number) requestData.get("currentUserId")).intValue() : null;
+            String adminNote = requestData.containsKey("adminNote") ? 
+                (String) requestData.get("adminNote") : null;
+            
+            logger.info("🔵 [GroupManagementController] POST /api/groups/{}/leave-requests/{}/reject", groupId, requestId);
+            
+            // Validation
+            if (currentUserId == null) {
+                return ResponseEntity.status(400).body(Map.of(
+                    "error", "currentUserId is required",
+                    "message", "Vui lòng cung cấp ID của Admin"
+                ));
+            }
+            
+            // Kiểm tra quyền Admin
+            if (!isAdminOfGroup(currentUserId, groupId)) {
+                return ResponseEntity.status(403).body(Map.of(
+                    "error", "Forbidden",
+                    "message", "Chỉ Admin mới có quyền từ chối yêu cầu rời nhóm"
+                ));
+            }
+            
+            // Tìm yêu cầu
+            Optional<LeaveRequest> requestOpt = leaveRequestRepository.findById(requestId);
+            if (!requestOpt.isPresent()) {
+                return ResponseEntity.status(404).body(Map.of("error", "Leave request not found"));
+            }
+            
+            LeaveRequest leaveRequest = requestOpt.get();
+            
+            // Kiểm tra yêu cầu thuộc nhóm này
+            if (!leaveRequest.getGroup().getGroupId().equals(groupId)) {
+                return ResponseEntity.status(400).body(Map.of("error", "Request does not belong to this group"));
+            }
+            
+            // Kiểm tra status
+            if (leaveRequest.getStatus() != LeaveRequest.LeaveStatus.Pending) {
+                return ResponseEntity.status(400).body(Map.of(
+                    "error", "Request already processed",
+                    "message", "Yêu cầu này đã được xử lý"
+                ));
+            }
+            
+            // Từ chối
+            leaveRequest.setStatus(LeaveRequest.LeaveStatus.Rejected);
+            leaveRequest.setProcessedAt(java.time.LocalDateTime.now());
+            leaveRequest.setProcessedBy(currentUserId);
+            leaveRequest.setAdminNote(adminNote);
+            leaveRequestRepository.save(leaveRequest);
+            
+            logger.info("✅ [GroupManagementController] Leave request rejected: requestId={}", requestId);
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("success", true);
+            response.put("message", "Đã từ chối yêu cầu rời nhóm");
+            response.put("requestId", requestId);
+            
+            return ResponseEntity.ok(response);
+            
+        } catch (Exception e) {
+            logger.error("❌ [GroupManagementController] Error rejecting leave request: {}", e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(500).body(Map.of("error", "Failed to reject leave request", "message", e.getMessage()));
+        }
+    }
+
+    /**
+     * User xem trạng thái yêu cầu rời nhóm của mình
+     * GET /api/groups/{groupId}/leave-requests/me/{userId}
+     */
+    @GetMapping("/{groupId}/leave-requests/me/{userId}")
+    public ResponseEntity<?> getMyLeaveRequest(
+            @PathVariable Integer groupId,
+            @PathVariable Integer userId) {
+        try {
+            logger.info("🔵 [GroupManagementController] GET /api/groups/{}/leave-requests/me/{}", groupId, userId);
+            
+            List<LeaveRequest> requests = leaveRequestRepository.findByGroup_GroupIdAndUserId(groupId, userId);
+            
+            if (requests.isEmpty()) {
+                return ResponseEntity.ok(Map.of(
+                    "hasRequest", false,
+                    "message", "Bạn chưa có yêu cầu rời nhóm nào"
+                ));
+            }
+            
+            // Lấy yêu cầu mới nhất
+            LeaveRequest latestRequest = requests.stream()
+                .max((r1, r2) -> r1.getRequestedAt().compareTo(r2.getRequestedAt()))
+                .orElse(null);
+            
+            if (latestRequest == null) {
+                return ResponseEntity.ok(Map.of("hasRequest", false));
+            }
+            
+            Map<String, Object> response = new HashMap<>();
+            response.put("hasRequest", true);
+            response.put("requestId", latestRequest.getRequestId());
+            response.put("status", latestRequest.getStatus().toString());
+            response.put("reason", latestRequest.getReason());
+            response.put("requestedAt", latestRequest.getRequestedAt());
+            response.put("processedAt", latestRequest.getProcessedAt());
+            response.put("adminNote", latestRequest.getAdminNote());
+            
+            return ResponseEntity.ok(response);
+            
+        } catch (Exception e) {
+            logger.error("❌ [GroupManagementController] Error getting my leave request: {}", e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(500).body(Map.of("error", "Failed to get leave request", "message", e.getMessage()));
         }
     }
 }

@@ -55,6 +55,11 @@ public class FundServiceImpl implements FundService {
     // ========================================
 
     @Override
+    public Optional<GroupFund> getFundById(Integer fundId) {
+        return groupFundRepository.findById(fundId);
+    }
+
+    @Override
     public Optional<GroupFund> getFundByGroupId(Integer groupId) {
         return groupFundRepository.findByGroupId(groupId);
     }

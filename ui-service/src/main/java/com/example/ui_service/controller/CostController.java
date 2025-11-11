@@ -18,47 +18,6 @@ public class CostController {
     @Autowired
     private CostPaymentClient costPaymentClient;
 
-    @GetMapping
-    public String listCosts(Model model) {
-        List<CostDto> costs = costPaymentClient.getAllCosts();
-        model.addAttribute("costs", costs);
-        
-        // Calculate statistics
-        int totalCosts = costs != null ? costs.size() : 0;
-        int paidCosts = costs != null ? (int) costs.stream().filter(c -> "PAID".equals(c.getStatus())).count() : 0;
-        int pendingCosts = costs != null ? (int) costs.stream().filter(c -> "PENDING".equals(c.getStatus())).count() : 0;
-        int overdueCosts = costs != null ? (int) costs.stream().filter(c -> "OVERDUE".equals(c.getStatus())).count() : 0;
-        
-        model.addAttribute("totalCosts", totalCosts);
-        model.addAttribute("paidCosts", paidCosts);
-        model.addAttribute("pendingCosts", pendingCosts);
-        model.addAttribute("overdueCosts", overdueCosts);
-        
-        return "costs/list";
-    }
-
-    @GetMapping("/create")
-    public String createCostForm(Model model) {
-        model.addAttribute("cost", new CostDto());
-        return "costs/create";
-    }
-
-    @PostMapping("/create")
-    public String createCost(@ModelAttribute CostDto costDto, Model model) {
-        try {
-            CostDto createdCost = costPaymentClient.createCost(costDto);
-            if (createdCost != null) {
-                return "redirect:/costs?success=true";
-            } else {
-                model.addAttribute("error", "Không thể tạo chi phí. Vui lòng thử lại.");
-                return "costs/create";
-            }
-        } catch (Exception e) {
-            System.err.println("Error creating cost: " + e.getMessage());
-            model.addAttribute("error", "Có lỗi xảy ra khi tạo chi phí: " + e.getMessage());
-            return "costs/create";
-        }
-    }
 
     @GetMapping("/{id}/splits")
     public String listCostSplits(@PathVariable Integer id, Model model) {
@@ -87,38 +46,6 @@ public class CostController {
         return "redirect:/costs/payments";
     }
 
-    @GetMapping("/{id}/edit")
-    public String editCostForm(@PathVariable Integer id, Model model) {
-        try {
-            CostDto cost = costPaymentClient.getCostById(id);
-            if (cost != null) {
-                model.addAttribute("cost", cost);
-                return "costs/edit";
-            } else {
-                return "redirect:/costs?error=notfound";
-            }
-        } catch (Exception e) {
-            System.err.println("Error fetching cost for edit: " + e.getMessage());
-            return "redirect:/costs?error=fetch";
-        }
-    }
-
-    @PostMapping("/{id}/edit")
-    public String updateCost(@PathVariable Integer id, @ModelAttribute CostDto costDto, Model model) {
-        try {
-            CostDto updatedCost = costPaymentClient.updateCost(id, costDto);
-            if (updatedCost != null) {
-                return "redirect:/costs?success=updated";
-            } else {
-                model.addAttribute("error", "Không thể cập nhật chi phí. Vui lòng thử lại.");
-                return "costs/edit";
-            }
-        } catch (Exception e) {
-            System.err.println("Error updating cost: " + e.getMessage());
-            model.addAttribute("error", "Có lỗi xảy ra khi cập nhật chi phí: " + e.getMessage());
-            return "costs/edit";
-        }
-    }
 
     @PostMapping("/{id}/delete")
     @ResponseBody
@@ -136,30 +63,6 @@ public class CostController {
         }
     }
 
-    @GetMapping("/sharing")
-    public String costSharing(Model model) {
-        // Load costs and cost shares for sharing page
-        List<CostDto> costs = costPaymentClient.getAllCosts();
-        List<CostSplitDto> costShares = costPaymentClient.getAllCostShares();
-        
-        model.addAttribute("costs", costs);
-        model.addAttribute("costShares", costShares);
-        
-        // Calculate statistics
-        int totalCosts = costs != null ? costs.size() : 0;
-        int totalShares = costShares != null ? costShares.size() : 0;
-        double totalPaid = costShares != null ? 
-            costShares.stream().filter(s -> "PAID".equals(s.getStatus())).mapToDouble(CostSplitDto::getAmountShare).sum() : 0;
-        int pendingPayments = costShares != null ? 
-            (int) costShares.stream().filter(s -> "PENDING".equals(s.getStatus())).count() : 0;
-        
-        model.addAttribute("totalCosts", totalCosts);
-        model.addAttribute("totalShares", totalShares);
-        model.addAttribute("totalPaid", totalPaid);
-        model.addAttribute("pendingPayments", pendingPayments);
-        
-        return "costs/sharing";
-    }
 
     @PostMapping("/sharing")
     @ResponseBody
@@ -185,11 +88,6 @@ public class CostController {
         return costPaymentClient.getCostShareById(id);
     }
 
-    @GetMapping("/{costId}/split-result")
-    public String splitResultPage(@PathVariable Integer costId, Model model) {
-        model.addAttribute("costId", costId);
-        return "costs/split-result";
-    }
 
     @GetMapping("/api/costs/{costId}/shares")
     @ResponseBody
@@ -286,22 +184,4 @@ public class CostController {
         }
     }
 
-    // Search and filter functionality
-    @GetMapping("/search")
-    public String searchCosts(@RequestParam(required = false) String query,
-                             @RequestParam(required = false) String costType,
-                             @RequestParam(required = false) Integer vehicleId,
-                             Model model) {
-        try {
-            List<CostDto> costs = costPaymentClient.searchCosts(query, costType, vehicleId);
-            model.addAttribute("costs", costs);
-            model.addAttribute("query", query);
-            model.addAttribute("costType", costType);
-            model.addAttribute("vehicleId", vehicleId);
-            return "costs/list";
-        } catch (Exception e) {
-            model.addAttribute("costs", List.of());
-            return "costs/list";
-        }
-    }
 }
