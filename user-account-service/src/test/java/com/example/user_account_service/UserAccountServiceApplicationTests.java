@@ -1,10 +1,10 @@
-package com.example.LegalContractService;
+package com.example.user_account_service;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 
 @SpringBootTest
-class LegalContractServiceApplicationTests {
+class UserAccountServiceApplicationTests {
 
 	@Test
 	void contextLoads() {
