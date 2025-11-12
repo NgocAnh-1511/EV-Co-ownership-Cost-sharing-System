@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="DataSourceManagerImpl" format="xml" multifile-model="true">
+<<<<<<< HEAD
     <data-source source="LOCAL" name="Group_Management_DB@localhost" uuid="b0edd722-60e4-45a2-87e4-709e6a4cc4cc">
       <driver-ref>mysql.8</driver-ref>
       <synchronize>true</synchronize>
@@ -8,6 +9,13 @@
       <remarks>$PROJECT_DIR$/group-management-service/src/main/resources/application.properties</remarks>
       <jdbc-driver>com.mysql.cj.jdbc.Driver</jdbc-driver>
       <jdbc-url>jdbc:mysql://localhost:3306/Group_Management_DB?createDatabaseIfNotExist=true&amp;useSSL=false&amp;serverTimezone=UTC</jdbc-url>
+=======
+    <data-source source="LOCAL" name="vehicle_management@localhost" uuid="6f105145-1d29-4773-9b09-2fe5a7aaf8b4">
+      <driver-ref>mysql.8</driver-ref>
+      <synchronize>true</synchronize>
+      <jdbc-driver>com.mysql.cj.jdbc.Driver</jdbc-driver>
+      <jdbc-url>jdbc:mysql://localhost:3306/vehicle_management</jdbc-url>
+>>>>>>> d9a78b7886179ffc797ae2e063c9f95a65bf1d5b
       <jdbc-additional-properties>
         <property name="com.intellij.clouds.kubernetes.db.host.port" />
         <property name="com.intellij.clouds.kubernetes.db.enabled" value="false" />
@@ -15,6 +23,7 @@
       </jdbc-additional-properties>
       <working-dir>$ProjectFileDir$</working-dir>
     </data-source>
+<<<<<<< HEAD
     <data-source source="LOCAL" name="Cost_Payment_DB@localhost" uuid="a0650a2d-b495-4be8-8994-4460dfc6ac5e">
       <driver-ref>mysql.8</driver-ref>
       <synchronize>true</synchronize>
@@ -22,6 +31,18 @@
       <remarks>$PROJECT_DIR$/cost-payment-service/src/main/resources/application.properties</remarks>
       <jdbc-driver>com.mysql.cj.jdbc.Driver</jdbc-driver>
       <jdbc-url>jdbc:mysql://localhost:3306/Cost_Payment_DB?createDatabaseIfNotExist=true&amp;useSSL=false&amp;serverTimezone=UTC</jdbc-url>
+=======
+    <data-source source="LOCAL" name="legal_contract@localhost" uuid="e3e46d20-fc9e-4192-aab9-c766721fcb75">
+      <driver-ref>mysql.8</driver-ref>
+      <synchronize>true</synchronize>
+      <jdbc-driver>com.mysql.cj.jdbc.Driver</jdbc-driver>
+      <jdbc-url>jdbc:mysql://localhost:3306/legal_contract</jdbc-url>
+      <jdbc-additional-properties>
+        <property name="com.intellij.clouds.kubernetes.db.host.port" />
+        <property name="com.intellij.clouds.kubernetes.db.enabled" value="false" />
+        <property name="com.intellij.clouds.kubernetes.db.container.port" />
+      </jdbc-additional-properties>
+>>>>>>> d9a78b7886179ffc797ae2e063c9f95a65bf1d5b
       <working-dir>$ProjectFileDir$</working-dir>
     </data-source>
   </component>

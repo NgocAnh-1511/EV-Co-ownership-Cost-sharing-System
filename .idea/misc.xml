@@ -9,6 +9,7 @@
         <option value="$PROJECT_DIR$/DisputeResolutionService/pom.xml" />
         <option value="$PROJECT_DIR$/VehicleServiceManagementService/pom.xml" />
         <option value="$PROJECT_DIR$/ui-service/pom.xml" />
+<<<<<<< HEAD
         <option value="$PROJECT_DIR$/group-management-service/pom.xml" />
         <option value="$PROJECT_DIR$/cost-payment-service/pom.xml" />
         <option value="$PROJECT_DIR$/user-account-service/pom.xml" />
@@ -16,6 +17,18 @@
     </option>
   </component>
   <component name="ProjectRootManager" version="2" languageLevel="JDK_23" project-jdk-name="23" project-jdk-type="JavaSDK">
+=======
+      </list>
+    </option>
+    <option name="ignoredFiles">
+      <set>
+        <option value="$PROJECT_DIR$/CheckInOutService/pom.xml" />
+        <option value="$PROJECT_DIR$/DisputeResolutionService/pom.xml" />
+      </set>
+    </option>
+  </component>
+  <component name="ProjectRootManager" version="2" languageLevel="JDK_21_PREVIEW" project-jdk-name="openjdk-25" project-jdk-type="JavaSDK">
+>>>>>>> d9a78b7886179ffc797ae2e063c9f95a65bf1d5b
     <output url="file://$PROJECT_DIR$/out" />
   </component>
 </project>

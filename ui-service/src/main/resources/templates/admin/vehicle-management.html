@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CarShare - Quản Lý Xe</title>
+    
+    <!-- External CSS -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    
+    <!-- Internal CSS -->
+    <link rel="stylesheet" th:href="@{/css/sidebar.css}">
+    <link rel="stylesheet" th:href="@{/css/header.css}">
+    <link rel="stylesheet" th:href="@{/css/vehicle-management.css}">
+</head>
+<body>
+<div class="admin-container">
+    <!-- Sidebar Fragment -->
+    <div th:replace="fragments/sidebar :: sidebar"></div>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Header Fragment -->
+        <div th:replace="fragments/header :: header"></div>
+
+        <!-- Search and Filter Section -->
+        <div class="search-filter-section">
+            <form method="get" action="/admin/vehicle-management" id="searchFilterForm">
+                <div class="search-bar">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="searchInput" name="searchQuery" 
+                           th:value="${searchQuery}" placeholder="Tìm kiếm xe..." />
+                </div>
+                <div class="status-filter">
+                    <select id="statusFilter" name="statusFilter" onchange="document.getElementById('searchFilterForm').submit();">
+                        <option value="all" th:selected="${statusFilter == 'all'}">Tất cả trạng thái</option>
+                        <option value="ready" th:selected="${statusFilter == 'ready'}">Sẵn sàng</option>
+                        <option value="maintenance" th:selected="${statusFilter == 'maintenance'}">Đang bảo dưỡng</option>
+                        <option value="repair" th:selected="${statusFilter == 'repair'}">Đang sửa chữa</option>
+                        <option value="checking" th:selected="${statusFilter == 'checking'}">Đang kiểm tra</option>
+                        <option value="in_use" th:selected="${statusFilter == 'in_use'}">Đang sử dụng</option>
+                    </select>
+                </div>
+            </form>
+            <button class="btn-add-vehicle" onclick="openAddVehicleModal()">
+                <i class="fas fa-plus"></i>
+                <span>Thêm Xe Mới</span>
+            </button>
+        </div>
+
+        <!-- Summary Cards -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon blue">
+                    <i class="fas fa-car"></i>
+                </div>
+                <div class="stat-info">
+                    <h3>Tổng số xe</h3>
+                    <span class="stat-number" th:text="${totalVehicles}">0</span>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon green">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                <div class="stat-info">
+                    <h3>Sẵn sàng</h3>
+                    <span class="stat-number" th:text="${readyVehicles}">0</span>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon blue">
+                    <i class="fas fa-road"></i>
+                </div>
+                <div class="stat-info">
+                    <h3>Đang sử dụng</h3>
+                    <span class="stat-number" th:text="${inUseVehicles}">0</span>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon orange">
+                    <i class="fas fa-wrench"></i>
+                </div>
+                <div class="stat-info">
+                    <h3>Đang bảo dưỡng</h3>
+                    <span class="stat-number" th:text="${maintenanceVehicles}">0</span>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon red">
+                    <i class="fas fa-tools"></i>
+                </div>
+                <div class="stat-info">
+                    <h3>Đang sửa chữa</h3>
+                    <span class="stat-number" th:text="${repairVehicles}">0</span>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon purple">
+                    <i class="fas fa-clipboard-check"></i>
+                </div>
+                <div class="stat-info">
+                    <h3>Đang kiểm tra</h3>
+                    <span class="stat-number" th:text="${checkingVehicles}">0</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Table Section -->
+        <div class="table-section">
+            <div class="table-header">
+                <h3>Danh Sách Xe</h3>
+            </div>
+            <table class="vehicle-table">
+                <thead>
+                <tr>
+                    <th>TÊN XE</th>
+                    <th>BIỂN SỐ</th>
+                    <th>LOẠI XE</th>
+                    <th>TRẠNG THÁI</th>
+                    <th>NGÀY CẬP NHẬT</th>
+                    <th>HÀNH ĐỘNG</th>
+                </tr>
+                </thead>
+                <tbody id="vehicleTableBody">
+                <tr th:each="vehicle : ${vehicles}">
+                    <td>
+                        <div class="vehicle-info">
+                            <div class="vehicle-icon" th:classappend="${vehicle.iconColor}">
+                                <i th:class="${vehicle.icon}"></i>
+                            </div>
+                            <div class="vehicle-details">
+                                <div class="vehicle-name" th:text="${vehicle.name}">Vehicle Name</div>
+                                <div class="vehicle-type" th:text="${vehicle.type}">Vehicle Type</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td th:text="${vehicle.plateNumber}">Plate Number</td>
+                    <td th:text="${vehicle.type}">Type</td>
+                    <td>
+                        <span class="status-badge ready" th:if="${vehicle.status == 'ready'}">Sẵn sàng</span>
+                        <span class="status-badge in-use" th:if="${vehicle.status == 'in_use'}">Đang sử dụng</span>
+                        <span class="status-badge maintenance" th:if="${vehicle.status == 'maintenance'}">Đang bảo dưỡng</span>
+                        <span class="status-badge repair" th:if="${vehicle.status == 'repair'}">Đang sửa chữa</span>
+                        <span class="status-badge checking" th:if="${vehicle.status == 'checking'}">Đang kiểm tra</span>
+                        <span class="status-badge" th:if="${vehicle.status != 'ready' and vehicle.status != 'in_use' and vehicle.status != 'maintenance' and vehicle.status != 'repair' and vehicle.status != 'checking'}" th:text="${vehicle.status}">Unknown</span>
+                    </td>
+                    <td th:text="${vehicle.updateDate}">Update Date</td>
+                    <td>
+                        <div class="action-buttons">
+                            <button class="btn-action btn-edit" 
+                                    th:data-vehicle-id="${vehicle.id}" 
+                                    title="Chỉnh sửa">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn-action btn-delete" 
+                                    th:data-vehicle-id="${vehicle.id}" 
+                                    title="Xóa">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+                <tr th:if="${vehicles == null or vehicles.isEmpty()}">
+                    <td colspan="6" style="text-align: center; padding: 40px; color: #6B7280;">
+                        Không có dữ liệu xe
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+
+            <!-- Pagination -->
+            <div class="pagination-section" th:if="${totalPages > 0}">
+                <div class="pagination-info">
+                    Hiển thị <span th:text="${startIndex}">1</span>-<span th:text="${endIndex}">10</span> 
+                    trong tổng số <span th:text="${totalFiltered}">0</span> xe
+                </div>
+                <div class="pagination-controls">
+                    <a th:href="@{/admin/vehicle-management(searchQuery=${searchQuery}, statusFilter=${statusFilter}, page=${currentPage > 1 ? currentPage - 1 : 1})}"
+                       class="pagination-btn" th:classappend="${currentPage == 1} ? 'disabled' : ''"
+                       th:if="${currentPage > 1}">Trước</a>
+                    <span th:each="pageNum : ${#numbers.sequence(1, totalPages)}">
+                        <a th:href="@{/admin/vehicle-management(searchQuery=${searchQuery}, statusFilter=${statusFilter}, page=${pageNum})}"
+                           class="pagination-number" th:classappend="${pageNum == currentPage} ? 'active' : ''"
+                           th:text="${pageNum}">1</a>
+                    </span>
+                    <a th:href="@{/admin/vehicle-management(searchQuery=${searchQuery}, statusFilter=${statusFilter}, page=${currentPage < totalPages ? currentPage + 1 : totalPages})}"
+                       class="pagination-btn" th:classappend="${currentPage == totalPages} ? 'disabled' : ''"
+                       th:if="${currentPage < totalPages}">Sau</a>
+                </div>
+            </div>
+            <div class="pagination-section" th:if="${totalPages == 0}">
+                <div class="pagination-info">
+                    Không có dữ liệu để hiển thị
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<!-- Modal Thêm/Sửa Xe -->
+<div id="vehicleModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="modalTitle">Thêm Xe Mới</h2>
+            <span class="close" onclick="closeVehicleModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <form id="vehicleForm" onsubmit="saveVehicle(event)">
+                <input type="hidden" id="vehicleId" name="vehicleId">
+                
+                <div class="form-group">
+                    <label for="groupId">Nhóm xe</label>
+                    <select id="groupId" name="groupId">
+                        <option value="">-- Chọn nhóm xe (tùy chọn) --</option>
+                        <option th:each="group : ${vehicleGroups}" 
+                                th:value="${group.groupId}" 
+                                th:text="${group.name}">
+                        </option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label for="vehicleIdInput">Mã xe <span class="required">*</span></label>
+                    <input type="text" id="vehicleIdInput" name="vehicleIdInput" required 
+                           placeholder="VD: VEH001" maxlength="20">
+                </div>
+
+                <div class="form-group">
+                    <label for="vehicleName">Tên xe</label>
+                    <input type="text" id="vehicleName" name="vehicleName" 
+                           placeholder="VD: Xe điện Tesla Model 3" maxlength="100">
+                </div>
+
+                <div class="form-group">
+                    <label for="vehicleNumber">Biển số xe</label>
+                    <input type="text" id="vehicleNumber" name="vehicleNumber" 
+                           placeholder="VD: 30A-12345" maxlength="20">
+                </div>
+
+                <div class="form-group">
+                    <label for="vehicleType">Loại xe</label>
+                    <input type="text" id="vehicleType" name="vehicleType" 
+                           placeholder="VD: Electric, Sedan, SUV" maxlength="50">
+                </div>
+
+                <div class="form-group">
+                    <label for="status">Trạng thái <span class="required">*</span></label>
+                    <select id="status" name="status" required>
+                        <option value="ready">Sẵn sàng</option>
+                        <option value="maintenance">Đang bảo dưỡng</option>
+                        <option value="repair">Đang sửa chữa</option>
+                        <option value="checking">Đang kiểm tra</option>
+                        <option value="in_use">Đang sử dụng</option>
+                    </select>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn-cancel" onclick="closeVehicleModal()">Hủy</button>
+                    <button type="submit" class="btn-save">Lưu</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Xác nhận Xóa -->
+<div id="deleteModal" class="modal">
+    <div class="modal-content modal-small">
+        <div class="modal-header">
+            <h2>Xác nhận xóa</h2>
+            <span class="close" onclick="closeDeleteModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <p>Bạn có chắc chắn muốn xóa xe này không?</p>
+            <p class="warning-text">Hành động này không thể hoàn tác.</p>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn-cancel" onclick="closeDeleteModal()">Hủy</button>
+            <button type="button" class="btn-delete-confirm" onclick="confirmDelete()">Xóa</button>
+        </div>
+    </div>
+</div>
+
+<!-- JavaScript -->
+<script th:src="@{/js/vehicle-management.js}"></script>
+</body>
+</html>

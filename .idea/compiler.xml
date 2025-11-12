@@ -3,6 +3,7 @@
   <component name="CompilerConfiguration">
     <annotationProcessing>
       <profile default="true" name="Default" enabled="true" />
+<<<<<<< HEAD
       <profile name="Annotation profile for user-account-service" enabled="true">
         <sourceOutputDir name="target/generated-sources/annotations" />
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
@@ -12,11 +13,14 @@
         </processorPath>
         <module name="user-account-service" />
       </profile>
+=======
+>>>>>>> d9a78b7886179ffc797ae2e063c9f95a65bf1d5b
       <profile name="Annotation profile for ui-service" enabled="true">
         <sourceOutputDir name="target/generated-sources/annotations" />
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
         <processorPath useClasspath="false">
+<<<<<<< HEAD
           <entry name="$MAVEN_REPOSITORY$/org/projectlombok/lombok/1.18.30/lombok-1.18.30.jar" />
         </processorPath>
         <module name="group-management-service" />
@@ -33,6 +37,18 @@
       <module name="EV-Co-ownership-Cost-sharing-System" target="23" />
       <module name="reservationadminservice" target="23" />
       <module name="ReservationService" target="23" />
+=======
+          <entry name="$MAVEN_REPOSITORY$/org/projectlombok/lombok/1.18.40/lombok-1.18.40.jar" />
+        </processorPath>
+        <module name="LegalContractService" />
+        <module name="VehicleServiceManagementService" />
+        <module name="ui-service" />
+      </profile>
+    </annotationProcessing>
+    <bytecodeTargetLevel>
+      <module name="CheckInOutService" target="21" />
+      <module name="DisputeResolutionService" target="21" />
+>>>>>>> d9a78b7886179ffc797ae2e063c9f95a65bf1d5b
     </bytecodeTargetLevel>
   </component>
   <component name="JavacSettings">
@@ -41,10 +57,14 @@
       <module name="DisputeResolutionService" options="-parameters" />
       <module name="LegalContractService" options="-parameters" />
       <module name="VehicleServiceManagementService" options="-parameters" />
+<<<<<<< HEAD
       <module name="cost-payment-service" options="-parameters" />
       <module name="group-management-service" options="-parameters" />
       <module name="ui-service" options="-parameters" />
       <module name="user-account-service" options="-parameters" />
+=======
+      <module name="ui-service" options="-parameters" />
+>>>>>>> d9a78b7886179ffc797ae2e063c9f95a65bf1d5b
     </option>
   </component>
 </project>
