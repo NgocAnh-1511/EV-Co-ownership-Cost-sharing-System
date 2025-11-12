@@ -1,0 +1,1599 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Đặt Lịch Xe - VehicleTracker</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #f8f9fa;
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* Sidebar Navigation */
+        .sidebar {
+            width: 260px;
+            background: #fff;
+            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.05);
+            position: fixed;
+            height: 100vh;
+            left: 0;
+            top: 0;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .sidebar-brand {
+            padding: 24px 20px;
+            border-bottom: 1px solid #e9ecef;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .sidebar-brand-icon {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 18px;
+        }
+
+        .sidebar-brand-text {
+            font-size: 18px;
+            font-weight: 700;
+            color: #1a202c;
+        }
+
+        .sidebar-nav {
+            flex: 1;
+            padding: 20px 0;
+            overflow-y: auto;
+        }
+
+        .nav-item {
+            margin: 4px 12px;
+        }
+
+        .nav-link {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            color: #64748b;
+            text-decoration: none;
+            border-radius: 8px;
+            transition: all 0.2s;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .nav-link:hover {
+            background: #f1f5f9;
+            color: #334155;
+        }
+
+        .nav-link.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .nav-link i {
+            font-size: 18px;
+            width: 20px;
+            text-align: center;
+        }
+
+        /* Main Content */
+        .main-content {
+            margin-left: 260px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Top Header */
+        .top-header {
+            background: white;
+            padding: 16px 32px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .page-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #1a202c;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .notification-icon {
+            position: relative;
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            background: #f8f9fa;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .notification-icon:hover {
+            background: #e9ecef;
+        }
+
+        .notification-badge {
+            position: absolute;
+            top: -4px;
+            right: -4px;
+            width: 18px;
+            height: 18px;
+            background: #ef4444;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            color: white;
+            font-weight: 600;
+        }
+
+        .user-profile {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            cursor: pointer;
+            padding: 6px 12px;
+            border-radius: 8px;
+            transition: all 0.2s;
+        }
+
+        .user-profile:hover {
+            background: #f8f9fa;
+        }
+
+        .user-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .user-name {
+            font-size: 14px;
+            font-weight: 600;
+            color: #1a202c;
+        }
+
+        /* Content Area */
+        .content-area {
+            padding: 32px;
+            flex: 1;
+        }
+
+        .page-header {
+            margin-bottom: 32px;
+        }
+
+        .page-header h1 {
+            font-size: 28px;
+            font-weight: 700;
+            color: #1a202c;
+            margin-bottom: 8px;
+        }
+
+        .page-subtitle {
+            color: #64748b;
+            font-size: 14px;
+        }
+
+        /* Cards - Enhanced Visual Design */
+        .card {
+            background: #ffffff;
+            border-radius: 14px;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+            border: 1px solid #e5e7eb;
+            margin-bottom: 24px;
+            transition: all 0.3s ease;
+        }
+        
+        .card:hover {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        }
+        
+        .card-section {
+            background: #fafbfc;
+            border-radius: 14px;
+            border: 1px solid #e5e7eb;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .section-title {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 18px;
+            font-weight: 700;
+            color: #1a202c;
+            margin-bottom: 16px;
+        }
+        
+        .section-title-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+        
+        .section-title-icon.people {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        
+        .section-title-icon.calendar {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+        }
+        
+        .section-title-icon.list {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+            color: white;
+        }
+
+        .card-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .card-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1a202c;
+            margin: 0;
+        }
+
+        .card-body {
+            padding: 24px;
+        }
+
+        /* Form Styles */
+        .form-label {
+            font-size: 13px;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .form-control,
+        .form-select {
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 10px 14px;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+
+        .form-control:focus,
+        .form-select:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .form-text {
+            font-size: 12px;
+            color: #6b7280;
+            margin-top: 6px;
+        }
+
+        /* Buttons */
+        .btn {
+            border-radius: 8px;
+            padding: 10px 20px;
+            font-weight: 600;
+            font-size: 14px;
+            transition: all 0.2s;
+            border: none;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-success {
+            background: #10b981;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background: #059669;
+        }
+
+        /* Table Styles */
+        .table {
+            font-size: 14px;
+        }
+
+        .table thead th {
+            background: #f8f9fa;
+            color: #6b7280;
+            font-weight: 600;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            padding: 12px 16px;
+            border: none;
+        }
+
+        .table tbody td {
+            padding: 16px;
+            vertical-align: middle;
+            border-bottom: 1px solid #f1f5f9;
+        }
+
+        .table tbody tr:hover {
+            background: #fafbfc;
+        }
+
+        /* Badges */
+        .badge {
+            padding: 4px 10px;
+            font-size: 11px;
+            font-weight: 600;
+            border-radius: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        .badge-blue {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .badge-yellow {
+            background: #fef3c7;
+            color: #92400e;
+        }
+        
+        .badge-yellow-booked {
+            background: #fef3c7;
+            color: #92400e;
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .badge-red {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .badge-green {
+            background: #d1fae5;
+            color: #065f46;
+        }
+        
+        .badge-green-completed {
+            background: #d1fae5;
+            color: #065f46;
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        /* Mini Dashboard */
+        .stats-card {
+            background: white;
+            border-radius: 12px;
+            border: 1px solid #e5e7eb;
+            padding: 20px;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+            transition: all 0.3s ease;
+        }
+        
+        .stats-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+        
+        .stats-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            margin-bottom: 12px;
+        }
+        
+        .stats-icon.blue {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+            color: white;
+        }
+        
+        .stats-icon.green {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+        }
+        
+        .stats-icon.purple {
+            background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+            color: white;
+        }
+        
+        .stats-value {
+            font-size: 28px;
+            font-weight: 700;
+            color: #1a202c;
+            margin-bottom: 4px;
+        }
+        
+        .stats-label {
+            font-size: 13px;
+            color: #6b7280;
+            font-weight: 500;
+        }
+        
+        /* Timeline/Card Layout for Reservations */
+        .reservation-card {
+            background: white;
+            border-radius: 12px;
+            border: 1px solid #e5e7eb;
+            padding: 20px;
+            margin-bottom: 16px;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
+            transition: all 0.3s ease;
+        }
+        
+        .reservation-card:hover {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            transform: translateY(-2px);
+        }
+        
+        .reservation-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 12px;
+        }
+        
+        .reservation-time {
+            font-size: 14px;
+            color: #6b7280;
+            font-weight: 500;
+        }
+        
+        .reservation-body {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+        
+        .reservation-info {
+            flex: 1;
+        }
+        
+        .reservation-vehicle {
+            font-size: 16px;
+            font-weight: 600;
+            color: #1a202c;
+            margin-bottom: 4px;
+        }
+        
+        .reservation-user {
+            font-size: 14px;
+            color: #6b7280;
+            margin-bottom: 4px;
+        }
+        
+        .reservation-note {
+            font-size: 13px;
+            color: #9ca3af;
+        }
+        
+        /* Filter Tabs */
+        .filter-tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+            padding: 4px;
+            background: #f3f4f6;
+            border-radius: 10px;
+        }
+        
+        .filter-tab {
+            flex: 1;
+            padding: 10px 16px;
+            text-align: center;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            color: #6b7280;
+            background: transparent;
+            border: none;
+        }
+        
+        .filter-tab.active {
+            background: white;
+            color: #667eea;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        /* Duration Display */
+        .duration-display {
+            background: #f0f9ff;
+            border: 1px solid #bae6fd;
+            border-radius: 8px;
+            padding: 8px 12px;
+            font-size: 13px;
+            color: #0369a1;
+            font-weight: 600;
+            margin-top: 8px;
+        }
+        
+        /* Overlap Warning */
+        .overlap-warning {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            border-radius: 8px;
+            padding: 12px;
+            margin-top: 12px;
+            display: none;
+        }
+        
+        .overlap-warning.show {
+            display: block;
+        }
+        
+        .overlap-warning-icon {
+            color: #dc2626;
+            margin-right: 8px;
+        }
+        
+        /* Usage Chart */
+        .usage-chart {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .chart-circle {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 18px;
+            color: white;
+        }
+        
+        .chart-legend {
+            flex: 1;
+        }
+        
+        .chart-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 8px;
+            font-size: 13px;
+        }
+        
+        .chart-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+        
+        /* Refresh button spin animation */
+        .spin {
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        /* Vehicle Icon Styles */
+        .vehicle-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+
+        .vehicle-icon.blue {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .vehicle-icon.green {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .vehicle-icon.purple {
+            background: #e9d5ff;
+            color: #6b21a8;
+        }
+
+        /* Alert Styles */
+        .alert {
+            border-radius: 8px;
+            border: none;
+            padding: 12px 16px;
+            font-size: 14px;
+        }
+
+        .alert-danger {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .alert-success {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #9ca3af;
+        }
+
+        .empty-state i {
+            font-size: 64px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+
+        .empty-state p {
+            font-size: 14px;
+            margin: 0;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+            }
+
+            .main-content {
+                margin-left: 0;
+            }
+
+            .content-area {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Sidebar Navigation -->
+    <div class="sidebar">
+        <div class="sidebar-brand">
+            <div class="sidebar-brand-icon">
+                <i class="bi bi-car-front-fill"></i>
+            </div>
+            <div class="sidebar-brand-text">VehicleTracker</div>
+        </div>
+        <nav class="sidebar-nav">
+            <div class="nav-item">
+                <a href="/dashboard" class="nav-link">
+                    <i class="bi bi-speedometer2"></i>
+                    <span>Dashboard</span>
+                </a>
+            </div>
+            <div class="nav-item">
+                <a href="/reservations/book" class="nav-link active">
+                    <i class="bi bi-calendar-check"></i>
+                    <span>Đặt Lịch</span>
+                </a>
+            </div>
+            <div class="nav-item">
+                <a href="/admin" class="nav-link">
+                    <i class="bi bi-shield-check"></i>
+                    <span>Admin Panel</span>
+                </a>
+            </div>
+        </nav>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- Top Header -->
+        <div class="top-header">
+            <div class="page-title">Lịch Sử</div>
+            <div class="header-actions">
+                <div class="notification-icon">
+                    <i class="bi bi-bell"></i>
+                    <span class="notification-badge">3</span>
+                </div>
+                <div class="user-profile">
+                    <div class="user-avatar">NA</div>
+                    <div class="user-name">Nguyễn Văn A</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Content Area -->
+        <div class="content-area">
+            <div class="page-header">
+                <h1>Đặt Lịch Sử Dụng Xe</h1>
+                <p class="page-subtitle">Quản lý và đặt lịch sử dụng xe đồng sở hữu của bạn</p>
+            </div>
+
+            <!-- Mini Dashboard -->
+            <div class="row mb-4" th:if="${groupInfo != null and !groupInfo.isEmpty()}">
+                <div class="col-md-4">
+                    <div class="stats-card">
+                        <div class="stats-icon blue">
+                            <i class="bi bi-calendar-check"></i>
+                        </div>
+                        <div class="stats-value" id="totalReservations">0</div>
+                        <div class="stats-label">Chuyến đã đặt trong tháng</div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="stats-card">
+                        <div class="stats-icon green">
+                            <i class="bi bi-clock-history"></i>
+                        </div>
+                        <div class="stats-value" id="totalHours">0h</div>
+                        <div class="stats-label">Tổng thời gian sử dụng</div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="stats-card">
+                        <div class="stats-icon purple">
+                            <i class="bi bi-pie-chart"></i>
+                        </div>
+                        <div class="usage-chart" id="usageChart">
+                            <div class="chart-circle" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                                70%
+                            </div>
+                            <div class="chart-legend">
+                                <div class="chart-item">
+                                    <div class="chart-color" style="background: #667eea;"></div>
+                                    <span>Bạn: 70%</span>
+                                </div>
+                                <div class="chart-item">
+                                    <div class="chart-color" style="background: #e5e7eb;"></div>
+                                    <span>Khác: 30%</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="stats-label">Tỉ lệ sử dụng</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <!-- Form Card -->
+                <div class="col-lg-5">
+                    <!-- Group Info Card -->
+                    <div class="card-section" th:if="${groupInfo != null and !groupInfo.isEmpty()}">
+                        <div class="section-title">
+                            <div class="section-title-icon people">
+                                <i class="bi bi-people-fill"></i>
+                            </div>
+                            <span>Thông Tin Nhóm Sở Hữu</span>
+                        </div>
+                        <div th:if="${groupInfo.groupName}">
+                            <h5 class="mb-3" th:text="${groupInfo.groupName}">Tên Nhóm</h5>
+                            <p class="text-muted small mb-3" th:if="${groupInfo.description}" th:text="${groupInfo.description}">Mô tả nhóm</p>
+                        </div>
+                        <div class="mb-2">
+                            <strong class="text-muted small">Thành viên nhóm:</strong>
+                        </div>
+                        <div th:if="${groupInfo.members != null}">
+                            <div class="d-flex flex-wrap gap-2">
+                                <div th:each="member : ${groupInfo.members}" 
+                                     class="badge badge-blue d-flex align-items-center gap-1"
+                                     style="padding: 6px 12px; font-size: 12px;">
+                                    <i class="bi bi-person-circle"></i>
+                                    <span th:text="${member.fullName}">Tên</span>
+                                    <span class="text-muted" th:text="'(' + ${member.ownershipPercentage} + '%)'">(%)</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="card-section">
+                        <div class="section-title">
+                            <div class="section-title-icon calendar">
+                                <i class="bi bi-calendar-plus"></i>
+                            </div>
+                            <span>Tạo Lịch Mới</span>
+                        </div>
+                        <!-- Error Alert - Improved Design -->
+                            <div th:if="${error}" class="alert alert-danger mb-4" role="alert" style="border-left: 4px solid #dc3545; background: #fff5f5; border-radius: 8px; padding: 16px 20px; box-shadow: 0 2px 8px rgba(220, 53, 69, 0.1);">
+                                <div class="d-flex align-items-start">
+                                    <div style="width: 24px; height: 24px; background: #dc3545; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-right: 12px; flex-shrink: 0;">
+                                        <i class="bi bi-x-lg" style="color: white; font-size: 12px;"></i>
+                                    </div>
+                                    <div style="flex: 1;">
+                                        <strong style="display: block; margin-bottom: 4px; color: #991b1b; font-size: 14px;">Không thể đặt lịch</strong>
+                                        <span th:text="${error}" style="color: #7f1d1d; font-size: 13px; line-height: 1.5;"></span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <form th:action="@{/reservations/book}" method="post" id="bookingForm">
+                                <!-- Hidden field for userId from localStorage -->
+                                <input type="hidden" name="userId" id="userIdField">
+                                
+                                <div class="mb-3">
+                                    <label class="form-label">
+                                        <i class="bi bi-car-front me-1"></i>Chọn Xe
+                                    </label>
+                                    <select class="form-select" name="vehicleId" id="vehicle" required 
+                                            th:disabled="${vehicles == null or vehicles.isEmpty()}">
+                                        <option value="">-- Chọn xe để xem lịch --</option>
+                                        <option th:each="v : ${vehicles}" 
+                                                th:value="${v['vehicleId']}"
+                                                th:selected="${selectedVehicleId != null and selectedVehicleId == v['vehicleId']}"
+                                                th:text="${v['vehicleName'] + ' (' + v['licensePlate'] + ')' + (v['groupName'] != null ? ' - ' + v['groupName'] : '')}">
+                                        </option>
+                                    </select>
+                                    <div class="form-text text-success" th:if="${vehicles != null and !vehicles.isEmpty()}">
+                                        <i class="bi bi-check-circle me-1"></i>Bạn có <strong th:text="${vehicles.size()}">0</strong> xe để đặt lịch. Chọn xe từ nhóm đồng sở hữu của bạn.
+                                    </div>
+                                    <div class="alert alert-warning mt-2" th:if="${vehicles == null or vehicles.isEmpty()}" 
+                                         style="padding: 12px; border-radius: 8px; background: #fff3cd; border: 1px solid #ffc107;">
+                                        <i class="bi bi-exclamation-triangle me-2"></i>
+                                        <strong>Bạn chưa có xe nào để đặt lịch.</strong><br>
+                                        <small>Vui lòng liên hệ admin để được thêm vào nhóm sở hữu xe.</small>
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label">Thời Gian Bắt Đầu</label>
+                                    <input class="form-control" type="datetime-local" id="startDate" name="startDate"
+                                        required>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label">Thời Gian Kết Thúc</label>
+                                    <input class="form-control" type="datetime-local" id="endDate" name="endDate"
+                                        required>
+                                    <div class="duration-display" id="durationDisplay" style="display: none;">
+                                        <i class="bi bi-clock me-1"></i>
+                                        <span id="durationText">Thời lượng: 0 giờ 0 phút</span>
+                                    </div>
+                                    <div class="overlap-warning" id="overlapWarning">
+                                        <i class="bi bi-exclamation-triangle-fill overlap-warning-icon"></i>
+                                        <strong>Cảnh báo:</strong> Thời gian này đã có lịch đặt trùng!
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label">Ghi Chú</label>
+                                    <input class="form-control" type="text" name="note"
+                                        placeholder="VD: Đi họp khách hàng, đi du lịch...">
+                                    <div class="form-text">Mô tả mục đích sử dụng xe (không bắt buộc)</div>
+                                </div>
+
+                                <button class="btn btn-primary w-100" type="submit" id="submitBtn">
+                                    <i class="bi bi-plus-circle me-2"></i>Đặt Lịch Ngay
+                                </button>
+                            </form>
+                    </div>
+                </div>
+
+                <!-- Reservations List -->
+                <div class="col-lg-7">
+                    <div class="card-section">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <div class="section-title" style="margin-bottom: 0;">
+                                <div class="section-title-icon list">
+                                    <i class="bi bi-calendar-event"></i>
+                                </div>
+                                <span>Lịch Đã Đặt</span>
+                            </div>
+                            <div class="d-flex gap-2">
+                                <button class="btn btn-sm btn-primary" id="refreshReservationsBtn" title="Làm mới danh sách">
+                                    <i class="bi bi-arrow-clockwise"></i>
+                                </button>
+                                <button class="btn btn-sm btn-success">
+                                    <i class="bi bi-file-earmark-excel me-1"></i>Xuất Excel
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Filter Tabs -->
+                        <div class="filter-tabs">
+                            <button class="filter-tab active" data-filter="all">Tất cả</button>
+                            <button class="filter-tab" data-filter="BOOKED">Đã đặt</button>
+                            <button class="filter-tab" data-filter="COMPLETED">Hoàn thành</button>
+                        </div>
+                        
+                        <!-- Timeline/Card Layout -->
+                        <div id="reservationsList">
+                            <div th:if="${reservations != null and !reservations.isEmpty()}">
+                                <div class="reservation-card" th:each="r : ${reservations}">
+                                    <div class="reservation-header">
+                                        <div class="reservation-time">
+                                            <i class="bi bi-calendar3 me-1"></i>
+                                            <span th:if="${r.startDatetime != null}">
+                                                <span th:text="${r.startDatetime}">05/11 16:00</span>
+                                            </span>
+                                            <span th:if="${r.endDatetime != null}">
+                                                <span th:text="' → ' + ${r.endDatetime}"> → 06/11 00:00</span>
+                                            </span>
+                                        </div>
+                                        <div>
+                                            <span th:if="${r.status != null and r.status.toString() == 'COMPLETED'}"
+                                                class="badge-green-completed" data-status="COMPLETED">
+                                                <i class="bi bi-check-circle-fill"></i> HOÀN THÀNH
+                                            </span>
+                                            <span th:if="${r.status != null and r.status.toString() == 'CANCELLED'}" 
+                                                class="badge badge-red" data-status="CANCELLED">
+                                                <i class="bi bi-x-circle-fill"></i> Đã hủy
+                                            </span>
+                                            <span th:if="${r.status != null and r.status.toString() == 'BOOKED'}"
+                                                class="badge-yellow-booked" data-status="BOOKED">
+                                                <i class="bi bi-hourglass-split"></i> ĐÃ ĐẶT
+                                            </span>
+                                            <span th:if="${r.status == null}"
+                                                class="badge badge-blue" data-status="N/A">N/A</span>
+                                        </div>
+                                    </div>
+                                    <div class="reservation-body">
+                                        <div class="vehicle-icon blue">
+                                            <i class="bi bi-car-front-fill"></i>
+                                        </div>
+                                        <div class="reservation-info">
+                                            <div class="reservation-vehicle">
+                                                <i class="bi bi-car-front me-1"></i>
+                                                <span th:if="${r.vehicle != null and r.vehicle.vehicleName != null}" 
+                                                      th:text="${r.vehicle.vehicleName}">Honda City 2022</span>
+                                                <span th:if="${r.vehicle == null or r.vehicle.vehicleName == null}">N/A</span>
+                                            </div>
+                                            <div class="reservation-user">
+                                                <i class="bi bi-person me-1"></i>
+                                                <span th:if="${r.user != null and r.user.fullName != null}" 
+                                                      th:text="${r.user.fullName}">Nguyễn Văn A</span>
+                                                <span th:if="${r.user == null or r.user.fullName == null}" 
+                                                      th:text="'User #' + ${r.userId}">User #1</span>
+                                            </div>
+                                            <div class="reservation-note" th:if="${r.purpose != null and !r.purpose.isEmpty()}">
+                                                <i class="bi bi-chat-left-text me-1"></i>
+                                                <span th:text="${r.purpose}">Họp hội nghị</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div th:if="${reservations == null or reservations.isEmpty()}" class="empty-state">
+                                <i class="bi bi-inbox"></i>
+                                <p>Chưa có lịch đặt nào</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script th:inline="javascript">
+        document.addEventListener('DOMContentLoaded', () => {
+            let isSubmitting = false;
+            
+            // Set userId from localStorage and cookie, and reload if needed
+            const userStr = localStorage.getItem('user');
+            let userId = null;
+            
+            if (userStr) {
+                try {
+                    const user = JSON.parse(userStr);
+                    if (user.userId) {
+                        userId = user.userId;
+                        document.getElementById('userIdField').value = userId;
+                        // Set cookie for backend
+                        document.cookie = `userId=${userId}; path=/; max-age=86400`;
+                        console.log('✓ Set userId from localStorage:', userId);
+                    }
+                } catch (e) {
+                    console.error('Error parsing user from localStorage:', e);
+                }
+            }
+            
+            // Reload page with userId parameter if user is logged in but no vehicles loaded
+            const vehicles = /*[[${vehicles}]]*/ [];
+            const currentUserId = /*[[${currentUserId}]]*/ null;
+            
+            if (userId && vehicles.length === 0 && !currentUserId) {
+                console.log('🔄 Reloading page with userId parameter...');
+                window.location.href = `/reservations/book?userId=${userId}`;
+                return;
+            }
+            
+            if (vehicles.length === 0 && userId) {
+                console.warn('⚠️ No vehicles found for user:', userId);
+            } else if (vehicles.length > 0) {
+                console.log('✅ Loaded', vehicles.length, 'vehicles for user');
+            }
+            
+            // Set selected vehicle from server
+            const selectedVehicleId = /*[[${selectedVehicleId}]]*/ null;
+            if (selectedVehicleId) {
+                const vehicleSelect = document.getElementById('vehicle');
+                vehicleSelect.value = selectedVehicleId;
+                console.log('✓ Selected vehicle:', selectedVehicleId);
+            }
+            
+            // Prevent redirect during form submission
+            const bookingForm = document.getElementById('bookingForm');
+            bookingForm.addEventListener('submit', (e) => {
+                isSubmitting = true;
+                console.log('🔥 Form submitting...');
+            });
+            
+            // Handle vehicle change - reload page with new vehicle (only if not submitting)
+            const vehicleSelect = document.getElementById('vehicle');
+            vehicleSelect.addEventListener('change', (e) => {
+                if (isSubmitting) {
+                    console.log('⚠️ Ignoring change event during form submission');
+                    return;
+                }
+                
+                const vehicleId = e.target.value;
+                if (vehicleId) {
+                    console.log('🔄 Redirecting to vehicle:', vehicleId);
+                    // Include userId in URL if available
+                    const url = userId 
+                        ? `/reservations/book/${vehicleId}?userId=${userId}`
+                        : `/reservations/book/${vehicleId}`;
+                    window.location.href = url;
+                } else {
+                    // If no vehicle selected, reload base page
+                    const url = userId 
+                        ? `/reservations/book?userId=${userId}`
+                        : `/reservations/book`;
+                    window.location.href = url;
+                }
+            });
+            
+            // Set min end date based on start date and calculate duration
+            const start = document.getElementById('startDate');
+            const end = document.getElementById('endDate');
+            const durationDisplay = document.getElementById('durationDisplay');
+            const durationText = document.getElementById('durationText');
+            const overlapWarning = document.getElementById('overlapWarning');
+            // Get reservations data from Thymeleaf
+            const reservationsData = /*[[${reservations}]]*/ [];
+            const reservations = Array.isArray(reservationsData) ? reservationsData : [];
+            
+            function calculateDuration() {
+                if (start.value && end.value) {
+                    const startDate = new Date(start.value);
+                    const endDate = new Date(end.value);
+                    const diff = endDate - startDate;
+                    
+                    if (diff > 0) {
+                        const hours = Math.floor(diff / (1000 * 60 * 60));
+                        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                        durationText.textContent = `Thời lượng: ${hours} giờ ${minutes} phút`;
+                        durationDisplay.style.display = 'block';
+                    } else {
+                        durationDisplay.style.display = 'none';
+                    }
+                    
+                    // Check for overlaps
+                    checkOverlaps(startDate, endDate);
+                } else {
+                    durationDisplay.style.display = 'none';
+                    overlapWarning.classList.remove('show');
+                }
+            }
+            
+            function checkOverlaps(startDate, endDate) {
+                const vehicleId = document.getElementById('vehicle').value;
+                if (!vehicleId) {
+                    overlapWarning.classList.remove('show');
+                    return;
+                }
+                
+                // Check if selected time overlaps with existing reservations
+                let hasOverlap = false;
+                if (reservations && Array.isArray(reservations)) {
+                    for (let r of reservations) {
+                        // Handle different data structures
+                        const rVehicleId = r.vehicle ? (r.vehicle.vehicleId || r.vehicle.vehicle_id) : null;
+                        const rStatus = r.status ? (typeof r.status === 'string' ? r.status : r.status.toString()) : null;
+                        
+                        if (rVehicleId && rVehicleId.toString() === vehicleId.toString() && rStatus === 'BOOKED' && r.startDatetime && r.endDatetime) {
+                            try {
+                                const rStart = new Date(r.startDatetime);
+                                const rEnd = new Date(r.endDatetime);
+                                
+                                if ((startDate >= rStart && startDate < rEnd) || 
+                                    (endDate > rStart && endDate <= rEnd) ||
+                                    (startDate <= rStart && endDate >= rEnd)) {
+                                    hasOverlap = true;
+                                    break;
+                                }
+                            } catch (e) {
+                                console.warn('Error parsing reservation date:', e);
+                            }
+                        }
+                    }
+                }
+                
+                if (hasOverlap) {
+                    overlapWarning.classList.add('show');
+                    document.getElementById('submitBtn').disabled = true;
+                } else {
+                    overlapWarning.classList.remove('show');
+                    document.getElementById('submitBtn').disabled = false;
+                }
+            }
+            
+            start.addEventListener('change', () => {
+                end.min = start.value;
+                calculateDuration();
+            });
+            
+            end.addEventListener('change', () => {
+                calculateDuration();
+            });
+            
+            // Filter tabs functionality
+            const filterTabs = document.querySelectorAll('.filter-tab');
+            filterTabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    filterTabs.forEach(t => t.classList.remove('active'));
+                    tab.classList.add('active');
+                    
+                    const filter = tab.dataset.filter;
+                    const reservationCards = document.querySelectorAll('.reservation-card');
+                    
+                    reservationCards.forEach(card => {
+                        if (filter === 'all') {
+                            card.style.display = 'block';
+                        } else {
+                            // Find status badge with data-status attribute
+                            const statusBadge = card.querySelector('[data-status]');
+                            const status = statusBadge ? statusBadge.getAttribute('data-status') : null;
+                            card.style.display = (status === filter) ? 'block' : 'none';
+                        }
+                    });
+                });
+            });
+            
+            // Calculate statistics
+            function updateStatistics() {
+                if (!reservations || !Array.isArray(reservations)) {
+                    return;
+                }
+                
+                const now = new Date();
+                const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+                
+                let totalReservations = 0;
+                let totalHours = 0;
+                
+                reservations.forEach(r => {
+                    try {
+                        if (r.startDatetime) {
+                            const rDate = new Date(r.startDatetime);
+                            if (rDate >= startOfMonth) {
+                                totalReservations++;
+                                
+                                if (r.endDatetime) {
+                                    const start = new Date(r.startDatetime);
+                                    const end = new Date(r.endDatetime);
+                                    const diff = (end - start) / (1000 * 60 * 60);
+                                    if (diff > 0) {
+                                        totalHours += diff;
+                                    }
+                                }
+                            }
+                        }
+                    } catch (e) {
+                        console.warn('Error processing reservation for stats:', e);
+                    }
+                });
+                
+                const totalReservationsEl = document.getElementById('totalReservations');
+                const totalHoursEl = document.getElementById('totalHours');
+                if (totalReservationsEl) totalReservationsEl.textContent = totalReservations;
+                if (totalHoursEl) totalHoursEl.textContent = Math.round(totalHours) + 'h';
+            }
+            
+            // Update statistics when page loads
+            if (document.getElementById('totalReservations')) {
+                updateStatistics();
+            }
+            
+            // Auto-refresh reservations every 30 seconds
+            let autoRefreshInterval = null;
+            // selectedVehicleId đã được khai báo ở trên, không cần khai báo lại
+            
+            function refreshReservations() {
+                if (!selectedVehicleId) {
+                    console.log('⚠️ No vehicle selected, skipping refresh');
+                    return;
+                }
+                
+                console.log('🔄 Refreshing reservations for vehicle:', selectedVehicleId, new Date().toLocaleTimeString());
+                
+                // Add timestamp to prevent caching
+                const timestamp = new Date().getTime();
+                
+                // Call API to get updated reservations (JSON)
+                fetch(`/reservations/book/${selectedVehicleId}/refresh?t=${timestamp}`, {
+                    method: 'GET',
+                    headers: {
+                        'Cache-Control': 'no-cache',
+                        'Pragma': 'no-cache'
+                    }
+                })
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error(`HTTP error! status: ${response.status}`);
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        console.log('📦 Received reservations data:', data ? data.length : 0, 'items');
+                        const reservationsList = document.querySelector('#reservationsList');
+                        if (!reservationsList) {
+                            console.warn('⚠️ Reservations list element not found');
+                            return;
+                        }
+                        
+                        // Get current reservation IDs for comparison
+                        const currentCards = reservationsList.querySelectorAll('.reservation-card');
+                        const currentIds = Array.from(currentCards).map(card => {
+                            // Try to extract reservation ID from card if available
+                            return card.getAttribute('data-reservation-id');
+                        }).filter(id => id);
+                        
+                        console.log('📋 Current reservations in DOM:', currentIds.length);
+                        
+                        // Clear current list completely - remove all children
+                        while (reservationsList.firstChild) {
+                            reservationsList.removeChild(reservationsList.firstChild);
+                        }
+                        reservationsList.innerHTML = '';
+                        
+                        console.log('🧹 Cleared reservations list, now rendering ' + (data ? data.length : 0) + ' items');
+                        
+                        if (data && Array.isArray(data) && data.length > 0) {
+                            // Create container for reservations
+                            const container = document.createElement('div');
+                            
+                            data.forEach((r, index) => {
+                                const card = document.createElement('div');
+                                card.className = 'reservation-card';
+                                
+                                // Store reservation ID if available for tracking (try multiple field names)
+                                const reservationId = r.reservationId || r.id || r.reservation_id || null;
+                                if (reservationId) {
+                                    card.setAttribute('data-reservation-id', reservationId);
+                                }
+                                
+                                // Log each reservation being rendered
+                                console.log('  📝 Rendering reservation:', reservationId || 'no-id', r.status || 'no-status');
+                                
+                                // Format datetime
+                                const startDate = r.startDatetime ? new Date(r.startDatetime).toLocaleString('vi-VN', {
+                                    day: '2-digit',
+                                    month: '2-digit',
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                }) : '';
+                                const endDate = r.endDatetime ? new Date(r.endDatetime).toLocaleString('vi-VN', {
+                                    day: '2-digit',
+                                    month: '2-digit',
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                }) : '';
+                                
+                                // Get status
+                                const status = r.status || 'N/A';
+                                const statusText = status === 'COMPLETED' ? 'HOÀN THÀNH' : 
+                                                   status === 'CANCELLED' ? 'Đã hủy' : 
+                                                   status === 'BOOKED' ? 'ĐÃ ĐẶT' : 'N/A';
+                                const statusClass = status === 'COMPLETED' ? 'badge-green-completed' :
+                                                   status === 'CANCELLED' ? 'badge badge-red' :
+                                                   status === 'BOOKED' ? 'badge-yellow-booked' : 'badge badge-blue';
+                                const statusIcon = status === 'COMPLETED' ? 'bi-check-circle-fill' :
+                                                  status === 'CANCELLED' ? 'bi-x-circle-fill' :
+                                                  status === 'BOOKED' ? 'bi-hourglass-split' : '';
+                                
+                                card.innerHTML = `
+                                    <div class="reservation-header">
+                                        <div class="reservation-time">
+                                            <i class="bi bi-calendar3 me-1"></i>
+                                            <span>${startDate}</span>
+                                            ${r.endDatetime ? `<span> → ${endDate}</span>` : ''}
+                                        </div>
+                                        <div>
+                                            <span class="${statusClass}" data-status="${status}">
+                                                <i class="bi ${statusIcon}"></i> ${statusText}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <div class="reservation-body">
+                                        <div class="vehicle-icon blue">
+                                            <i class="bi bi-car-front-fill"></i>
+                                        </div>
+                                        <div class="reservation-info">
+                                            <div class="reservation-vehicle">
+                                                <i class="bi bi-car-front me-1"></i>
+                                                <span>${r.vehicle && r.vehicle.vehicleName ? r.vehicle.vehicleName : 'N/A'}</span>
+                                            </div>
+                                            <div class="reservation-user">
+                                                <i class="bi bi-person me-1"></i>
+                                                <span>${r.user && r.user.fullName ? r.user.fullName : 'User #' + (r.userId || 'N/A')}</span>
+                                            </div>
+                                            ${r.purpose ? `
+                                            <div class="reservation-note">
+                                                <i class="bi bi-chat-left-text me-1"></i>
+                                                <span>${r.purpose}</span>
+                                            </div>
+                                            ` : ''}
+                                        </div>
+                                    </div>
+                                `;
+                                
+                                container.appendChild(card);
+                            });
+                            
+                            reservationsList.appendChild(container);
+                            console.log('✅ Rendered ' + data.length + ' reservation cards');
+                        } else {
+                            // Show empty state
+                            const emptyState = document.createElement('div');
+                            emptyState.className = 'empty-state';
+                            emptyState.innerHTML = `
+                                <i class="bi bi-inbox"></i>
+                                <p>Chưa có lịch đặt nào</p>
+                            `;
+                            reservationsList.appendChild(emptyState);
+                            console.log('📭 No reservations, showing empty state');
+                        }
+                        
+                        // Force reflow to ensure DOM is updated
+                        reservationsList.offsetHeight;
+                        
+                        // Re-initialize filter tabs after refresh
+                        const filterTabs = document.querySelectorAll('.filter-tab');
+                        filterTabs.forEach(tab => {
+                            // Remove old listeners and add new one
+                            const newTab = tab.cloneNode(true);
+                            tab.parentNode.replaceChild(newTab, tab);
+                            
+                            newTab.addEventListener('click', () => {
+                                filterTabs.forEach(t => t.classList.remove('active'));
+                                newTab.classList.add('active');
+                                
+                                const filter = newTab.dataset.filter;
+                                const reservationCards = document.querySelectorAll('.reservation-card');
+                                
+                                reservationCards.forEach(card => {
+                                    if (filter === 'all') {
+                                        card.style.display = 'block';
+                                    } else {
+                                        const statusBadge = card.querySelector('[data-status]');
+                                        const status = statusBadge ? statusBadge.getAttribute('data-status') : null;
+                                        card.style.display = (status === filter) ? 'block' : 'none';
+                                    }
+                                });
+                            });
+                        });
+                        
+                        // Update statistics with new data
+                        const reservationsData = data;
+                        if (reservationsData && Array.isArray(reservationsData)) {
+                            const now = new Date();
+                            const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+                            
+                            let totalReservations = 0;
+                            let totalHours = 0;
+                            
+                            reservationsData.forEach(r => {
+                                try {
+                                    if (r.startDatetime) {
+                                        const rDate = new Date(r.startDatetime);
+                                        if (rDate >= startOfMonth) {
+                                            totalReservations++;
+                                            
+                                            if (r.endDatetime) {
+                                                const start = new Date(r.startDatetime);
+                                                const end = new Date(r.endDatetime);
+                                                const diff = (end - start) / (1000 * 60 * 60);
+                                                if (diff > 0) {
+                                                    totalHours += diff;
+                                                }
+                                            }
+                                        }
+                                    }
+                                } catch (e) {
+                                    console.warn('Error processing reservation for stats:', e);
+                                }
+                            });
+                            
+                            const totalReservationsEl = document.getElementById('totalReservations');
+                            const totalHoursEl = document.getElementById('totalHours');
+                            if (totalReservationsEl) totalReservationsEl.textContent = totalReservations;
+                            if (totalHoursEl) totalHoursEl.textContent = Math.round(totalHours) + 'h';
+                        }
+                        
+                        console.log('✅ Reservations refreshed');
+                    })
+                    .catch(error => {
+                        console.error('❌ Error refreshing reservations:', error);
+                    });
+            }
+            
+            // Manual refresh button
+            const refreshBtn = document.getElementById('refreshReservationsBtn');
+            if (refreshBtn) {
+                refreshBtn.addEventListener('click', () => {
+                    refreshReservations();
+                    // Show visual feedback
+                    refreshBtn.innerHTML = '<i class="bi bi-arrow-clockwise spin"></i>';
+                    setTimeout(() => {
+                        refreshBtn.innerHTML = '<i class="bi bi-arrow-clockwise"></i>';
+                    }, 1000);
+                });
+            }
+            
+            // Auto-refresh every 10 seconds (reduced for faster updates)
+            if (selectedVehicleId) {
+                // Initial refresh after 3 seconds
+                setTimeout(refreshReservations, 3000);
+                // Then refresh every 10 seconds
+                autoRefreshInterval = setInterval(refreshReservations, 10000); // 10 seconds
+                console.log('✅ Auto-refresh enabled (every 10 seconds, first refresh in 3 seconds)');
+            }
+            
+            // Also refresh when page becomes visible (user switches back to tab)
+            document.addEventListener('visibilitychange', () => {
+                if (!document.hidden && selectedVehicleId) {
+                    console.log('🔄 Page visible, refreshing reservations...');
+                    refreshReservations();
+                }
+            });
+            
+            // Clean up interval when page unloads
+            window.addEventListener('beforeunload', () => {
+                if (autoRefreshInterval) {
+                    clearInterval(autoRefreshInterval);
+                }
+            });
+        });
+    </script>
+
+    <!-- Success Modal -->
+    <div class="modal fade" id="successModal" tabindex="-1" aria-labelledby="successModalLabel" aria-hidden="true"
+        th:if="${showSuccessModal}">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg">
+                <div class="modal-body text-center p-5">
+                    <div class="mb-4">
+                        <div class="success-icon-wrapper mx-auto mb-3"
+                            style="width: 80px; height: 80px; background: linear-gradient(135deg, #10b981 0%, #059669 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                            <i class="bi bi-check-lg" style="font-size: 48px; color: white;"></i>
+                        </div>
+                        <h3 class="fw-bold mb-2" style="color: #1a202c;">Thành công!</h3>
+                        <p class="text-muted mb-0" th:text="${successMessage}">Đặt lịch thành công!</p>
+                    </div>
+                    <button type="button" class="btn btn-primary btn-lg px-5" data-bs-dismiss="modal"
+                        style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none;">
+                        <i class="bi bi-check-circle me-2"></i>OK
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script th:if="${showSuccessModal}">
+        // Auto-show modal when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            const modal = new bootstrap.Modal(document.getElementById('successModal'));
+            modal.show();
+        });
+    </script>
+
+    <!-- Error Modal (for overlap and other critical errors) -->
+    <div class="modal fade" id="errorModal" tabindex="-1" aria-labelledby="errorModalLabel" aria-hidden="true"
+        th:if="${showErrorModal}">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content border-0 shadow-lg">
+                <div class="modal-body text-center p-5">
+                    <div class="mb-4">
+                        <div class="error-icon-wrapper mx-auto mb-3"
+                            style="width: 80px; height: 80px; background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%); border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                            <i class="bi bi-x-lg" style="font-size: 48px; color: white;"></i>
+                        </div>
+                        <h3 class="fw-bold mb-3" style="color: #1a202c;">Thất bại!</h3>
+                        <div class="error-message-container" style="background: #fef2f2; border: 1px solid #fecaca; border-radius: 12px; padding: 20px; margin: 0 auto; max-width: 500px;">
+                            <div th:if="${errorMessage != null}" th:utext="${errorMessage}" style="color: #991b1b; font-size: 14px; line-height: 1.6;">
+                                <p style="margin-bottom: 8px; color: #991b1b; font-size: 14px; line-height: 1.6;">Không thể đặt lịch!</p>
+                            </div>
+                        </div>
+                    </div>
+                    <button type="button" class="btn btn-primary btn-lg px-5" data-bs-dismiss="modal"
+                        style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border: none;">
+                        <i class="bi bi-x-circle me-2"></i>OK
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script th:if="${showErrorModal}">
+        // Auto-show error modal when page loads
+        document.addEventListener('DOMContentLoaded', () => {
+            const modal = new bootstrap.Modal(document.getElementById('errorModal'));
+            modal.show();
+        });
+    </script>
+</body>
+
+</html>

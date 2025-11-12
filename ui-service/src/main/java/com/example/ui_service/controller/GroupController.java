@@ -18,36 +18,6 @@ public class GroupController {
     @Autowired
     private GroupManagementClient groupManagementClient;
 
-    @GetMapping
-    public String listGroups(Model model) {
-        List<GroupDto> groups = groupManagementClient.getAllGroups();
-        
-        // If no groups from service, create sample data for testing
-
-        model.addAttribute("groups", groups);
-        
-        // Calculate total members
-        int totalMembers = groups.stream()
-                .mapToInt(group -> group.getMemberCount() != null ? group.getMemberCount() : 0)
-                .sum();
-        model.addAttribute("totalMembers", totalMembers);
-        
-        return "groups/list";
-    }
-    
-
-
-    @GetMapping("/create")
-    public String createGroupForm(Model model) {
-        model.addAttribute("group", new GroupDto());
-        return "groups/create";
-    }
-
-    @PostMapping("/create")
-    public String createGroup(@ModelAttribute GroupDto groupDto) {
-        groupManagementClient.createGroup(groupDto);
-        return "redirect:/groups";
-    }
 
     @GetMapping("/{id}/members")
     public String listGroupMembers(@PathVariable Integer id, Model model) {
@@ -102,24 +72,15 @@ public class GroupController {
      * Delete a group
      */
     @PostMapping("/{id}/delete")
+    @ResponseBody
     public String deleteGroup(@PathVariable Integer id) {
-        groupManagementClient.deleteGroup(id);
-        return "redirect:/groups";
+        try {
+            groupManagementClient.deleteGroup(id);
+            return "success";
+        } catch (Exception e) {
+            return "error: " + e.getMessage();
+        }
     }
     
-    @GetMapping("/voting")
-    public String voting(Model model) {
-        return "groups/voting";
-    }
-    
-    /**
-     * Quỹ chung - Giao diện User
-     */
-    @GetMapping("/fund")
-    public String fund(Model model) {
-        // TODO: Check if user is admin from session
-        // For now, redirect to user page by default
-        return "groups/fund";
-    }
     
 }

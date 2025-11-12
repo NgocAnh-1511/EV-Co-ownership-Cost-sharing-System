@@ -60,6 +60,22 @@ CREATE TABLE VotingResult (
     FOREIGN KEY (memberId) REFERENCES GroupMember(memberId) ON DELETE CASCADE
 );
 
+-- 5. Yêu cầu rời nhóm
+CREATE TABLE LeaveRequest (
+    requestId INT AUTO_INCREMENT PRIMARY KEY,
+    groupId INT NOT NULL,
+    memberId INT NOT NULL,
+    userId INT NOT NULL,
+    reason TEXT,
+    status ENUM('Pending', 'Approved', 'Rejected') DEFAULT 'Pending',
+    requestedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+    processedAt DATETIME,
+    processedBy INT,
+    adminNote TEXT,
+    FOREIGN KEY (groupId) REFERENCES `Group`(groupId) ON DELETE CASCADE,
+    FOREIGN KEY (memberId) REFERENCES GroupMember(memberId) ON DELETE CASCADE
+);
+
 -- ==========================================
 -- DỮ LIỆU MẪU ĐƠN GIẢN
 -- ==========================================
