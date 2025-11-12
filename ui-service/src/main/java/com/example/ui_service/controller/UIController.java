@@ -114,6 +114,7 @@ public class UIController {
         return "user-contracts"; // Trả về file /templates/user-contracts.html
     }
 
+<<<<<<< HEAD
     /**
      * 10. Trang Quản lý Tỷ lệ Sở hữu (User)
      */
@@ -132,3 +133,13 @@ public class UIController {
 }
 
 
+=======
+    @GetMapping("/admin/disputes")
+    public String showAdminDisputesPage(Model model) {
+        model.addAttribute("pageTitle", "Giám sát Tranh chấp");
+        model.addAttribute("currentPage", "disputes"); // Dành cho sidebar admin
+        return "admin/admin-disputes"; // Trả về file /templates/admin/admin-disputes.html
+    }
+}
+
+>>>>>>> 17c2e87 (Lưu tạm thay đổi trước khi pull)
