@@ -9,11 +9,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-<<<<<<< HEAD
 @RequestMapping("/api/auth/admin") // Tiền tố chung cho API Admin
-=======
-@RequestMapping("/api/admin") // Tiền tố chung cho API Admin
->>>>>>> d7941ba (update chức nằng dăng ký chủ xe)
 @CrossOrigin(origins = "http://localhost:8080") // Cho phép UI Admin gọi
 public class AdminController {
 

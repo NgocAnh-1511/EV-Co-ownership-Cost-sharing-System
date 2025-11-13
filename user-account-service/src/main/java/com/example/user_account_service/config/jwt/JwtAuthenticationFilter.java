@@ -5,11 +5,8 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-<<<<<<< HEAD
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-=======
->>>>>>> d7941ba (update chức nằng dăng ký chủ xe)
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -23,11 +20,8 @@ import java.io.IOException;
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
-<<<<<<< HEAD
     private static final Logger logger = LoggerFactory.getLogger(JwtAuthenticationFilter.class);
     
-=======
->>>>>>> d7941ba (update chức nằng dăng ký chủ xe)
     private final JwtService jwtService;
     private final UserDetailsService userDetailsService;
 
@@ -43,7 +37,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             HttpServletResponse response,
             FilterChain filterChain) throws ServletException, IOException {
 
-<<<<<<< HEAD
         String jwt = null;
         String userEmail = null;
 
@@ -73,18 +66,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         }
 
         if (jwt == null) {
-=======
-        final String authHeader = request.getHeader("Authorization");
-        final String jwt;
-        final String userEmail;
-
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
->>>>>>> d7941ba (update chức nằng dăng ký chủ xe)
             filterChain.doFilter(request, response);
             return;
         }
 
-<<<<<<< HEAD
         try {
             logger.info("Processing JWT token, request URI: {}", request.getRequestURI());
             userEmail = jwtService.extractEmail(jwt);
@@ -120,26 +105,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             // Không set authentication, để Spring Security xử lý như request chưa được xác thực
         }
         
-=======
-        jwt = authHeader.substring(7);
-        userEmail = jwtService.extractEmail(jwt);
-
-        if (userEmail != null && SecurityContextHolder.getContext().getAuthentication() == null) {
-            UserDetails userDetails = this.userDetailsService.loadUserByUsername(userEmail);
-
-            if (jwtService.isTokenValid(jwt, userDetails)) {
-                UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
-                        userDetails,
-                        null,
-                        userDetails.getAuthorities()
-                );
-                authToken.setDetails(
-                        new WebAuthenticationDetailsSource().buildDetails(request)
-                );
-                SecurityContextHolder.getContext().setAuthentication(authToken);
-            }
-        }
->>>>>>> d7941ba (update chức nằng dăng ký chủ xe)
         filterChain.doFilter(request, response);
     }
 }
