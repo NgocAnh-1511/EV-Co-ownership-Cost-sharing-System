@@ -80,7 +80,11 @@ public class UIController {
         model.addAttribute("currentPage", "disputes"); // Dành cho sidebar admin
         return "admin/admin-disputes"; // Trả về file /templates/admin/admin-disputes.html
     }
-
+    @GetMapping("/admin/financial-report")
+    public String showAdminFinancialReportPage() {
+        // Trả về tệp HTML mới trong thư mục templates/admin/
+        return "admin/admin-financial-report";
+    }
 
     // --- Trang USER ---
 
@@ -114,7 +118,6 @@ public class UIController {
         return "user-contracts"; // Trả về file /templates/user-contracts.html
     }
 
-<<<<<<< HEAD
     /**
      * 10. Trang Quản lý Tỷ lệ Sở hữu (User)
      */
@@ -124,6 +127,10 @@ public class UIController {
         model.addAttribute("currentPage", "ty-le"); // Dành cho sidebar user
         return "user-ownerships"; // Trả về file /templates/user-ownerships.html
     }
+
+    /**
+     * 11. Trang Quản lý Tài khoản (User Dashboard)
+     */
     @GetMapping("/user/account")
     public String showAccountManagementPage(Model model) {
         model.addAttribute("pageTitle", "Quản Lý Tài Khoản");
@@ -131,15 +138,3 @@ public class UIController {
         return "user-account"; // Trả về file /templates/user-account.html
     }
 }
-
-
-=======
-    @GetMapping("/admin/disputes")
-    public String showAdminDisputesPage(Model model) {
-        model.addAttribute("pageTitle", "Giám sát Tranh chấp");
-        model.addAttribute("currentPage", "disputes"); // Dành cho sidebar admin
-        return "admin/admin-disputes"; // Trả về file /templates/admin/admin-disputes.html
-    }
-}
-
->>>>>>> 17c2e87 (Lưu tạm thay đổi trước khi pull)

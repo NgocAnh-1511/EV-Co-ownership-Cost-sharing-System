@@ -1,6 +1,5 @@
-package com.example.dispute_management_service.config;
+package com.example.financial_reporting_service.config;
 
-import com.example.dispute_management_service.service.JwtService;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -40,29 +39,20 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         jwt = authHeader.substring(7);
 
         try {
-            // Nếu Token hợp lệ VÀ chưa có ai được xác thực
             if (jwtService.isTokenValid(jwt) && SecurityContextHolder.getContext().getAuthentication() == null) {
-
-                // Trích xuất thông tin từ Token
                 Long userId = jwtService.extractUserId(jwt);
                 String email = jwtService.extractEmail(jwt);
                 String role = jwtService.extractRole(jwt);
                 List<GrantedAuthority> authorities = List.of(new SimpleGrantedAuthority(role));
 
-                // NÂNG CẤP: Tạo CustomUserDetails
                 CustomUserDetails userDetails = new CustomUserDetails(userId, email, authorities);
 
-                // Tạo đối tượng Authentication
                 UsernamePasswordAuthenticationToken authToken = new UsernamePasswordAuthenticationToken(
-                        userDetails, // <-- Đặt CustomUserDetails làm Principal
+                        userDetails,
                         null,
                         userDetails.getAuthorities()
                 );
-
-                authToken.setDetails(
-                        new WebAuthenticationDetailsSource().buildDetails(request)
-                );
-                // Xác thực người dùng
+                authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                 SecurityContextHolder.getContext().setAuthentication(authToken);
             }
         } catch (Exception e) {

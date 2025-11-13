@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Báo cáo Tài chính</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+    <link rel="stylesheet" th:href="@{/css/admin-financial-report.css}">
+</head>
+<body>
+<div class="container">
+    <nav th:replace="~{fragments/sidebar :: sidebar}"></nav>
+
+    <div class="main-content">
+        <header th:replace="~{fragments/header :: header}"></header>
+
+        <main>
+            <div class="report-container">
+                <div class="report-header">
+                    <h1>Xem Báo cáo Tài chính Nhóm</h1>
+
+                    <div class="filter-section">
+                        <label for="group-select">Chọn Nhóm:</label>
+                        <select id="group-select">
+                            <option value="">-- Vui lòng chọn một nhóm --</option>
+                        </select>
+                        <button id="load-report-btn">Xem Báo cáo</button>
+                    </div>
+                </div>
+
+                <div id="report-content" class="hidden">
+                    <hr>
+                    <p>Đang xem báo cáo cho Nhóm: <strong id="group-name">...</strong></p>
+                    <p>Xe: <strong id="vehicle-info">...</strong></p>
+                    <p>Ngày xuất báo cáo: <strong id="report-date">...</strong></p>
+
+                    <section class="report-section" id="fund-summary">
+                        <h2>Tóm tắt Quỹ Nhóm</h2>
+                        <div class="summary-box">
+                            <p>Số dư hiện tại:</p>
+                            <h3 id="fund-balance">0 VND</h3>
+                        </div>
+                    </section>
+
+                    <section class="report-section" id="members-ownership">
+                        <h2>Thành viên & Tỷ lệ Sở hữu</h2>
+                        <table id="ownership-table">
+                            <thead>
+                            <tr>
+                                <th>User ID</th>
+                                <th>Tỷ lệ (%)</th>
+                            </tr>
+                            </thead>
+                            <tbody id="ownership-body"></tbody>
+                        </table>
+                    </section>
+
+                    <section class="report-section" id="costs-section">
+                        <h2>Chi phí của Nhóm</h2>
+                        <table id="costs-table">
+                            <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Loại</th>
+                                <th>Mô tả</th>
+                                <th>Số tiền</th>
+                                <th>Ngày tạo</th>
+                            </tr>
+                            </thead>
+                            <tbody id="costs-body"></tbody>
+                        </table>
+                    </section>
+
+                    <section class="report-section" id="cost-shares-section">
+                        <h2>Chi tiết Chia sẻ Chi phí</h2>
+                        <table id="cost-shares-table">
+                            <thead>
+                            <tr>
+                                <th>Cost ID</th>
+                                <th>User ID</th>
+                                <th>Số tiền Phải trả</th>
+                                <th>Trạng thái</th>
+                            </tr>
+                            </thead>
+                            <tbody id="cost-shares-body"></tbody>
+                        </table>
+                    </section>
+
+                    <section class="report-section" id="payments-section">
+                        <h2>Lịch sử Thanh toán</h2>
+                        <table id="payments-table">
+                            <thead>
+                            <tr>
+                                <th>Payment ID</th>
+                                <th>User ID</th>
+                                <th>Số tiền</th>
+                                <th>Trạng thái</th>
+                                <th>Ngày</th>
+                            </tr>
+                            </thead>
+                            <tbody id="payments-body"></tbody>
+                        </table>
+                    </section>
+
+                    <section class="report-section" id="transactions-section">
+                        <h2>Lịch sử Giao dịch Quỹ</h2>
+                        <table id="transactions-table">
+                            <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>User ID</th>
+                                <th>Loại</th>
+                                <th>Số tiền</th>
+                                <th>Trạng thái</th>
+                                <th>Ngày</th>
+                            </tr>
+                            </thead>
+                            <tbody id="transactions-body"></tbody>
+                        </table>
+                    </section>
+
+                    <section class="report-section" id="usage-section">
+                        <h2>Lịch sử Sử dụng Xe</h2>
+                        <table id="usage-table">
+                            <thead>
+                            <tr>
+                                <th>User ID</th>
+                                <th>Bắt đầu</th>
+                                <th>Kết thúc</th>
+                                <th>Quãng đường (km)</th>
+                            </tr>
+                            </thead>
+                            <tbody id="usage-body"></tbody>
+                        </table>
+                    </section>
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+
+<script th:src="@{/js/auth-utils.js}"></script>
+<script th:src="@{/js/admin/admin-guard.js}"></script> <script th:src="@{/js/admin/admin-financial-report.js}"></script> </body>
+</html>

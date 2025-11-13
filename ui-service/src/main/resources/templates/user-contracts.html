@@ -7,9 +7,7 @@
     <script th:src="@{/js/user-guard.js}"></script>
 
     <link rel="stylesheet" th:href="@{/css/user-layout.css}">
-
     <link rel="stylesheet" th:href="@{/css/user-contracts.css}">
-
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 </head>
 <body>
@@ -21,7 +19,7 @@
         <div th:insert="~{fragments/header-user :: header-user(pageTitle='Quản lý Hợp đồng')}"></div>
 
         <div class="page-header">
-            <h1>Quản lý Hợp đồng</h1>
+
             <button class="btn-create-contract" id="btn-create-contract">
                 <i class="fas fa-plus"></i> Tạo hợp đồng mới
             </button>
@@ -33,15 +31,22 @@
         <div id="status-message" style="display: none; margin-bottom: 20px;"></div>
 
         <div class="filter-bar">
-            <div class="filter-tabs">
-                <button class="tab-item active" data-status="all">Tất cả</button>
-                <button class="tab-item" data-status="pending">Chờ ký/Dự thảo</button>
-                <button class="tab-item" data-status="signed">Đang hoạt động</button>
-                <button class="tab-item" data-status="archived">Đã kết thúc</button>
-            </div>
             <div class="search-group">
                 <i class="fas fa-search"></i>
-                <input type="text" id="searchInput" placeholder="Tìm theo Mã HĐ, Mã Nhóm...">
+                <input type="text" id="searchInput" placeholder="Tìm kiếm hợp đồng...">
+            </div>
+            <div class="filter-group">
+                <select id="statusFilter">
+                    <option value="">Tất cả trạng thái</option>
+                    <option value="ACTIVE">Đang hoạt động</option>
+                    <option value="PENDING">Chờ ký</option>
+                    <option value="EXPIRED">Đã kết thúc</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <select id="vehicleFilter">
+                    <option value="">Tất cả loại xe</option>
+                </select>
             </div>
         </div>
 
@@ -50,9 +55,9 @@
                 <thead>
                 <tr>
                     <th>Mã hợp đồng</th>
-                    <th>Thông tin xe/nhóm</th>
-                    <th>Ngày tạo</th>
-                    <th>Loại hợp đồng</th>
+                    <th>Thông tin xe</th>
+                    <th>Ngày ký</th>
+                    <th>Thời hạn</th>
                     <th>Trạng thái</th>
                     <th>Thao tác</th>
                 </tr>
@@ -60,7 +65,6 @@
                 <tbody id="contract-table-body">
                 </tbody>
             </table>
-<<<<<<< HEAD
             <div class="pagination-container">
                 <span id="pagination-info">Hiển thị 1-10 của 10 kết quả</span>
                 <div class="pagination-buttons">
@@ -93,14 +97,11 @@
                     <p>Xem thống kê chi tiết</p>
                 </div>
             </a>
-=======
->>>>>>> 17c2e87 (Lưu tạm thay đổi trước khi pull)
         </div>
 
     </main>
 </div>
 
-<<<<<<< HEAD
 <div id="createContractModal" class="modal-backdrop">
     <div class="modal-content">
         <div class="modal-header">
@@ -117,46 +118,10 @@
                     <label for="vehicleSelect">Chọn xe có sẵn:</label>
                     <select id="vehicleSelect" required>
                         <option value="">Đang tải danh sách xe...</option>
-=======
-<div id="createContractModal" class="modal-backdrop" style="display: none;">
-    <div class="modal-content" style="max-width: 800px;"> <form id="createContractForm">
-        <div class="modal-step active" id="modal-step-1">
-            <div class="modal-header">
-                <h2>Tạo Hợp Đồng Mới (Bước 1/3): Chọn Xe</h2>
-                <span class="modal-close" id="modalCloseButton">&times;</span>
-            </div>
-            <div class="modal-body" style="max-height: 60vh; overflow-y: auto;">
-                <p>Chọn một xe còn trống dưới đây để bắt đầu tạo hợp đồng đồng sở hữu.</p>
-                <div id="vehicle-selection-list" class="vehicle-list-container">
-                </div>
-                <div id="vehicle-list-loading" style="text-align: center; padding: 20px;">Đang tải danh sách xe...</div>
-            </div>
-            <div class="modal-footer" style="justify-content: space-between;">
-                <span id="step1-error-message" style="color: red; font-size: 0.9rem;"></span>
-                <button type="button" class="btn-primary" id="btn-step1-next" disabled>Tiếp theo</button>
-            </div>
-        </div>
-
-        <div class="modal-step" id="modal-step-2" style="display: none;">
-            <div class="modal-header">
-                <h2>Tạo Hợp Đồng Mới (Bước 2/3): Chi tiết Hợp đồng</h2>
-                <span class="modal-close">&times;</span>
-            </div>
-            <div class="modal-body">
-                <div id="modal-error-message" class="status-message error" style="display: none;"></div>
-
-                <div class="form-group">
-                    <label for="contractType">Loại Hợp Đồng <span style="color: red;">*</span></label>
-                    <select id="contractType" required>
-                        <option value="co_ownership" selected>Đồng sở hữu (Co-ownership)</option>
-                        <option value="rental">Thuê (Rental)</option>
-                        <option value="other">Khác</option>
->>>>>>> 17c2e87 (Lưu tạm thay đổi trước khi pull)
                     </select>
                 </div>
 
                 <div class="form-group">
-<<<<<<< HEAD
                     <label for="durationSelect">Chọn thời hạn hợp đồng:</label>
                     <select id="durationSelect" required>
                         <option value="12">12 tháng</option>
@@ -174,43 +139,7 @@
         </form>
     </div>
 </div>
-=======
-                    <label for="contractCode">Mã Hợp đồng (Tùy chọn)</label>
-                    <input type="text" id="contractCode" placeholder="Bỏ trống để tự động tạo (ví dụ: HD-CO-123)">
-                </div>
 
-                <div class="form-group">
-                    <label for="contractDescription">Mô Tả (Tùy chọn)</label>
-                    <textarea id="contractDescription" rows="3" placeholder="Nhập mô tả hoặc ghi chú..."></textarea>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn-secondary" id="btn-step2-back">Quay lại</button>
-                <button type="button" class="btn-primary" id="btn-step2-next">Tiếp theo (Xác nhận)</button>
-            </div>
-        </div>
-
-        <div class="modal-step" id="modal-step-3" style="display: none;">
-            <div class="modal-header">
-                <h2>Tạo Hợp Đồng Mới (Bước 3/3): Xác nhận và Ký</h2>
-                <span class="modal-close">&times;</span>
-            </div>
-            <div class="modal-body">
-                <p>Vui lòng xem lại thông tin. Bằng cách nhấp vào "Xác nhận Tạo", bạn đồng ý với các điều khoản và hợp đồng sẽ được tạo ở trạng thái "Dự thảo".</p>
-                <div id="summary-info" style="padding: 15px; background: #f9f9f9; border-radius: 8px;">
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn-secondary" id="btn-step3-back">Quay lại</button>
-                <button type="submit" class="btn-primary">Xác nhận Tạo</button>
-            </div>
-        </div>
-
-    </form>
-    </div>
-</div>
-
->>>>>>> 17c2e87 (Lưu tạm thay đổi trước khi pull)
 <script th:src="@{/js/auth-utils.js}"></script>
 <script th:src="@{/js/user-contracts.js}"></script>
 

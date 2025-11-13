@@ -1,32 +1,4 @@
-<<<<<<< HEAD
-package com.example.LegalContractService.config;
-
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.web.SecurityFilterChain;
-
-@Configuration
-public class SecurityConfig {
-
-    @Bean
-    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-        http
-                // 🚫 Tắt CSRF và đăng nhập
-                .csrf(csrf -> csrf.disable())
-                .formLogin(form -> form.disable())
-                .httpBasic(basic -> basic.disable())
-
-                // 🔓 Cho phép tất cả các API được truy cập (không cần login)
-                .authorizeHttpRequests(auth -> auth
-                        .anyRequest().permitAll()
-                );
-
-        return http.build();
-    }
-}
-=======
-package com.example.dispute_management_service.config;
+package com.example.financial_reporting_service.config;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
@@ -53,14 +25,16 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .cors(cors -> cors.configurationSource(request -> {
                     CorsConfiguration conf = new CorsConfiguration();
+                    // Cho phép UI (Cổng 8080) gọi
                     conf.setAllowedOrigins(List.of("http://localhost:8080"));
                     conf.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
                     conf.setAllowedHeaders(List.of("*"));
+                    conf.setAllowCredentials(true);
                     return conf;
                 }))
                 .authorizeHttpRequests(auth -> auth
-                        // Tất cả API trong service này đều yêu cầu đăng nhập
-                        .requestMatchers("/api/disputes/**").authenticated()
+                        // Tất cả API báo cáo đều yêu cầu xác thực
+                        .requestMatchers("/api/reports/**").authenticated()
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(sess -> sess.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
@@ -69,4 +43,3 @@ public class SecurityConfig {
         return http.build();
     }
 }
->>>>>>> 17c2e87 (Lưu tạm thay đổi trước khi pull)

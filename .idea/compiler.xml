@@ -6,7 +6,6 @@
     </excludeFromCompile>
     <annotationProcessing>
       <profile default="true" name="Default" enabled="true" />
-<<<<<<< HEAD
       <profile name="Annotation profile for VehicleServiceManagementService" enabled="true">
         <sourceOutputDir name="target/generated-sources/annotations" />
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
@@ -14,19 +13,14 @@
         <processorPath useClasspath="false">
           <entry name="$MAVEN_REPOSITORY$/org/projectlombok/lombok/1.18.40/lombok-1.18.40.jar" />
         </processorPath>
-        <module name="LegalContractService" />
         <module name="VehicleServiceManagementService" />
       </profile>
-=======
->>>>>>> 17c2e87 (Lưu tạm thay đổi trước khi pull)
       <profile name="Maven default annotation processors profile" enabled="true">
         <sourceOutputDir name="target/generated-sources/annotations" />
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
         <module name="ui-service" />
       </profile>
-<<<<<<< HEAD
-=======
       <profile name="Annotation profile for financial-reporting-service" enabled="true">
         <sourceOutputDir name="target/generated-sources/annotations" />
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
@@ -35,9 +29,9 @@
           <entry name="$MAVEN_REPOSITORY$/org/projectlombok/lombok/1.18.42/lombok-1.18.42.jar" />
           <entry name="$MAVEN_REPOSITORY$/org/projectlombok/lombok/1.18.42/lombok-1.18.42.jar" />
         </processorPath>
+        <module name="dispute-management-service" />
         <module name="financial-reporting-service" />
       </profile>
->>>>>>> 17c2e87 (Lưu tạm thay đổi trước khi pull)
       <profile name="Annotation profile for user-account-service" enabled="true">
         <sourceOutputDir name="target/generated-sources/annotations" />
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
@@ -45,19 +39,23 @@
         <processorPath useClasspath="false">
           <entry name="$MAVEN_REPOSITORY$/org/projectlombok/lombok/1.18.42/lombok-1.18.42.jar" />
         </processorPath>
-        <module name="dispute-management-service" />
         <module name="user-account-service" />
+      </profile>
+      <profile name="Annotation profile for cost-payment-service" enabled="true">
+        <sourceOutputDir name="target/generated-sources/annotations" />
+        <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
+        <outputRelativeToContentRoot value="true" />
+        <processorPath useClasspath="false">
+          <entry name="$MAVEN_REPOSITORY$/org/projectlombok/lombok/1.18.30/lombok-1.18.30.jar" />
+        </processorPath>
+        <module name="cost-payment-service" />
       </profile>
     </annotationProcessing>
     <bytecodeTargetLevel>
       <module name="CheckInOutService" target="21" />
       <module name="DisputeResolutionService" target="21" />
       <module name="eureka-server" target="21" />
-<<<<<<< HEAD
-=======
       <module name="LegalContractService" target="21" />
-      <module name="VehicleServiceManagementService" target="21" />
->>>>>>> 17c2e87 (Lưu tạm thay đổi trước khi pull)
     </bytecodeTargetLevel>
   </component>
   <component name="JavacSettings">
@@ -66,6 +64,7 @@
       <module name="DisputeResolutionService" options="-parameters" />
       <module name="LegalContractService" options="-parameters" />
       <module name="VehicleServiceManagementService" options="-parameters" />
+      <module name="cost-payment-service" options="-parameters" />
       <module name="dispute-management-service" options="-parameters" />
       <module name="eureka-server" options="-parameters" />
       <module name="financial-reporting-service" options="-parameters" />

@@ -1,4 +1,4 @@
-package com.example.dispute_management_service.config;
+package com.example.financial_reporting_service.config;
 
 import lombok.Getter;
 import org.springframework.security.core.GrantedAuthority;
@@ -26,7 +26,7 @@ public class CustomUserDetails implements UserDetails {
 
     @Override
     public String getPassword() {
-        return null; // Không cần thiết vì chúng ta dùng JWT
+        return null; // Không cần thiết
     }
 
     @Override
@@ -34,7 +34,6 @@ public class CustomUserDetails implements UserDetails {
         return email; // Dùng email làm Username
     }
 
-    // Các phương thức khác (Giữ nguyên mặc định)
     @Override public boolean isAccountNonExpired() { return true; }
     @Override public boolean isAccountNonLocked() { return true; }
     @Override public boolean isCredentialsNonExpired() { return true; }
