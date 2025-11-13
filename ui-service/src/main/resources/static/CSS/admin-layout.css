@@ -16,7 +16,7 @@ body {
 }
 
 .main-content {
-    flex-grow: 1; /* Cho phép Main Content chiếm hết phần còn lại */
+    flex-grow: 1; /* Cho phép Main Content chiếm hết    phần còn lại */
     padding: 24px;
 }
 

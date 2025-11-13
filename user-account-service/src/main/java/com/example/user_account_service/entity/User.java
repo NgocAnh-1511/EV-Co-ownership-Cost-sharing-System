@@ -33,6 +33,8 @@ public class User {
     @Column(name = "phone_number", unique = true)
     private String phoneNumber;
 
+    // CẬP NHẬT: Thêm @Builder.Default để sửa cảnh báo
+    @Builder.Default
     @Column(name = "is_verified")
     private boolean isVerified = false;
 
@@ -41,6 +43,15 @@ public class User {
 
     @Column(name = "role", nullable = false)
     private String role;
+
+    // CẬP NHẬT: Thêm trường group_id để liên kết với VehicleGroup
+    /**
+     * ID của nhóm (vehiclegroup) mà User này thuộc về.
+     * Đây là ID tham chiếu đến bảng 'vehiclegroup' trong CSDL 'vehicle_management'.
+     * Dùng kiểu String để khớp với kiểu dữ liệu của 'group_id' (GRP001, GRP002...)
+     */
+    @Column(name = "group_id")
+    private String groupId;
 
     // THÊM TRƯỜNG MỚI ĐỂ THEO DÕI TRẠNG THÁI
     @Column(name = "profile_status")

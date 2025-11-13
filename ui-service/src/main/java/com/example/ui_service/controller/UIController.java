@@ -80,6 +80,12 @@ public class UIController {
         model.addAttribute("currentPage", "disputes"); // Dành cho sidebar admin
         return "admin/admin-disputes"; // Trả về file /templates/admin/admin-disputes.html
     }
+    @GetMapping("/admin/financial-report")
+    public String showFinancialReportPage(Model model) {
+        model.addAttribute("pageTitle", "Báo cáo Tài chính");
+        model.addAttribute("currentPage", "financial"); // Dành cho sidebar admin
+        return "admin/admin-financial-report"; // Trả về file /templates/admin/admin-financial-report.html
+    }
 
 
     // --- Trang USER ---

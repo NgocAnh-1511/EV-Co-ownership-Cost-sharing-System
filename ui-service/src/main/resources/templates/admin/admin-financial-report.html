@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Báo cáo Tài chính</title>
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+
+    <link rel="stylesheet" th:href="@{/css/admin-layout.css}" />
+
+    <link rel="stylesheet" th:href="@{/css/admin-financial-report.css}" />
+</head>
+<body>
+<div class="admin-layout-container">
+
+    <div th:insert="~{fragments/sidebar :: sidebar(currentPage='financial')}"></div>
+
+    <main class="main-content">
+
+        <div th:insert="~{fragments/header :: header(pageTitle='Báo cáo Tài chính')}"></div>
+
+        <div class="report-header">
+            <h2>Tổng quan Tài chính</h2>
+            <button class="btn-export" id="exportPdfButton">
+                <i class="fas fa-file-pdf"></i> Xuất Báo cáo (PDF)
+            </button>
+        </div>
+
+        <div class="stats-grid-financial">
+            <div class="stat-card">
+                <div class="stat-card-header">
+                    <div class="stat-icon green"><i class="fas fa-arrow-down"></i></div>
+                    <h3>Tổng Thu</h3>
+                </div>
+                <h2 class="stat-card-value" id="total-revenue">0 <span class="currency">VND</span></h2>
+                <p class="stat-card-footer">Tổng tiền nạp vào quỹ các nhóm</p>
+            </div>
+            <div class="stat-card">
+                <div class="stat-card-header">
+                    <div class="stat-icon red"><i class="fas fa-arrow-up"></i></div>
+                    <h3>Tổng Chi</h3>
+                </div>
+                <h2 class="stat-card-value" id="total-expense">0 <span class="currency">VND</span></h2>
+                <p class="stat-card-footer">Tổng tiền chi tiêu (bảo trì, nhiên liệu...)</p>
+            </div>
+            <div class="stat-card">
+                <div class="stat-card-header">
+                    <div class="stat-icon blue"><i class="fas fa-wallet"></i></div>
+                    <h3>Số Dư Hiện Tại</h3>
+                </div>
+                <h2 class="stat-card-value" id="current-balance">0 <span class="currency">VND</span></h2>
+                <p class="stat-card-footer">Tổng số dư trong quỹ của tất cả các nhóm</p>
+            </div>
+        </div>
+
+        <div class="filter-bar">
+            <div class="filter-group">
+                <label for="groupFilter">Lọc theo Nhóm (Group ID)</label>
+                <input type="text" id="groupFilter" placeholder="Nhập GRP... (ví dụ: GRP002)" />
+            </div>
+            <div class="filter-group">
+                <label for="typeFilter">Lọc theo Loại Chi phí</label>
+                <select id="typeFilter">
+                    <option value="">Tất cả</option>
+                    <option value="MAINTENANCE">Bảo trì</option>
+                    <option value="FUEL">Nhiên liệu</option>
+                    <option value="PARKING">Gửi xe</option>
+                    <option value="OTHER">Khác</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label for="statusFilter">Lọc theo Trạng thái</label>
+                <select id="statusFilter">
+                    <option value="">Tất cả</option>
+                    <option value="PAID">Đã thanh toán</option>
+                    <option value="PENDING">Chờ duyệt</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="table-container">
+            <table class="report-table">
+                <thead>
+                <tr>
+                    <th>ID Chi phí</th>
+                    <th>Group ID</th>
+                    <th>Mô tả</th>
+                    <th>Loại</th>
+                    <th>Số tiền</th>
+                    <th>Trạng thái</th>
+                    <th>Ngày tạo</th>
+                </tr>
+                </thead>
+                <tbody id="report-table-body">
+                </tbody>
+            </table>
+        </div>
+
+    </main>
+</div>
+
+<script th:src="@{/js/admin/admin-auth.js}"></script>
+<script th:src="@{/js/admin/admin-financial-report.js}"></script>
+</body>
+</html>

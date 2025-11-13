@@ -22,7 +22,7 @@
         <outputRelativeToContentRoot value="true" />
         <module name="ui-service" />
       </profile>
-      <profile name="Annotation profile for user-account-service" enabled="true">
+      <profile name="Annotation profile for financial-reporting-service" enabled="true">
         <sourceOutputDir name="target/generated-sources/annotations" />
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
@@ -32,6 +32,15 @@
         <module name="dispute-management-service" />
         <module name="financial-reporting-service" />
         <module name="user-account-service" />
+      </profile>
+      <profile name="Annotation profile for cost-payment-service" enabled="true">
+        <sourceOutputDir name="target/generated-sources/annotations" />
+        <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
+        <outputRelativeToContentRoot value="true" />
+        <processorPath useClasspath="false">
+          <entry name="$MAVEN_REPOSITORY$/org/projectlombok/lombok/1.18.30/lombok-1.18.30.jar" />
+        </processorPath>
+        <module name="cost-payment-service" />
       </profile>
     </annotationProcessing>
     <bytecodeTargetLevel>
@@ -46,6 +55,7 @@
       <module name="DisputeResolutionService" options="-parameters" />
       <module name="LegalContractService" options="-parameters" />
       <module name="VehicleServiceManagementService" options="-parameters" />
+      <module name="cost-payment-service" options="-parameters" />
       <module name="dispute-management-service" options="-parameters" />
       <module name="eureka-server" options="-parameters" />
       <module name="financial-reporting-service" options="-parameters" />
