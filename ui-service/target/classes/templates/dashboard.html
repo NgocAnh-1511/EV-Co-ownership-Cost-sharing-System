@@ -243,7 +243,7 @@
         
         async function loadMyVehicles() {
             try {
-                const response = await fetch('http://localhost:8081/api/my-vehicles', {
+                const response = await fetch('http://localhost:8084/api/my-vehicles', {
                     credentials: 'include'
                 });
                 
@@ -316,7 +316,7 @@
         
         async function loadAIRecommendations() {
             try {
-                const response = await fetch(`http://localhost:8083/api/ai/recommendations/user/${user.id}`);
+                const response = await fetch(`http://localhost:8084/api/ai/recommendations/user/${user.id}`);
                 
                 if (!response.ok) {
                     console.log('No AI recommendations available');
@@ -360,7 +360,7 @@
         
         async function logout() {
             try {
-                await fetch('http://localhost:8081/api/auth/logout', {
+                await fetch('http://localhost:8084/api/auth/logout', {
                     method: 'POST',
                     credentials: 'include'
                 });
