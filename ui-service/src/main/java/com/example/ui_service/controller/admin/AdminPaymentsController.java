@@ -15,11 +15,8 @@ public class AdminPaymentsController {
     @GetMapping
     public String payments(Model model) {
         model.addAttribute("pageTitle", "Theo dõi thanh toán");
-        model.addAttribute("activePage", "payments");
-        model.addAttribute("contentFragment", "admin/payments :: content");
-        model.addAttribute("pageCss", new String[]{"/css/admin-payments.css"});
-        model.addAttribute("pageJs", new String[]{"/js/admin-payments.js"});
-        return "fragments/admin-layout";
+        model.addAttribute("pageSubtitle", "Theo dõi và quản lý các khoản thanh toán của thành viên");
+        return "admin-payments";
     }
 }
 

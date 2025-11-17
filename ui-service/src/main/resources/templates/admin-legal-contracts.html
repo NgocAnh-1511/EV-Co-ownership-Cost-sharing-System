@@ -1,0 +1,1046 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản Lý Hợp Đồng Pháp Lý Điện Tử - Admin</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="/css/admin-layout.css" rel="stylesheet">
+    <th:block th:replace="fragments/admin-guard :: scripts"></th:block>
+    <style>
+        body {
+            background: #F9FAFB;
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+        }
+
+        .main-content {
+            flex: 1;
+            margin-left: 300px;
+            padding: 0;
+        }
+
+        .content-wrapper {
+            padding: 24px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            margin-bottom: 24px;
+        }
+
+        .search-filter-bar {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+        }
+
+        .search-input {
+            flex: 1;
+            min-width: 200px;
+            position: relative;
+        }
+
+        .search-input i {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #94a3b8;
+        }
+
+        .search-input input {
+            width: 100%;
+            padding: 10px 12px 10px 40px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+        }
+
+        .filter-select {
+            padding: 10px 12px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            min-width: 180px;
+        }
+
+        .btn-primary {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .btn-primary:hover {
+            background: #5568d3;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 12px;
+            padding: 16px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .stat-card-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .stat-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+        }
+
+        .stat-icon.blue { background: #667eea; }
+        .stat-icon.green { background: #10b981; }
+        .stat-icon.orange { background: #f59e0b; }
+        .stat-icon.gray { background: #6b7280; }
+
+        .stat-label {
+            font-size: 12px;
+            color: #64748b;
+            margin-bottom: 4px;
+        }
+
+        .stat-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: #1a202c;
+        }
+
+        .table-container {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead th {
+            background: #f8fafc;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            color: #64748b;
+            border-bottom: 2px solid #e2e8f0;
+        }
+
+        tbody td {
+            padding: 16px 12px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        tbody tr:hover {
+            background: #f8fafc;
+        }
+
+        .status-badge {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 600;
+            display: inline-block;
+        }
+
+        .status-badge.status-pending {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .status-badge.status-signed {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .status-badge.status-archived {
+            background: #e5e7eb;
+            color: #374151;
+        }
+
+        .btn-action {
+            padding: 6px 12px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 0 4px;
+            font-size: 14px;
+        }
+
+        .btn-action.btn-edit {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .btn-action.btn-edit:hover {
+            background: #bfdbfe;
+        }
+
+        .btn-action.btn-sign {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .btn-action.btn-sign:hover {
+            background: #a7f3d0;
+        }
+
+        .btn-action.btn-archive {
+            background: #e5e7eb;
+            color: #374151;
+        }
+
+        .btn-action.btn-archive:hover {
+            background: #d1d5db;
+        }
+
+        .btn-action.btn-delete {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .btn-action.btn-delete:hover {
+            background: #fecaca;
+        }
+
+        .btn-action.btn-view {
+            background: #e0e7ff;
+            color: #3730a3;
+        }
+
+        .btn-action.btn-view:hover {
+            background: #c7d2fe;
+        }
+
+        .pagination {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #e2e8f0;
+        }
+
+        .pagination-info {
+            color: #64748b;
+            font-size: 14px;
+        }
+
+        .pagination-controls {
+            display: flex;
+            gap: 8px;
+        }
+
+        .pagination-controls a {
+            padding: 8px 12px;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            text-decoration: none;
+            color: #64748b;
+            background: white;
+        }
+
+        .pagination-controls a.active {
+            background: #667eea;
+            color: white;
+            border-color: #667eea;
+        }
+
+        .pagination-controls a:hover:not(.disabled) {
+            background: #f8fafc;
+        }
+
+        .pagination-controls a.disabled {
+            color: #94a3b8;
+            background: #f8fafc;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+        }
+
+        .modal-content {
+            background: white;
+            margin: 5% auto;
+            padding: 0;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 600px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+
+        .modal-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid #e2e8f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-header h2 {
+            margin: 0;
+            font-size: 20px;
+            font-weight: 600;
+        }
+
+        .close {
+            font-size: 28px;
+            font-weight: bold;
+            color: #94a3b8;
+            cursor: pointer;
+        }
+
+        .close:hover {
+            color: #1a202c;
+        }
+
+        .modal-body {
+            padding: 24px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #1a202c;
+        }
+
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+        }
+
+        .required {
+            color: #ef4444;
+        }
+
+        .modal-footer {
+            padding: 20px 24px;
+            border-top: 1px solid #e2e8f0;
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+        }
+
+        .btn-cancel {
+            padding: 10px 20px;
+            border: 1px solid #e2e8f0;
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+            color: #64748b;
+        }
+
+        .btn-save {
+            padding: 10px 20px;
+            border: none;
+            background: #667eea;
+            color: white;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .btn-delete-confirm {
+            padding: 10px 20px;
+            border: none;
+            background: #ef4444;
+            color: white;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #9CA3AF;
+        }
+
+        .empty-state i {
+            font-size: 48px;
+            margin-bottom: 16px;
+            display: block;
+            opacity: 0.3;
+        }
+
+        .history-list {
+            max-height: 300px;
+            overflow-y: auto;
+            margin-top: 16px;
+        }
+
+        .history-item {
+            padding: 12px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .history-item:last-child {
+            border-bottom: none;
+        }
+
+        .history-action {
+            font-weight: 600;
+            color: #1a202c;
+            margin-bottom: 4px;
+        }
+
+        .history-date {
+            font-size: 12px;
+            color: #64748b;
+        }
+    </style>
+</head>
+<body>
+    <!-- Sidebar từ admin-sidebar.html -->
+    <div th:replace="fragments/admin-sidebar :: sidebar"></div>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Header Fragment -->
+        <div th:replace="fragments/admin-header :: header"></div>
+
+        <!-- Content Wrapper -->
+        <div class="content-wrapper">
+        <!-- Search and Filter -->
+        <div class="card">
+            <form id="searchFilterForm" method="get" th:action="@{/admin/legal-contracts}" class="search-filter-bar">
+                <div class="search-input">
+                    <i class="fas fa-search"></i>
+                    <input type="text" 
+                           id="searchInput" 
+                           name="searchQuery" 
+                           th:value="${searchQuery}" 
+                           placeholder="Tìm kiếm theo mã hợp đồng, ID...">
+                </div>
+                <select name="statusFilter" th:value="${statusFilter}" onchange="this.form.submit()" class="filter-select">
+                    <option value="all" th:selected="${statusFilter == 'all'}">Tất cả trạng thái</option>
+                    <option value="pending" th:selected="${statusFilter == 'pending'}">Chờ ký</option>
+                    <option value="signed" th:selected="${statusFilter == 'signed'}">Đã ký</option>
+                    <option value="archived" th:selected="${statusFilter == 'archived'}">Đã lưu trữ</option>
+                </select>
+                <button type="button" class="btn-primary" onclick="openAddContractModal()">
+                    <i class="fas fa-plus"></i> Tạo Hợp Đồng Mới
+                </button>
+            </form>
+        </div>
+
+        <!-- Summary Cards -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-card-header">
+                    <div class="stat-icon blue">
+                        <i class="fas fa-file-contract"></i>
+                    </div>
+                    <div>
+                        <div class="stat-label">Tổng số hợp đồng</div>
+                        <div class="stat-value" th:text="${totalContracts}">0</div>
+                    </div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-card-header">
+                    <div class="stat-icon orange">
+                        <i class="fas fa-clock"></i>
+                    </div>
+                    <div>
+                        <div class="stat-label">Chờ ký</div>
+                        <div class="stat-value" th:text="${pendingContracts}">0</div>
+                    </div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-card-header">
+                    <div class="stat-icon green">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                    <div>
+                        <div class="stat-label">Đã ký</div>
+                        <div class="stat-value" th:text="${signedContracts}">0</div>
+                    </div>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-card-header">
+                    <div class="stat-icon gray">
+                        <i class="fas fa-archive"></i>
+                    </div>
+                    <div>
+                        <div class="stat-label">Đã lưu trữ</div>
+                        <div class="stat-value" th:text="${archivedContracts}">0</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Table -->
+        <div class="card">
+            <h3 style="margin-bottom: 20px; font-size: 18px; font-weight: 600;">Danh Sách Hợp Đồng</h3>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>MÃ HỢP ĐỒNG</th>
+                            <th>NHÓM</th>
+                            <th>TRẠNG THÁI</th>
+                            <th>NGÀY TẠO</th>
+                            <th>NGÀY KÝ</th>
+                            <th style="text-align: center;">HÀNH ĐỘNG</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Debug info -->
+                        <tr th:if="${contracts == null}">
+                            <td colspan="6" class="empty-state" style="color: red;">
+                                <i class="fas fa-exclamation-triangle"></i>
+                                Lỗi: contracts = null. Kiểm tra logs để biết thêm chi tiết.
+                            </td>
+                        </tr>
+                        <tr th:if="${contracts != null and contracts.isEmpty()}">
+                            <td colspan="6" class="empty-state">
+                                <i class="fas fa-file-contract"></i>
+                                Không có hợp đồng nào. 
+                                <br><small style="color: #64748b;">Tổng số: <span th:text="${totalContracts}">0</span></small>
+                            </td>
+                        </tr>
+                        <tr th:each="contract : ${contracts}">
+                            <td>
+                                <div style="display: flex; align-items: center; gap: 12px;">
+                                    <div style="width: 40px; height: 40px; background: #f1f5f9; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #667eea;">
+                                        <i class="fas fa-file-contract"></i>
+                                    </div>
+                                    <div>
+                                        <div style="font-weight: 600; color: #1a202c;" th:text="${contract.contractCode}">LC-001</div>
+                                        <div style="font-size: 12px; color: #94a3b8;" th:text="'ID: ' + ${contract.contractId}">ID: 1</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td th:text="'Nhóm ' + ${contract.groupId}">Nhóm 1</td>
+                            <td>
+                                <span th:if="${contract.contractStatus == 'pending'}" 
+                                      class="status-badge status-pending">Chờ ký</span>
+                                <span th:if="${contract.contractStatus == 'signed'}" 
+                                      class="status-badge status-signed">Đã ký</span>
+                                <span th:if="${contract.contractStatus == 'archived'}" 
+                                      class="status-badge status-archived">Đã lưu trữ</span>
+                                <span th:if="${contract.contractStatus != 'pending' and contract.contractStatus != 'signed' and contract.contractStatus != 'archived'}" 
+                                      class="status-badge status-pending" th:text="${contract.contractStatus}">Unknown</span>
+                            </td>
+                            <td th:text="${contract.creationDate != null ? #temporals.format(contract.creationDate, 'dd/MM/yyyy HH:mm') : 'N/A'}">01/01/2024</td>
+                            <td th:text="${contract.signedDate != null ? #temporals.format(contract.signedDate, 'dd/MM/yyyy HH:mm') : 'Chưa ký'}">Chưa ký</td>
+                            <td style="text-align: center;">
+                                <button class="btn-action btn-view" 
+                                        th:attr="data-contract-id=${contract.contractId}"
+                                        onclick="openViewContractModal(this.getAttribute('data-contract-id'))"
+                                        title="Xem chi tiết">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                                <button th:if="${contract.contractStatus != 'signed' and contract.contractStatus != 'archived'}"
+                                        class="btn-action btn-edit" 
+                                        th:attr="data-contract-id=${contract.contractId}"
+                                        onclick="openEditContractModal(this.getAttribute('data-contract-id'))"
+                                        title="Chỉnh sửa">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button th:if="${contract.contractStatus == 'pending'}"
+                                        class="btn-action btn-sign" 
+                                        th:attr="data-contract-id=${contract.contractId}"
+                                        onclick="signContract(this.getAttribute('data-contract-id'))"
+                                        title="Ký hợp đồng">
+                                    <i class="fas fa-signature"></i>
+                                </button>
+                                <button th:if="${contract.contractStatus != 'archived'}"
+                                        class="btn-action btn-archive" 
+                                        th:attr="data-contract-id=${contract.contractId}"
+                                        onclick="archiveContract(this.getAttribute('data-contract-id'))"
+                                        title="Lưu trữ">
+                                    <i class="fas fa-archive"></i>
+                                </button>
+                                <button class="btn-action btn-delete" 
+                                        th:data-contract-id="${contract.contractId}"
+                                        th:onclick="'openDeleteContractModal(' + ${contract.contractId} + ')'"
+                                        title="Xóa"
+                                        type="button">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination -->
+            <div class="pagination">
+                <div class="pagination-info">
+                    Hiển thị <span th:text="${startIndex}">1</span> - <span th:text="${endIndex}">10</span> 
+                    trong tổng số <span th:text="${totalFiltered}">100</span> hợp đồng
+                </div>
+                <div class="pagination-controls">
+                    <a th:if="${currentPage > 1}" 
+                       th:href="@{/admin/legal-contracts(page=${currentPage - 1}, size=${pageSize}, searchQuery=${searchQuery}, statusFilter=${statusFilter})}">
+                        <i class="fas fa-chevron-left"></i> Trước
+                    </a>
+                    <a th:if="${currentPage <= 1}" class="disabled">
+                        <i class="fas fa-chevron-left"></i> Trước
+                    </a>
+
+                    <th:block th:each="i : ${#numbers.sequence(1, totalPages)}">
+                        <a th:if="${i == currentPage}" 
+                           class="active"
+                           th:text="${i}">1</a>
+                        <a th:if="${i != currentPage}" 
+                           th:href="@{/admin/legal-contracts(page=${i}, size=${pageSize}, searchQuery=${searchQuery}, statusFilter=${statusFilter})}"
+                           th:text="${i}">1</a>
+                    </th:block>
+
+                    <a th:if="${currentPage < totalPages}" 
+                       th:href="@{/admin/legal-contracts(page=${currentPage + 1}, size=${pageSize}, searchQuery=${searchQuery}, statusFilter=${statusFilter})}">
+                        Sau <i class="fas fa-chevron-right"></i>
+                    </a>
+                    <a th:if="${currentPage >= totalPages}" class="disabled">
+                        Sau <i class="fas fa-chevron-right"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+        </div>
+    </main>
+
+    <!-- Contract Modal -->
+    <div id="contractModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modalTitle">Tạo Hợp Đồng Mới</h2>
+                <span class="close" onclick="closeContractModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <form id="contractForm" onsubmit="saveContract(event)">
+                    <input type="hidden" id="contractId">
+                    
+                    <div class="form-group">
+                        <label for="contractCode">Mã hợp đồng <span class="required">*</span></label>
+                        <input type="text" id="contractCode" required placeholder="VD: LC-2024-001">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="groupId">ID Nhóm <span class="required">*</span></label>
+                        <input type="number" id="groupId" required placeholder="Nhập ID nhóm">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="contractStatus">Trạng thái <span class="required">*</span></label>
+                        <select id="contractStatus" required>
+                            <option value="pending">Chờ ký</option>
+                            <option value="signed">Đã ký</option>
+                            <option value="archived">Đã lưu trữ</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-cancel" onclick="closeContractModal()">Hủy</button>
+                <button type="submit" form="contractForm" class="btn-save">Lưu</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- View Contract Modal -->
+    <div id="viewContractModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Chi Tiết Hợp Đồng</h2>
+                <span class="close" onclick="closeViewContractModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div id="contractDetails">
+                    <p>Đang tải...</p>
+                </div>
+                <div id="contractHistory" style="margin-top: 24px;">
+                    <h4 style="margin-bottom: 12px;">Lịch sử</h4>
+                    <div class="history-list" id="historyList">
+                        <p>Đang tải...</p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-cancel" onclick="closeViewContractModal()">Đóng</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Confirmation Modal -->
+    <div id="deleteModal" class="modal">
+        <div class="modal-content" style="max-width: 400px;">
+            <div class="modal-header">
+                <h2>Xác nhận xóa</h2>
+                <span class="close" onclick="closeDeleteModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p>Bạn có chắc chắn muốn xóa hợp đồng này không?</p>
+                <p style="color: #ef4444; font-weight: 600;">Hành động này không thể hoàn tác!</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn-cancel" onclick="closeDeleteModal()">Hủy</button>
+                <button type="button" class="btn-delete-confirm" onclick="confirmDelete()">Xóa</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentContractId = null;
+
+        // Event delegation cho nút xóa - đảm bảo hoạt động ngay cả khi Thymeleaf onclick có vấn đề
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🔵 [DOMContentLoaded] Đang thiết lập event listeners cho nút xóa');
+            
+            // Sử dụng event delegation để bắt sự kiện click trên tất cả nút xóa
+            document.addEventListener('click', function(event) {
+                const deleteButton = event.target.closest('.btn-delete');
+                if (deleteButton) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    
+                    // Lấy contract ID từ data attribute hoặc từ Thymeleaf
+                    const contractId = deleteButton.getAttribute('data-contract-id') || 
+                                      deleteButton.getAttribute('th:data-contract-id');
+                    
+                    console.log('🔵 [Event Delegation] Nút xóa được click, Contract ID:', contractId);
+                    
+                    if (contractId) {
+                        openDeleteContractModal(parseInt(contractId));
+                    } else {
+                        console.error('❌ [Event Delegation] Không tìm thấy contract ID');
+                        alert('⚠️ Không tìm thấy ID hợp đồng');
+                    }
+                }
+            });
+            
+            console.log('✅ [DOMContentLoaded] Event listeners đã được thiết lập');
+        });
+
+        function openAddContractModal() {
+            document.getElementById('modalTitle').textContent = 'Tạo Hợp Đồng Mới';
+            document.getElementById('contractId').value = '';
+            document.getElementById('contractCode').value = '';
+            document.getElementById('groupId').value = '';
+            document.getElementById('contractStatus').value = 'pending';
+            document.getElementById('contractModal').style.display = 'block';
+        }
+
+        function openEditContractModal(contractId) {
+            fetch(`/admin/legal-contracts/api/${contractId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        alert(data.error);
+                        return;
+                    }
+                    const contract = data.contract;
+                    document.getElementById('modalTitle').textContent = 'Chỉnh Sửa Hợp Đồng';
+                    document.getElementById('contractId').value = contract.contractId;
+                    document.getElementById('contractCode').value = contract.contractCode || '';
+                    document.getElementById('groupId').value = contract.groupId || '';
+                    document.getElementById('contractStatus').value = contract.contractStatus || 'pending';
+                    document.getElementById('contractModal').style.display = 'block';
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Không thể tải thông tin hợp đồng');
+                });
+        }
+
+        function openViewContractModal(contractId) {
+            fetch(`/admin/legal-contracts/api/${contractId}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        alert(data.error);
+                        return;
+                    }
+                    const contract = data.contract;
+                    const history = data.history || [];
+                    
+                    const detailsHtml = `
+                        <div style="margin-bottom: 16px;">
+                            <strong>Mã hợp đồng:</strong> ${contract.contractCode || 'N/A'}<br>
+                            <strong>ID:</strong> ${contract.contractId}<br>
+                            <strong>Nhóm ID:</strong> ${contract.groupId || 'N/A'}<br>
+                            <strong>Trạng thái:</strong> ${contract.contractStatus || 'N/A'}<br>
+                            <strong>Ngày tạo:</strong> ${contract.creationDate ? new Date(contract.creationDate).toLocaleString('vi-VN') : 'N/A'}<br>
+                            <strong>Ngày ký:</strong> ${contract.signedDate ? new Date(contract.signedDate).toLocaleString('vi-VN') : 'Chưa ký'}
+                        </div>
+                    `;
+                    
+                    document.getElementById('contractDetails').innerHTML = detailsHtml;
+                    
+                    if (history.length > 0) {
+                        const historyHtml = history.map(h => `
+                            <div class="history-item">
+                                <div class="history-action">${h.action || 'N/A'}</div>
+                                <div class="history-date">${h.actionDate ? new Date(h.actionDate).toLocaleString('vi-VN') : 'N/A'}</div>
+                            </div>
+                        `).join('');
+                        document.getElementById('historyList').innerHTML = historyHtml;
+                    } else {
+                        document.getElementById('historyList').innerHTML = '<p style="color: #64748b;">Chưa có lịch sử</p>';
+                    }
+                    
+                    document.getElementById('viewContractModal').style.display = 'block';
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Không thể tải thông tin hợp đồng');
+                });
+        }
+
+        function closeContractModal() {
+            document.getElementById('contractModal').style.display = 'none';
+        }
+
+        function closeViewContractModal() {
+            document.getElementById('viewContractModal').style.display = 'none';
+        }
+
+        function saveContract(event) {
+            event.preventDefault();
+            const contractId = document.getElementById('contractId').value;
+            const contractData = {
+                contractCode: document.getElementById('contractCode').value,
+                groupId: parseInt(document.getElementById('groupId').value),
+                contractStatus: document.getElementById('contractStatus').value
+            };
+
+            const url = contractId 
+                ? `/admin/legal-contracts/api/update/${contractId}`
+                : '/admin/legal-contracts/api/create';
+            const method = contractId ? 'PUT' : 'POST';
+
+            fetch(url, {
+                method: method,
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(contractData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert(data.message);
+                    closeContractModal();
+                    window.location.reload();
+                } else {
+                    alert(data.message || 'Có lỗi xảy ra');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Có lỗi xảy ra khi lưu hợp đồng');
+            });
+        }
+
+        function signContract(contractId) {
+            if (!confirm('Bạn có chắc chắn muốn ký hợp đồng này không?')) {
+                return;
+            }
+            fetch(`/admin/legal-contracts/api/sign/${contractId}`, {
+                method: 'PUT'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert(data.message);
+                    window.location.reload();
+                } else {
+                    alert(data.message || 'Có lỗi xảy ra');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Có lỗi xảy ra khi ký hợp đồng');
+            });
+        }
+
+        function archiveContract(contractId) {
+            if (!confirm('Bạn có chắc chắn muốn lưu trữ hợp đồng này không?')) {
+                return;
+            }
+            fetch(`/admin/legal-contracts/api/archive/${contractId}`, {
+                method: 'PUT'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert(data.message);
+                    window.location.reload();
+                } else {
+                    alert(data.message || 'Có lỗi xảy ra');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Có lỗi xảy ra khi lưu trữ hợp đồng');
+            });
+        }
+
+        function openDeleteContractModal(contractId) {
+            console.log('🔵 [openDeleteContractModal] Contract ID:', contractId);
+            if (!contractId) {
+                alert('⚠️ Không tìm thấy ID hợp đồng');
+                return;
+            }
+            currentContractId = contractId;
+            const modal = document.getElementById('deleteModal');
+            if (modal) {
+                modal.style.display = 'block';
+                console.log('✅ [openDeleteContractModal] Modal đã mở');
+            } else {
+                console.error('❌ [openDeleteContractModal] Không tìm thấy deleteModal');
+                alert('❌ Lỗi: Không tìm thấy modal xác nhận xóa');
+            }
+        }
+
+        function closeDeleteModal() {
+            document.getElementById('deleteModal').style.display = 'none';
+            currentContractId = null;
+        }
+
+        function confirmDelete() {
+            console.log('🔵 [confirmDelete] Hàm được gọi, currentContractId:', currentContractId);
+            
+            if (!currentContractId) {
+                console.error('❌ [confirmDelete] Không có currentContractId');
+                alert('⚠️ Không tìm thấy ID hợp đồng');
+                return;
+            }
+            
+            console.log('🔵 [confirmDelete] Đang xóa hợp đồng ID: ' + currentContractId);
+            console.log('🔵 [confirmDelete] URL: /admin/legal-contracts/api/delete/' + currentContractId);
+            
+            // Disable button để tránh double click
+            const deleteBtn = document.querySelector('.btn-delete-confirm');
+            if (deleteBtn) {
+                deleteBtn.disabled = true;
+                deleteBtn.textContent = 'Đang xóa...';
+            }
+            
+            fetch(`/admin/legal-contracts/api/delete/${currentContractId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json'
+                }
+            })
+            .then(response => {
+                console.log('🔵 [confirmDelete] Response status: ' + response.status);
+                console.log('🔵 [confirmDelete] Response headers:', response.headers);
+                
+                if (!response.ok) {
+                    return response.text().then(text => {
+                        console.error('❌ [confirmDelete] HTTP Error:', response.status);
+                        console.error('❌ [confirmDelete] Response body:', text);
+                        let errorMessage = `HTTP ${response.status}`;
+                        try {
+                            const errorData = JSON.parse(text);
+                            errorMessage = errorData.message || errorData.error || errorMessage;
+                        } catch (e) {
+                            errorMessage = text || errorMessage;
+                        }
+                        throw new Error(errorMessage);
+                    });
+                }
+                return response.json();
+            })
+            .then(data => {
+                console.log('🔵 [confirmDelete] Response data:', JSON.stringify(data, null, 2));
+                
+                if (data.success === true || data.success === 'true') {
+                    console.log('✅ [confirmDelete] Xóa thành công!');
+                    alert('✅ ' + (data.message || 'Đã xóa hợp đồng thành công!'));
+                    closeDeleteModal();
+                    // Reload page after a short delay to show the success message
+                    setTimeout(() => {
+                    window.location.reload();
+                    }, 500);
+                } else {
+                    const errorMsg = data.message || data.error || 'Không thể xóa hợp đồng. Vui lòng thử lại.';
+                    console.error('❌ [confirmDelete] Delete failed:', data);
+                    alert('❌ ' + errorMsg);
+                    
+                    // Re-enable button
+                    if (deleteBtn) {
+                        deleteBtn.disabled = false;
+                        deleteBtn.textContent = 'Xóa';
+                    }
+                }
+            })
+            .catch(error => {
+                console.error('❌ [confirmDelete] Error:', error);
+                console.error('❌ [confirmDelete] Error stack:', error.stack);
+                alert('❌ Có lỗi xảy ra khi xóa hợp đồng:\n' + error.message + '\n\nVui lòng kiểm tra console để biết thêm chi tiết.');
+                
+                // Re-enable button
+                if (deleteBtn) {
+                    deleteBtn.disabled = false;
+                    deleteBtn.textContent = 'Xóa';
+                }
+            });
+        }
+
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const contractModal = document.getElementById('contractModal');
+            const viewModal = document.getElementById('viewContractModal');
+            const deleteModal = document.getElementById('deleteModal');
+            if (event.target == contractModal) {
+                closeContractModal();
+            }
+            if (event.target == viewModal) {
+                closeViewContractModal();
+            }
+            if (event.target == deleteModal) {
+                closeDeleteModal();
+            }
+        }
+    </script>
+</body>
+</html>
+

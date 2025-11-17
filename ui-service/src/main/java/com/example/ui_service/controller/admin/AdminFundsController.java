@@ -15,11 +15,8 @@ public class AdminFundsController {
     @GetMapping
     public String funds(Model model) {
         model.addAttribute("pageTitle", "Quản lý quỹ chung");
-        model.addAttribute("activePage", "funds");
-        model.addAttribute("contentFragment", "admin/funds :: content");
-        model.addAttribute("pageCss", new String[]{"/css/admin-funds.css"});
-        model.addAttribute("pageJs", new String[]{"/js/admin-funds.js"});
-        return "fragments/admin-layout";
+        model.addAttribute("pageSubtitle", "Quản lý và theo dõi quỹ chung của các nhóm");
+        return "admin-funds";
     }
 }
 

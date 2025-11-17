@@ -1,19 +1,11 @@
-FROM openjdk:23-jdk-slim
-
+FROM maven:3.9-eclipse-temurin-21 AS build
 WORKDIR /app
-
-# Copy pom.xml
 COPY pom.xml .
+COPY src ./src
+RUN mvn clean package -DskipTests
 
-# Copy source code
-COPY src src
-
-# Install Maven and build the application
-RUN apt-get update && apt-get install -y maven && mvn clean package -DskipTests
-
-# Copy the built jar
-RUN cp target/group-management-service-0.0.1-SNAPSHOT.jar app.jar
-
+FROM eclipse-temurin:21-jre
+WORKDIR /app
+COPY --from=build /app/target/*.jar app.jar
 EXPOSE 8082
-
 ENTRYPOINT ["java", "-jar", "app.jar"]

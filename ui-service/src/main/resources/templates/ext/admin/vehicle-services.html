@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VehicleManager - Quản Lý Dịch Vụ Xe</title>
+    <link rel="stylesheet" th:href="@{/ext/css/vehicle-manager.css}">
+    <link rel="stylesheet" th:href="@{/ext/css/sidebar.css}">
+    <link rel="stylesheet" th:href="@{/ext/css/header.css}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+<div class="admin-container">
+    <div th:replace="ext/fragments/sidebar :: sidebar"></div>
+
+    <main class="main-content">
+        <div th:replace="ext/fragments/header :: header"></div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+            <div>
+                <h1 style="margin: 0; font-size: 24px; font-weight: 600; color: #1E293B;">Quản Lý Các Dịch Vụ Xe</h1>
+                <p style="margin: 8px 0 0 0; color: #64748B; font-size: 14px;">Quản lý dịch vụ bảo dưỡng, kiểm tra và sửa chữa cho xe</p>
+            </div>
+            <button type="button" class="btn-add-new-service" onclick="openAddNewServiceModal()"
+                    style="background: #10B981; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 500; display: flex; align-items: center; gap: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                <i class="fas fa-plus-circle"></i> Thêm Dịch Vụ Mới
+            </button>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card total">
+                <div class="stat-icon"><i class="fas fa-car"></i></div>
+                <div class="stat-info">
+                    <h3>Tổng số xe</h3>
+                    <span class="stat-number" th:text="${totalVehicles}">24</span>
+                </div>
+            </div>
+            <div class="stat-card maintenance">
+                <div class="stat-icon"><i class="fas fa-tools"></i></div>
+                <div class="stat-info">
+                    <h3>Bảo dưỡng</h3>
+                    <span class="stat-number" th:text="${maintenanceVehicles}">6</span>
+                </div>
+            </div>
+            <div class="stat-card inspection">
+                <div class="stat-icon"><i class="fas fa-search"></i></div>
+                <div class="stat-info">
+                    <h3>Kiểm tra</h3>
+                    <span class="stat-number" th:text="${inspectionVehicles}">0</span>
+                </div>
+            </div>
+            <div class="stat-card broken">
+                <div class="stat-icon"><i class="fas fa-exclamation-triangle"></i></div>
+                <div class="stat-info">
+                    <h3>Sửa chữa</h3>
+                    <span class="stat-number" th:text="${brokenVehicles}">2</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="filter-section">
+            <div class="filter-card">
+                <div class="filter-row">
+                    <div class="filter-group">
+                        <label>Tìm kiếm xe...</label>
+                        <input type="text" th:value="${searchQuery}" placeholder="Tìm kiếm xe...">
+                    </div>
+                    <div class="filter-group">
+                        <label>Lọc theo dịch vụ</label>
+                        <select id="serviceFilter" th:value="${serviceFilter}">
+                            <option value="all">Tất cả dịch vụ</option>
+                            <option value="maintenance">Bảo dưỡng</option>
+                            <option value="inspection">Kiểm tra</option>
+                            <option value="repair">Sửa chữa</option>
+                        </select>
+                    </div>
+                    <button type="button" class="btn-filter" id="btnFilter" onclick="applyFilter()">
+                        <i class="fas fa-filter"></i> Lọc
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="table-section">
+            <div class="table-header">
+                <h3>Danh Sách Xe</h3>
+            </div>
+
+            <div class="table-container">
+                <table class="vehicle-table">
+                    <thead>
+                    <tr>
+                        <th>TÊN XE</th>
+                        <th>BIỂN SỐ</th>
+                        <th>LOẠI XE</th>
+                        <th>DỊCH VỤ ĐANG CHỜ</th>
+                        <th>TRẠNG THÁI</th>
+                        <th>NGÀY YÊU CẦU</th>
+                        <th>HÀNH ĐỘNG</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:each="vehicle : ${vehicles}" th:attr="data-vehicle-id=${vehicle.vehicleId}">
+                        <td>
+                            <div class="vehicle-info">
+                                <div class="vehicle-icon" th:class="${vehicle.iconClass}"></div>
+                                <div>
+                                    <div class="vehicle-name" th:text="${vehicle.name}">Toyota Camry 2023</div>
+                                    <div class="vehicle-type" th:text="${vehicle.typeDetail}">Sedan Camry 2023</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td th:text="${vehicle.plateNumber}">30A-12345</td>
+                        <td th:text="${vehicle.category}">Sedan</td>
+                        <td>
+                            <div th:if="${vehicle.services != null and !vehicle.services.isEmpty()}">
+                                <div th:each="service : ${vehicle.services}">
+                                    <span class="status" th:class="'status-' + ${service.statusClass}"
+                                          th:text="${service.serviceName}">Bảo dưỡng định kỳ</span>
+                                    <span class="service-status" th:text="'(' + ${service.status} + ')'">(pending)</span>
+                                </div>
+                            </div>
+                            <span th:if="${vehicle.services == null or vehicle.services.isEmpty()}" class="status status-available">
+                                Không có dịch vụ
+                            </span>
+                        </td>
+                        <td>
+                            <span th:if="${vehicle.overallStatus == 'pending'}" class="status-badge status-pending">
+                                <i class="fas fa-clock"></i> Pending
+                            </span>
+                            <span th:if="${vehicle.overallStatus == 'complete'}" class="status-badge status-complete">
+                                <i class="fas fa-check-circle"></i> Complete
+                            </span>
+                            <span th:if="${vehicle.overallStatus == 'in_progress'}" class="status-badge status-in-progress">
+                                <i class="fas fa-spinner"></i> In Progress
+                            </span>
+                        </td>
+                        <td th:text="${vehicle.formattedRequestDate}">22/10/2024 10:30:00</td>
+                        <td>
+                            <div class="action-buttons">
+                                <button class="btn-edit btn-view-detail"
+                                        title="Xem chi tiết"
+                                        th:attr="data-vehicle-id=${vehicle.vehicleId}">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="pagination" style="justify-content: center; padding: 20px;">
+                <span th:text="'Tổng số: ' + ${totalVehicles} + ' xe'">
+                    Tổng số: 0 xe
+                </span>
+            </div>
+        </div>
+
+        <div class="table-section" style="margin-top: 32px;">
+            <div class="table-header">
+                <h3><i class="fas fa-history" style="color: #8B5CF6; margin-right: 8px;"></i> Lịch Sử Dịch Vụ</h3>
+            </div>
+
+            <div class="table-container">
+                <table class="vehicle-table">
+                    <thead>
+                    <tr>
+                        <th>TÊN XE</th>
+                        <th>BIỂN SỐ</th>
+                        <th>LOẠI XE</th>
+                        <th>TÊN DỊCH VỤ</th>
+                        <th>LOẠI DỊCH VỤ</th>
+                        <th>NGÀY YÊU CẦU</th>
+                        <th>NGÀY HOÀN THÀNH</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    <tr th:if="${completedServices == null or completedServices.isEmpty()}">
+                        <td colspan="7" style="text-align: center; padding: 40px; color: #9CA3AF;">
+                            <i class="fas fa-inbox" style="font-size: 48px; margin-bottom: 16px; display: block; opacity: 0.3;"></i>
+                            Chưa có lịch sử dịch vụ
+                        </td>
+                    </tr>
+                    <tr th:each="service : ${completedServices}">
+                        <td>
+                            <div class="vehicle-info">
+                                <div class="vehicle-icon" style="background: #E9D5FF; display: flex; align-items: center; justify-content: center;">
+                                    <i class="fas fa-car" style="color: #7C3AED; font-size: 16px;"></i>
+                                </div>
+                                <div>
+                                    <div class="vehicle-name" th:text="${service.vehicleName}">-</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td th:text="${service.vehicleNumber}">-</td>
+                        <td th:text="${service.vehicleType}">-</td>
+                        <td th:text="${service.serviceName}">-</td>
+                        <td>
+                            <span class="status-badge status-complete" th:text="${service.serviceType}">-</span>
+                        </td>
+                        <td th:text="${service.formattedRequestDate}">-</td>
+                        <td th:text="${service.formattedCompletionDate}">-</td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="pagination" style="justify-content: center; padding: 20px;">
+                <span th:text="'Tổng số: ' + ${completedServices != null ? completedServices.size() : 0} + ' dịch vụ đã hoàn thành'">
+                    Tổng số: 0 dịch vụ đã hoàn thành
+                </span>
+            </div>
+        </div>
+    </main>
+</div>
+
+<div id="vehicleDetailModal" class="modal">
+    <div class="modal-content modal-large">
+        <div class="modal-header">
+            <h2>Chi Tiết Xe</h2>
+            <span class="modal-close" onclick="closeVehicleDetailModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <div class="detail-section">
+                <h3><i class="fas fa-car"></i> Thông Tin Xe</h3>
+                <div class="detail-grid">
+                    <div class="detail-item">
+                        <label>Mã Xe:</label>
+                        <span id="modalVehicleId">-</span>
+                    </div>
+                    <div class="detail-item">
+                        <label>Tên Xe:</label>
+                        <span id="modalVehicleName">-</span>
+                    </div>
+                    <div class="detail-item">
+                        <label>Biển Số:</label>
+                        <span id="modalPlateNumber">-</span>
+                    </div>
+                    <div class="detail-item">
+                        <label>Loại Xe:</label>
+                        <span id="modalVehicleType">-</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="detail-section">
+                <h3 style="color: #4F46E5; border-bottom: 2px solid #E5E7EB; padding-bottom: 12px;">
+                    <i class="fas fa-tools" style="color: #4F46E5;"></i> Dịch Vụ Đang Chờ
+                    <small style="font-size: 12px; font-weight: normal; color: #6B7280; margin-left: 8px;">
+                        (Pending / In Progress)
+                    </small>
+                </h3>
+                <div id="modalServicesList" class="services-list">
+                    <div class="loading-message">Đang tải dữ liệu...</div>
+                </div>
+            </div>
+
+            <div class="detail-section" style="margin-top: 32px;">
+                <h3 style="color: #8B5CF6; border-bottom: 2px solid #E5E7EB; padding-bottom: 12px;">
+                    <i class="fas fa-history" style="color: #8B5CF6;"></i> Lịch Sử Dịch Vụ
+                    <small style="font-size: 12px; font-weight: normal; color: #6B7280; margin-left: 8px;">
+                        (Các dịch vụ đã hoàn thành - status = completed)
+                    </small>
+                </h3>
+                <div id="modalServicesHistory" class="services-list services-history">
+                    <div class="loading-message">Đang tải dữ liệu...</div>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn-save" onclick="saveChangesAndClose()">Lưu và Đóng</button>
+            <button type="button" class="btn-cancel" onclick="closeVehicleDetailModal()">Hủy</button>
+        </div>
+    </div>
+</div>
+
+<div id="addNewServiceModal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2><i class="fas fa-plus-circle"></i> Thêm Dịch Vụ Mới Vào Hệ Thống</h2>
+            <span class="modal-close" onclick="closeAddNewServiceModal()">&times;</span>
+        </div>
+        <div class="modal-body">
+            <form id="addNewServiceForm">
+                <div class="form-group">
+                    <label for="newServiceId">Mã dịch vụ <span style="color: red;">*</span></label>
+                    <input type="text" id="newServiceId" name="serviceId" required
+                           placeholder="VD: SRV001, MAINT001"
+                           pattern="[A-Za-z0-9]+"
+                           maxlength="20">
+                    <small style="color: #6B7280; font-size: 12px; display: block; margin-top: 5px;">
+                        Mã dịch vụ duy nhất (chữ và số, tối đa 20 ký tự)
+                    </small>
+                </div>
+                <div class="form-group">
+                    <label for="newServiceName">Tên dịch vụ <span style="color: red;">*</span></label>
+                    <input type="text" id="newServiceName" name="serviceName" required
+                           placeholder="VD: Bảo dưỡng định kỳ, Kiểm tra tổng thể"
+                           maxlength="255">
+                    <small style="color: #6B7280; font-size: 12px; display: block; margin-top: 5px;">
+                        Tên dịch vụ (tối đa 255 ký tự)
+                    </small>
+                </div>
+                <div class="form-group">
+                    <label for="newServiceType">Loại dịch vụ <span style="color: red;">*</span></label>
+                    <select id="newServiceType" name="serviceType" required>
+                        <option value="">-- Chọn loại dịch vụ --</option>
+                        <option value="Bảo dưỡng">Bảo dưỡng</option>
+                        <option value="Kiểm tra">Kiểm tra</option>
+                        <option value="Sửa chữa">Sửa chữa</option>
+                    </select>
+                    <small style="color: #6B7280; font-size: 12px; display: block; margin-top: 5px;">
+                        Chọn loại dịch vụ (Bảo dưỡng, Kiểm tra, Sửa chữa)
+                    </small>
+                </div>
+                <div id="addNewServiceMessage" style="display: none; margin-top: 15px;"></div>
+            </form>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn-cancel" onclick="closeAddNewServiceModal()">Hủy</button>
+            <button type="button" class="btn-save" onclick="submitAddNewService()">Thêm Dịch Vụ</button>
+        </div>
+    </div>
+</div>
+
+<script th:src="@{/ext/js/vehicle-manager.js}"></script>
+</body>
+</html>
+
+

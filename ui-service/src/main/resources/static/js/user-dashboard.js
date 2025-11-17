@@ -10,14 +10,28 @@ const API = {
     FUND: '/api/fund'
 };
 
-// Current User - get from URL parameter or default to 4
-const urlParams = new URLSearchParams(window.location.search);
-const CURRENT_USER_ID = parseInt(urlParams.get('userId')) || 2;
+// Current User - retrieved from server-injected dataset or local storage fallback
+const dashboardContainer = document.querySelector('.user-container');
+let CURRENT_USER_ID = dashboardContainer?.dataset.userId
+    ? parseInt(dashboardContainer.dataset.userId, 10)
+    : null;
+
+if (!CURRENT_USER_ID) {
+    const storedUserId = localStorage.getItem('userId');
+    CURRENT_USER_ID = storedUserId ? parseInt(storedUserId, 10) : null;
+}
+
+if (!CURRENT_USER_ID || Number.isNaN(CURRENT_USER_ID)) {
+    console.warn('Không tìm thấy userId trong dataset hoặc localStorage, sử dụng 0 làm mặc định.');
+    CURRENT_USER_ID = 0;
+}
 
 // Global State
 let currentPage = 'home';
 let fundAutoRefreshInterval = null;
 let lastPendingVoteCount = 0;
+let lastPendingLeaveRequestCount = {}; // Track pending leave requests per group
+let leaveRequestAutoRefreshInterval = null; // Auto-refresh interval for leave requests
 
 // Initialize on DOM load
 document.addEventListener('DOMContentLoaded', function() {
@@ -26,20 +40,45 @@ document.addEventListener('DOMContentLoaded', function() {
     initPaymentMethods();
     initFundModals();
     initCostFilters();
+    
+    // Detect current page from URL and load appropriate page
+    const path = window.location.pathname;
+    let page = 'home';
+    if (path.includes('/user/costs')) {
+        page = 'costs';
+    } else if (path.includes('/user/usage')) {
+        page = 'usage';
+    } else if (path.includes('/user/payments')) {
+        page = 'payments';
+    } else if (path.includes('/user/fund')) {
+        page = 'fund';
+    }
+    
+    // Load the appropriate page
+    switch(page) {
+        case 'home':
     loadHomePage();
+            break;
+        case 'costs':
+            loadCostsPage();
+            break;
+        case 'usage':
+            loadUsagePage();
+            break;
+        case 'payments':
+            loadPaymentsPage();
+            break;
+        case 'fund':
+            loadFundPage();
+            break;
+    }
 });
 
 // ============ NAVIGATION ============
 function initNavigation() {
-    const navItems = document.querySelectorAll('.nav-item');
-    
-    navItems.forEach(item => {
-        item.addEventListener('click', function(e) {
-            e.preventDefault();
-            const page = this.getAttribute('data-page');
-            switchPage(page);
-        });
-    });
+    // Navigation links now use real URLs, so we don't need to preventDefault
+    // The page will reload with the correct URL
+    // We only need to handle programmatic navigation for internal links
     
     // Handle view-all links
     document.querySelectorAll('.view-all').forEach(link => {
@@ -48,6 +87,24 @@ function initNavigation() {
             const page = this.getAttribute('data-page');
             if (page) switchPage(page);
         });
+    });
+    
+    // Handle stat-link clicks
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('.stat-link')) {
+            e.preventDefault();
+            const link = e.target.closest('.stat-link');
+            const page = link.getAttribute('data-page');
+            if (page) switchPage(page);
+        }
+        
+        // Handle quick-action-btn clicks
+        if (e.target.closest('.quick-action-btn')) {
+            e.preventDefault();
+            const btn = e.target.closest('.quick-action-btn');
+            const page = btn.getAttribute('data-page');
+            if (page) switchPage(page);
+        }
     });
 }
 
@@ -88,23 +145,14 @@ function switchPage(page) {
         case 'fund':
             loadFundPage();
             break;
-        case 'browse-groups':
-            loadBrowseGroupsPage();
-            break;
     }
 }
 
-// ============ HOME PAGE ============
+// ============ HOME PAGE (Nhóm của tôi) ============
 async function loadHomePage() {
     try {
-        // Load quick stats
-        await loadQuickStats();
-        
-        // Load my groups
+        // Chỉ load danh sách nhóm
         await loadMyGroups();
-        
-        // Load recent costs
-        await loadRecentCosts();
         
     } catch (error) {
         console.error('Error loading home page:', error);
@@ -113,14 +161,136 @@ async function loadHomePage() {
 
 async function loadQuickStats() {
     try {
-        // Mock data - replace with actual API calls
-        document.getElementById('my-pending').textContent = formatCurrency(450000);
-        document.getElementById('my-paid').textContent = formatCurrency(1200000);
-        document.getElementById('my-km').textContent = '350 km';
-        document.getElementById('my-ownership').textContent = '33%';
+        // Get current month and year for filtering
+        const now = new Date();
+        const currentMonth = now.getMonth() + 1;
+        const currentYear = now.getFullYear();
+        const monthStart = new Date(currentYear, currentMonth - 1, 1);
+        const monthEnd = new Date(currentYear, currentMonth, 0, 23, 59, 59);
+        
+        // Fetch pending cost shares
+        let totalPending = 0;
+        try {
+            const pendingResponse = await fetch(`${API.COST_SHARES}/user/${CURRENT_USER_ID}/pending`);
+            if (pendingResponse.ok) {
+                const pendingShares = await pendingResponse.json();
+                if (Array.isArray(pendingShares)) {
+                    totalPending = pendingShares.reduce((sum, share) => {
+                        return sum + (share.amountShare || 0);
+                    }, 0);
+                }
+            }
+        } catch (e) {
+            console.warn('Error fetching pending shares:', e);
+        }
+        
+        // Fetch paid payments for current month
+        let totalPaid = 0;
+        try {
+            const paymentsResponse = await fetch(`${API.PAYMENTS}/user/${CURRENT_USER_ID}/history`);
+            if (paymentsResponse.ok) {
+                const payments = await paymentsResponse.json();
+                if (Array.isArray(payments)) {
+                    // Filter by current month based on paymentDate
+                    const currentMonthPayments = payments.filter(payment => {
+                        if (!payment.paymentDate) return false;
+                        try {
+                            const paymentDate = new Date(payment.paymentDate);
+                            // Check if date is valid
+                            if (isNaN(paymentDate.getTime())) return false;
+                            // Normalize dates to start of day for comparison
+                            const paymentDateOnly = new Date(paymentDate.getFullYear(), paymentDate.getMonth(), paymentDate.getDate());
+                            const monthStartOnly = new Date(monthStart.getFullYear(), monthStart.getMonth(), monthStart.getDate());
+                            const monthEndOnly = new Date(monthEnd.getFullYear(), monthEnd.getMonth(), monthEnd.getDate());
+                            return paymentDateOnly >= monthStartOnly && paymentDateOnly <= monthEndOnly;
+                        } catch (e) {
+                            console.warn('Error parsing payment date:', payment.paymentDate, e);
+                            return false;
+                        }
+                    });
+                    totalPaid = currentMonthPayments.reduce((sum, payment) => {
+                        return sum + (parseFloat(payment.amount) || 0);
+                    }, 0);
+                }
+            }
+        } catch (e) {
+            console.warn('Error fetching paid payments:', e);
+        }
+        
+        // Fetch usage tracking for current month
+        let totalKm = 0;
+        try {
+            // Get all usage history for user
+            const usageResponse = await fetch(`${API.USAGE}/user/${CURRENT_USER_ID}/history`);
+            if (usageResponse.ok) {
+                const usageData = await usageResponse.json();
+                if (Array.isArray(usageData)) {
+                    // Filter by current month and year
+                    const currentMonthUsage = usageData.filter(usage => {
+                        // Handle both number and string month/year
+                        const usageMonth = typeof usage.month === 'string' ? parseInt(usage.month) : usage.month;
+                        const usageYear = typeof usage.year === 'string' ? parseInt(usage.year) : usage.year;
+                        return usageMonth === currentMonth && usageYear === currentYear;
+                    });
+                    totalKm = currentMonthUsage.reduce((sum, usage) => {
+                        const km = parseFloat(usage.kmDriven) || 0;
+                        return sum + km;
+                    }, 0);
+                }
+            }
+        } catch (e) {
+            console.warn('Error fetching usage data:', e);
+        }
+        
+        // Fetch ownership percentage from groups
+        let ownershipPercent = 0;
+        try {
+            const groupsResponse = await fetch(`${API.GROUPS}/user/${CURRENT_USER_ID}`);
+            if (groupsResponse.ok) {
+                const groups = await groupsResponse.json();
+                if (Array.isArray(groups) && groups.length > 0) {
+                    // Get average ownership across all groups
+                    let totalOwnership = 0;
+                    let groupCount = 0;
+                    
+                    for (const group of groups) {
+                        try {
+                            const membersResponse = await fetch(`${API.GROUPS}/${group.groupId}/members`);
+                            if (membersResponse.ok) {
+                                const members = await membersResponse.json();
+                                const userMember = members.find(m => m.userId === CURRENT_USER_ID);
+                                if (userMember && userMember.ownershipPercent) {
+                                    totalOwnership += userMember.ownershipPercent;
+                                    groupCount++;
+                                }
+                            }
+                        } catch (e) {
+                            console.warn(`Error fetching members for group ${group.groupId}:`, e);
+                        }
+                    }
+                    
+                    if (groupCount > 0) {
+                        ownershipPercent = totalOwnership / groupCount;
+                    }
+                }
+            }
+        } catch (e) {
+            console.warn('Error fetching ownership data:', e);
+        }
+        
+        // Update UI
+        document.getElementById('my-pending').textContent = formatCurrency(totalPending);
+        document.getElementById('my-paid').textContent = formatCurrency(totalPaid);
+        document.getElementById('my-km').textContent = `${Math.round(totalKm)} km`;
+        document.getElementById('my-ownership').textContent = `${ownershipPercent.toFixed(1)}%`;
         
     } catch (error) {
         console.error('Error loading stats:', error);
+        // Set default values on error
+        document.getElementById('my-pending').textContent = formatCurrency(0);
+        document.getElementById('my-paid').textContent = formatCurrency(0);
+        document.getElementById('my-km').textContent = '0 km';
+        document.getElementById('my-ownership').textContent = '0%';
     }
 }
 
@@ -180,15 +350,27 @@ async function loadMyGroups() {
                         <span>Xe #${group.vehicleId || 'N/A'}</span>
                     </div>
                 </div>
-                ${isAdmin ? `
                 <div class="group-actions">
+                    <button class="btn btn-info btn-sm view-group-btn" data-group-id="${group.groupId}" data-group-name="${escapeHtml(group.groupName)}">
+                        <i class="fas fa-info-circle"></i> Xem chi tiết
+                    </button>
+                    ${isAdmin ? `
                     <button class="btn btn-primary btn-sm manage-group-btn" data-group-id="${group.groupId}" data-group-name="${escapeHtml(group.groupName)}">
                         <i class="fas fa-cog"></i> Quản lý nhóm
                     </button>
-            </div>
                 ` : ''}
+                </div>
             </div>
         `}).join('');
+        
+        // Bind click handlers for view group buttons
+        document.querySelectorAll('.view-group-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                const groupId = parseInt(this.getAttribute('data-group-id'));
+                const groupName = this.getAttribute('data-group-name');
+                openViewGroupModal(groupId, groupName);
+            });
+        });
         
         // Bind click handlers for manage group buttons
         document.querySelectorAll('.manage-group-btn').forEach(btn => {
@@ -541,7 +723,34 @@ function getCostTypeInfo(costType) {
 async function loadUsagePage() {
     try {
         // Load groups for selection (user's groups)
-        await loadGroupsForUsage();
+        const groups = await loadGroupsForUsage();
+        
+        // Auto-load data for first group if available
+        if (groups && groups.length > 0) {
+            const groupSelect = document.getElementById('usage-group');
+            const monthSelect = document.getElementById('usage-month');
+            const yearInput = document.getElementById('usage-year');
+            
+            // Set current month/year if not already set
+            if (monthSelect && !monthSelect.value) {
+                const now = new Date();
+                monthSelect.value = now.getMonth() + 1;
+            }
+            if (yearInput && !yearInput.value) {
+                const now = new Date();
+                yearInput.value = now.getFullYear();
+            }
+            
+            // Auto-select first group and load data
+            if (groupSelect && !groupSelect.value && groups.length > 0) {
+                groupSelect.value = groups[0].groupId;
+                // Load usage data for selected group
+                await loadGroupUsageInfo();
+            } else if (groupSelect && groupSelect.value) {
+                // If group is already selected, load data
+                await loadGroupUsageInfo();
+            }
+        }
         
         // Load usage history
         await loadUsageHistory();
@@ -570,8 +779,7 @@ function initUsageForm() {
     if (monthSelect) monthSelect.value = now.getMonth() + 1;
     if (yearInput) yearInput.value = now.getFullYear();
     
-    // Load groups for dropdown
-    loadGroupsForUsage();
+    // Note: Groups will be loaded by loadUsagePage() which also auto-loads data
 }
 
 async function loadGroupsForUsage() {
@@ -586,8 +794,11 @@ async function loadGroupsForUsage() {
             groupSelect.innerHTML = '<option value="">-- Chọn nhóm --</option>' +
                 groups.map(g => `<option value="${g.groupId}">${g.groupName}</option>`).join('');
         }
+        
+        return groups || [];
     } catch (error) {
         console.error('Error loading groups:', error);
+        return [];
     }
 }
 
@@ -597,7 +808,8 @@ async function loadGroupUsageInfo() {
     const year = document.getElementById('usage-year').value;
     
     if (!groupId || !month || !year) {
-        document.getElementById('group-usage-stats').style.display = 'none';
+        const statsCard = document.getElementById('group-usage-stats-card');
+        if (statsCard) statsCard.style.display = 'none';
         document.getElementById('cost-preview').style.display = 'none';
         return;
     }
@@ -622,11 +834,29 @@ async function loadGroupUsageInfo() {
         
         // Calculate totals
         const totalKm = groupUsageData.reduce((sum, u) => sum + (u.kmDriven || 0), 0);
-        const myUsage = groupUsageData.find(u => u.userId === CURRENT_USER_ID);
+        // Find current user's usage - ensure type comparison is correct
+        const myUsage = groupUsageData.find(u => parseInt(u.userId) === parseInt(CURRENT_USER_ID));
         const myKm = myUsage ? (myUsage.kmDriven || 0) : 0;
         const myUsagePercent = totalKm > 0 ? ((myKm / totalKm) * 100).toFixed(2) : 0;
         
-        // Update UI
+        // Update statistics cards
+        const monthNames = ['Tháng 1', 'Tháng 2', 'Tháng 3', 'Tháng 4', 'Tháng 5', 'Tháng 6', 
+                           'Tháng 7', 'Tháng 8', 'Tháng 9', 'Tháng 10', 'Tháng 11', 'Tháng 12'];
+        const monthName = monthNames[parseInt(month) - 1] || `Tháng ${month}`;
+        
+        const statCurrentKm = document.getElementById('usage-stat-current-km');
+        const statGroupTotal = document.getElementById('usage-stat-group-total');
+        const statPercent = document.getElementById('usage-stat-percent');
+        const statOwnership = document.getElementById('usage-stat-ownership');
+        const statPeriod = document.getElementById('usage-stat-period');
+        
+        if (statCurrentKm) statCurrentKm.textContent = myKm.toFixed(1) + ' km';
+        if (statGroupTotal) statGroupTotal.textContent = totalKm.toFixed(1) + ' km';
+        if (statPercent) statPercent.textContent = myUsagePercent + '%';
+        if (statOwnership) statOwnership.textContent = myOwnership.toFixed(2) + '%';
+        if (statPeriod) statPeriod.textContent = `${monthName}/${year}`;
+        
+        // Update detailed stats card
         document.getElementById('my-ownership-percent').textContent = myOwnership.toFixed(2) + '%';
         document.getElementById('group-total-km').textContent = totalKm.toFixed(1) + ' km';
         document.getElementById('my-current-km').textContent = myKm.toFixed(1) + ' km';
@@ -643,14 +873,16 @@ async function loadGroupUsageInfo() {
         }
         
         // Show stats card
-        document.getElementById('group-usage-stats').style.display = 'block';
+        const statsCard = document.getElementById('group-usage-stats-card');
+        if (statsCard) statsCard.style.display = 'block';
         
         // Update preview
         updateUsagePreview();
         
     } catch (error) {
         console.error('Error loading group usage info:', error);
-        document.getElementById('group-usage-stats').style.display = 'none';
+        const statsCard = document.getElementById('group-usage-stats-card');
+        if (statsCard) statsCard.style.display = 'none';
     }
 }
 
@@ -663,6 +895,9 @@ function updateUsagePreview() {
     
     if (!groupId || !month || !year || kmDriven <= 0) {
         document.getElementById('cost-preview').style.display = 'none';
+        // Update statistics cards with current input
+        const statCurrentKm = document.getElementById('usage-stat-current-km');
+        if (statCurrentKm) statCurrentKm.textContent = kmDriven.toFixed(1) + ' km';
         return;
     }
     
@@ -679,13 +914,22 @@ function updateUsagePreview() {
         totalKm = kmDriven; // Only current user's input
     }
     
+    // Calculate percentage
+    const myPercent = totalKm > 0 ? ((kmDriven / totalKm) * 100).toFixed(2) : 0;
+    
+    // Update statistics cards
+    const statCurrentKm = document.getElementById('usage-stat-current-km');
+    const statGroupTotal = document.getElementById('usage-stat-group-total');
+    const statPercent = document.getElementById('usage-stat-percent');
+    
+    if (statCurrentKm) statCurrentKm.textContent = kmDriven.toFixed(1) + ' km';
+    if (statGroupTotal) statGroupTotal.textContent = totalKm.toFixed(1) + ' km';
+    if (statPercent) statPercent.textContent = myPercent + '%';
+    
     if (totalKm <= 0) {
         document.getElementById('cost-preview').style.display = 'none';
         return;
     }
-    
-    // Calculate percentage
-    const myPercent = ((kmDriven / totalKm) * 100).toFixed(2);
     
     // Example cost: 1,000,000 VNĐ
     const exampleCost = 1000000;
@@ -1364,6 +1608,27 @@ async function loadFundPage() {
     }
 }
 
+// Switch between fund tabs
+function switchFundTab(tabName) {
+    // Update tab buttons
+    document.querySelectorAll('.fund-tab').forEach(tab => {
+        tab.classList.remove('active');
+    });
+    const activeTab = document.querySelector(`.fund-tab[data-tab="${tabName}"]`);
+    if (activeTab) {
+        activeTab.classList.add('active');
+    }
+    
+    // Update tab content
+    document.querySelectorAll('.fund-tab-content').forEach(content => {
+        content.classList.remove('active');
+    });
+    const activeContent = document.getElementById(`fund-${tabName}-tab`);
+    if (activeContent) {
+        activeContent.classList.add('active');
+    }
+}
+
 // Auto-refresh cho trang Fund (kiểm tra yêu cầu mới mỗi 15 giây)
 function startFundAutoRefresh() {
     // Dừng interval cũ nếu có
@@ -1573,8 +1838,18 @@ async function loadMyPendingRequests() {
 function updateMyPendingDisplay(requests) {
     const badge = document.getElementById('myPendingBadge');
     const tbody = document.getElementById('myPendingBody');
+    const requestsTabBadge = document.getElementById('requestsTabBadge');
     
     if (badge) badge.textContent = requests.length;
+    
+    // Cập nhật badge trên tab (tổng số yêu cầu cần xử lý)
+    if (requestsTabBadge) {
+        // Tính tổng: yêu cầu của tôi + yêu cầu cần vote
+        const pendingVoteCount = document.getElementById('pendingVoteBadge')?.textContent || 0;
+        const totalRequests = requests.length + parseInt(pendingVoteCount);
+        requestsTabBadge.textContent = totalRequests;
+        requestsTabBadge.style.display = totalRequests > 0 ? 'inline-flex' : 'none';
+    }
     
     if (!tbody) return;
     
@@ -1793,6 +2068,7 @@ function updatePendingVoteDisplay(requests) {
     const voteSection = document.getElementById('pendingVoteSection');
     const voteBadge = document.getElementById('pendingVoteBadge');
     const voteBody = document.getElementById('pendingVoteBody');
+    const requestsTabBadge = document.getElementById('requestsTabBadge');
     
     if (!voteSection || !voteBadge || !voteBody) {
         console.warn('⚠️ Pending vote section elements not found');
@@ -1804,6 +2080,12 @@ function updatePendingVoteDisplay(requests) {
     
     // Cập nhật badge
     voteBadge.textContent = requests.length;
+    
+    // Cập nhật badge trên tab
+    if (requestsTabBadge) {
+        requestsTabBadge.textContent = requests.length;
+        requestsTabBadge.style.display = requests.length > 0 ? 'inline-flex' : 'none';
+    }
     
     // Render danh sách yêu cầu hoặc message trống
     if (requests.length === 0) {
@@ -2336,7 +2618,39 @@ function formatFundDate(dateString) {
 let allGroups = [];
 let myGroupIds = [];
 
-async function loadBrowseGroupsPage() {
+// Toggle browse groups section
+let browseGroupsLoaded = false;
+async function toggleBrowseGroups() {
+    const section = document.getElementById('browse-groups-section');
+    const toggleBtn = document.getElementById('toggle-browse-groups');
+    
+    if (!section || !toggleBtn) return;
+    
+    const isVisible = section.style.display !== 'none';
+    
+    if (isVisible) {
+        // Hide section
+        section.style.display = 'none';
+        toggleBtn.innerHTML = '<i class="fas fa-chevron-down"></i> Hiển thị';
+    } else {
+        // Show section
+        section.style.display = 'block';
+        toggleBtn.innerHTML = '<i class="fas fa-chevron-up"></i> Ẩn';
+        
+        // Load groups if not loaded yet
+        if (!browseGroupsLoaded) {
+            try {
+                await loadBrowseGroupsData();
+                browseGroupsLoaded = true;
+            } catch (error) {
+                console.error('Error loading browse groups:', error);
+                showToast('Lỗi khi tải danh sách nhóm', 'error');
+            }
+        }
+    }
+}
+
+async function loadBrowseGroupsData() {
     try {
         // Load all groups and user's groups
         await Promise.all([
@@ -2351,8 +2665,8 @@ async function loadBrowseGroupsPage() {
         renderBrowseGroups();
         
     } catch (error) {
-        console.error('Error loading browse groups page:', error);
-        showToast('Lỗi khi tải danh sách nhóm', 'error');
+        console.error('Error loading browse groups data:', error);
+        throw error;
     }
 }
 
@@ -2851,7 +3165,11 @@ async function handleJoinGroup(e) {
                 console.log('✅ User already has same ownership, treating as success');
                 showToast('Bạn đã là thành viên của nhóm này với tỷ lệ sở hữu này rồi', 'info');
                 closeJoinGroupModal();
-                await loadBrowseGroupsPage();
+                // Reload groups
+                await loadMyGroups();
+                if (browseGroupsLoaded) {
+                    await loadBrowseGroupsData();
+                }
                 isJoiningGroup = false;
                 return;
             }
@@ -2936,8 +3254,11 @@ async function handleJoinGroup(e) {
         showToast('Tham gia nhóm thành công!', 'success');
         closeJoinGroupModal();
         
-        // Reload page to update groups list
-        await loadBrowseGroupsPage();
+        // Reload groups
+        await loadMyGroups();
+        if (browseGroupsLoaded) {
+            await loadBrowseGroupsData();
+        }
         
     } catch (error) {
         console.error('❌ Error joining group:', error);
@@ -2970,10 +3291,24 @@ function escapeHtml(text) {
 let currentManagingGroupId = null;
 
 function openManageGroupModal(groupId, groupName) {
-    currentManagingGroupId = groupId;
+    // Đảm bảo groupId là number
+    const numGroupId = Number(groupId);
+    if (isNaN(numGroupId)) {
+        console.error('Invalid groupId:', groupId);
+        showToast('Lỗi: ID nhóm không hợp lệ', 'error');
+        return;
+    }
+    
+    currentManagingGroupId = numGroupId;
     document.getElementById('manage-group-name').textContent = groupName;
     document.getElementById('manageGroupModal').classList.add('active');
-    loadGroupMembers(groupId);
+    loadGroupMembers(numGroupId);
+    
+    // Load and update pending leave requests count
+    updatePendingLeaveRequestsBadge(numGroupId);
+    
+    // Start auto-refresh for leave requests (check every 10 seconds)
+    startLeaveRequestAutoRefresh(numGroupId);
     
     // Reset add member form
     document.getElementById('addMemberForm').reset();
@@ -2982,6 +3317,23 @@ function openManageGroupModal(groupId, groupName) {
 function closeManageGroupModal() {
     document.getElementById('manageGroupModal').classList.remove('active');
     currentManagingGroupId = null;
+    
+    // Stop auto-refresh when modal is closed
+    stopLeaveRequestAutoRefresh();
+}
+
+function openLeaveRequestsModalFromManage() {
+    if (currentManagingGroupId) {
+        // Lưu groupId và groupName trước khi đóng modal (vì closeManageGroupModal sẽ set currentManagingGroupId = null)
+        const groupId = currentManagingGroupId;
+        const groupName = document.getElementById('manage-group-name').textContent;
+        closeManageGroupModal();
+        // Đảm bảo groupId là number, không phải string
+        openLeaveRequestsModal(Number(groupId), groupName);
+    } else {
+        console.error('No group is currently being managed');
+        showToast('Không tìm thấy thông tin nhóm', 'error');
+    }
 }
 
 async function loadGroupMembers(groupId) {
@@ -3051,9 +3403,101 @@ async function loadGroupMembers(groupId) {
             </div>
         `;
         
+        // Update pending leave requests badge after loading members
+        updatePendingLeaveRequestsBadge(groupId);
+        
     } catch (error) {
         console.error('Error loading group members:', error);
         container.innerHTML = '<div class="alert alert-danger"><i class="fas fa-exclamation-circle"></i> Lỗi khi tải danh sách thành viên</div>';
+    }
+}
+
+/**
+ * Cập nhật badge hiển thị số lượng yêu cầu rời nhóm đang chờ
+ */
+async function updatePendingLeaveRequestsBadge(groupId) {
+    try {
+        const response = await fetch(`${API.GROUPS}/${groupId}/leave-requests?currentUserId=${CURRENT_USER_ID}`);
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            console.warn('Failed to load leave requests for badge:', response.status, errorData);
+            return;
+        }
+        
+        const data = await response.json();
+        console.log('Leave requests data:', data); // Debug log
+        
+        // Xử lý cả 2 format: Map (mới) và List (cũ - để tương thích)
+        let pendingCount = 0;
+        if (data.pending !== undefined) {
+            // Format mới: { requests: [], total: X, pending: Y }
+            pendingCount = data.pending || 0;
+        } else if (Array.isArray(data)) {
+            // Format cũ: List - đếm số pending
+            pendingCount = data.filter(r => r.status === 'Pending').length;
+        }
+        
+        // Tìm nút "Yêu cầu rời nhóm" và cập nhật badge
+        const leaveRequestBtn = document.querySelector('button[onclick="openLeaveRequestsModalFromManage()"]');
+        if (leaveRequestBtn) {
+            // Tìm hoặc tạo badge
+            let badge = leaveRequestBtn.querySelector('.leave-request-badge');
+            if (!badge) {
+                badge = document.createElement('span');
+                badge.className = 'badge badge-warning leave-request-badge';
+                badge.style.marginLeft = '8px';
+                badge.style.display = 'inline-block';
+                leaveRequestBtn.appendChild(badge);
+            }
+            
+            if (pendingCount > 0) {
+                badge.textContent = pendingCount;
+                badge.style.display = 'inline-block';
+            } else {
+                badge.style.display = 'none';
+            }
+        } else {
+            console.warn('Leave request button not found');
+        }
+        
+        // Kiểm tra xem có yêu cầu mới không và hiển thị thông báo
+        const lastCount = lastPendingLeaveRequestCount[groupId] || 0;
+        if (pendingCount > lastCount && lastCount > 0) {
+            // Có yêu cầu mới
+            const newCount = pendingCount - lastCount;
+            showToast(`🔔 Có ${newCount} yêu cầu rời nhóm mới cần bạn xử lý!`, 'info');
+        }
+        lastPendingLeaveRequestCount[groupId] = pendingCount;
+        
+    } catch (error) {
+        console.error('Error updating pending leave requests badge:', error);
+    }
+}
+
+/**
+ * Bắt đầu auto-refresh để kiểm tra yêu cầu rời nhóm mới
+ */
+function startLeaveRequestAutoRefresh(groupId) {
+    // Dừng interval cũ nếu có
+    stopLeaveRequestAutoRefresh();
+    
+    // Kiểm tra mỗi 10 giây
+    leaveRequestAutoRefreshInterval = setInterval(() => {
+        if (currentManagingGroupId === groupId) {
+            updatePendingLeaveRequestsBadge(groupId);
+        } else {
+            stopLeaveRequestAutoRefresh();
+        }
+    }, 10000); // 10 giây
+}
+
+/**
+ * Dừng auto-refresh cho yêu cầu rời nhóm
+ */
+function stopLeaveRequestAutoRefresh() {
+    if (leaveRequestAutoRefreshInterval) {
+        clearInterval(leaveRequestAutoRefreshInterval);
+        leaveRequestAutoRefreshInterval = null;
     }
 }
 
@@ -3523,6 +3967,12 @@ async function loadGroupDecisions() {
         const pendingBadge = document.getElementById('pendingDecisionsBadge');
         if (pendingBadge) pendingBadge.textContent = pendingDecisions.length;
         
+        const decisionsTabBadge = document.getElementById('decisionsTabBadge');
+        if (decisionsTabBadge) {
+            decisionsTabBadge.textContent = pendingDecisions.length;
+            decisionsTabBadge.style.display = pendingDecisions.length > 0 ? 'inline-flex' : 'none';
+        }
+        
         // Update tables
         updateAllDecisionsTable(allDecisions, categorizeDecision, getDecisionTypeLabel);
         updatePendingDecisionsTable(pendingDecisions, categorizeDecision, getDecisionTypeLabel);
@@ -3749,5 +4199,532 @@ async function voteOnDecision(voteId, choice) {
 function viewDecisionDetail(voteId) {
     // Navigate to voting page or show modal
     window.location.href = `/groups/voting?voteId=${voteId}`;
+}
+
+// ========================================
+// VIEW GROUP MODAL FUNCTIONS
+// ========================================
+
+let currentViewingGroupId = null;
+
+async function openViewGroupModal(groupId, groupName) {
+    currentViewingGroupId = groupId;
+    document.getElementById('view-group-name').textContent = groupName;
+    document.getElementById('viewGroupModal').classList.add('active');
+    
+    // Load membership info
+    await loadMyMembershipInfo(groupId);
+    
+    // Load members list
+    await loadViewGroupMembers(groupId);
+    
+    // Load leave request status
+    await loadMyLeaveRequestStatus(groupId);
+    
+    // Setup form handler
+    const form = document.getElementById('leaveGroupForm');
+    form.onsubmit = async (e) => {
+        e.preventDefault();
+        await submitLeaveRequest(groupId);
+    };
+}
+
+function closeViewGroupModal() {
+    document.getElementById('viewGroupModal').classList.remove('active');
+    currentViewingGroupId = null;
+    document.getElementById('leaveGroupForm').reset();
+}
+
+async function loadMyMembershipInfo(groupId) {
+    const container = document.getElementById('my-membership-info');
+    container.innerHTML = '<div class="loading-spinner"><i class="fas fa-spinner fa-spin"></i> Đang tải...</div>';
+    
+    try {
+        const response = await fetch(`${API.GROUPS}/${groupId}/members/me/${CURRENT_USER_ID}`);
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.message || 'Failed to load membership info');
+        }
+        
+        const data = await response.json();
+        
+        container.innerHTML = `
+            <div class="membership-details">
+                <div class="detail-row">
+                    <span class="detail-label"><i class="fas fa-id-card"></i> Member ID:</span>
+                    <span class="detail-value">#${data.memberId}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label"><i class="fas fa-user-shield"></i> Quyền:</span>
+                    <span class="detail-value">
+                        <span class="badge ${data.role === 'Admin' ? 'badge-admin' : 'badge-member'}">
+                            ${data.role === 'Admin' ? '<i class="fas fa-crown"></i> Admin' : '<i class="fas fa-user"></i> Thành viên'}
+                        </span>
+                    </span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label"><i class="fas fa-percent"></i> Tỷ lệ sở hữu:</span>
+                    <span class="detail-value"><strong>${(data.ownershipPercent || 0).toFixed(2)}%</strong></span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label"><i class="fas fa-calendar"></i> Ngày tham gia:</span>
+                    <span class="detail-value">${data.joinedAt ? formatDate(data.joinedAt) : 'N/A'}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label"><i class="fas fa-users"></i> Tổng thành viên:</span>
+                    <span class="detail-value">${data.totalMembers || 0}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label"><i class="fas fa-chart-pie"></i> Tổng tỷ lệ sở hữu:</span>
+                    <span class="detail-value">${(data.totalOwnership || 0).toFixed(2)}%</span>
+                </div>
+            </div>
+        `;
+    } catch (error) {
+        console.error('Error loading membership info:', error);
+        container.innerHTML = `<div class="error-message">❌ ${error.message}</div>`;
+    }
+}
+
+async function loadViewGroupMembers(groupId) {
+    const container = document.getElementById('view-members-list-container');
+    container.innerHTML = '<div class="loading-spinner"><i class="fas fa-spinner fa-spin"></i> Đang tải...</div>';
+    
+    try {
+        const response = await fetch(`${API.GROUPS}/${groupId}/members/view`);
+        if (!response.ok) throw new Error('Failed to load members');
+        
+        const data = await response.json();
+        const members = data.members || [];
+        
+        if (members.length === 0) {
+            container.innerHTML = '<p style="text-align: center; color: var(--text-light);">Chưa có thành viên nào</p>';
+            return;
+        }
+        
+        container.innerHTML = `
+            <div class="members-summary">
+                <span><strong>Tổng thành viên:</strong> ${data.totalMembers || 0}</span>
+                <span><strong>Tổng tỷ lệ sở hữu:</strong> ${(data.totalOwnership || 0).toFixed(2)}%</span>
+            </div>
+            <div class="members-table">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>User ID</th>
+                            <th>Quyền</th>
+                            <th>Tỷ lệ sở hữu</th>
+                            <th>Ngày tham gia</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${members.map(member => `
+                            <tr ${member.userId === CURRENT_USER_ID ? 'class="current-user-row"' : ''}>
+                                <td>User #${member.userId} ${member.userId === CURRENT_USER_ID ? '<span class="badge badge-info">Bạn</span>' : ''}</td>
+                                <td>
+                                    <span class="badge ${member.role === 'Admin' ? 'badge-admin' : 'badge-member'}">
+                                        ${member.role === 'Admin' ? '<i class="fas fa-crown"></i> Admin' : '<i class="fas fa-user"></i> Thành viên'}
+                                    </span>
+                                </td>
+                                <td>${(member.ownershipPercent || 0).toFixed(2)}%</td>
+                                <td>${member.joinedAt ? formatDate(member.joinedAt) : 'N/A'}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
+    } catch (error) {
+        console.error('Error loading members:', error);
+        container.innerHTML = `<div class="error-message">❌ ${error.message}</div>`;
+    }
+}
+
+async function loadMyLeaveRequestStatus(groupId) {
+    const container = document.getElementById('leave-request-status');
+    
+    try {
+        const response = await fetch(`${API.GROUPS}/${groupId}/leave-requests/me/${CURRENT_USER_ID}`);
+        if (!response.ok) throw new Error('Failed to load leave request status');
+        
+        const data = await response.json();
+        
+        if (!data.hasRequest) {
+            container.innerHTML = '<p style="color: var(--text-light);">Bạn chưa có yêu cầu rời nhóm nào</p>';
+            document.getElementById('submitLeaveRequestBtn').disabled = false;
+            return;
+        }
+        
+        const status = data.status;
+        let statusHtml = '';
+        
+        if (status === 'Pending') {
+            statusHtml = `
+                <div class="alert alert-warning">
+                    <i class="fas fa-clock"></i> 
+                    <strong>Yêu cầu đang chờ phê duyệt</strong>
+                    <p>Yêu cầu của bạn đã được gửi vào ${data.requestedAt ? formatDate(data.requestedAt) : 'N/A'}. 
+                    Vui lòng chờ Admin phê duyệt.</p>
+                    ${data.reason ? `<p><strong>Lý do:</strong> ${escapeHtml(data.reason)}</p>` : ''}
+                </div>
+            `;
+            document.getElementById('submitLeaveRequestBtn').disabled = true;
+        } else if (status === 'Approved') {
+            statusHtml = `
+                <div class="alert alert-success">
+                    <i class="fas fa-check-circle"></i> 
+                    <strong>Yêu cầu đã được phê duyệt</strong>
+                    <p>Yêu cầu của bạn đã được Admin phê duyệt vào ${data.processedAt ? formatDate(data.processedAt) : 'N/A'}.</p>
+                    ${data.adminNote ? `<p><strong>Ghi chú từ Admin:</strong> ${escapeHtml(data.adminNote)}</p>` : ''}
+                </div>
+            `;
+            document.getElementById('submitLeaveRequestBtn').disabled = true;
+        } else if (status === 'Rejected') {
+            statusHtml = `
+                <div class="alert alert-danger">
+                    <i class="fas fa-times-circle"></i> 
+                    <strong>Yêu cầu đã bị từ chối</strong>
+                    <p>Yêu cầu của bạn đã bị Admin từ chối vào ${data.processedAt ? formatDate(data.processedAt) : 'N/A'}.</p>
+                    ${data.adminNote ? `<p><strong>Lý do từ chối:</strong> ${escapeHtml(data.adminNote)}</p>` : ''}
+                </div>
+            `;
+            document.getElementById('submitLeaveRequestBtn').disabled = false;
+        }
+        
+        container.innerHTML = statusHtml;
+    } catch (error) {
+        console.error('Error loading leave request status:', error);
+        container.innerHTML = '';
+        document.getElementById('submitLeaveRequestBtn').disabled = false;
+    }
+}
+
+async function submitLeaveRequest(groupId) {
+    const reason = document.getElementById('leaveReason').value.trim();
+    const btn = document.getElementById('submitLeaveRequestBtn');
+    
+    if (!confirm('Bạn có chắc chắn muốn gửi yêu cầu rời nhóm không?')) {
+        return;
+    }
+    
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang gửi...';
+    
+    try {
+        const response = await fetch(`${API.GROUPS}/${groupId}/leave-request`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                userId: CURRENT_USER_ID,
+                reason: reason || null
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(data.message || data.error || 'Failed to submit leave request');
+        }
+        
+        showToast('✅ ' + data.message, 'success');
+        
+        // Reload status
+        await loadMyLeaveRequestStatus(groupId);
+        
+        // Reset form
+        document.getElementById('leaveGroupForm').reset();
+        
+    } catch (error) {
+        console.error('Error submitting leave request:', error);
+        showToast('❌ ' + error.message, 'error');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-sign-out-alt"></i> Gửi yêu cầu rời nhóm';
+    }
+}
+
+// ========================================
+// LEAVE REQUESTS MODAL (ADMIN) FUNCTIONS
+// ========================================
+
+let currentLeaveRequestsGroupId = null;
+
+async function openLeaveRequestsModal(groupId, groupName) {
+    // Đảm bảo groupId là number
+    const numGroupId = Number(groupId);
+    if (isNaN(numGroupId)) {
+        console.error('Invalid groupId:', groupId);
+        showToast('Lỗi: ID nhóm không hợp lệ', 'error');
+        return;
+    }
+    
+    currentLeaveRequestsGroupId = numGroupId;
+    document.getElementById('leave-requests-group-name').textContent = groupName;
+    document.getElementById('leaveRequestsModal').classList.add('active');
+    
+    await loadLeaveRequests(numGroupId);
+}
+
+function closeLeaveRequestsModal() {
+    document.getElementById('leaveRequestsModal').classList.remove('active');
+    currentLeaveRequestsGroupId = null;
+}
+
+async function loadLeaveRequests(groupId) {
+    // Validate groupId
+    const numGroupId = Number(groupId);
+    if (isNaN(numGroupId) || numGroupId <= 0) {
+        console.error('Invalid groupId in loadLeaveRequests:', groupId);
+        const container = document.getElementById('leave-requests-container');
+        container.innerHTML = '<p style="text-align: center; color: var(--text-danger);">Lỗi: ID nhóm không hợp lệ</p>';
+        return;
+    }
+    
+    const container = document.getElementById('leave-requests-container');
+    container.innerHTML = '<div class="loading-spinner"><i class="fas fa-spinner fa-spin"></i> Đang tải...</div>';
+    
+    try {
+        const response = await fetch(`${API.GROUPS}/${numGroupId}/leave-requests?currentUserId=${CURRENT_USER_ID}`);
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.message || error.error || 'Failed to load leave requests');
+        }
+        
+        const data = await response.json();
+        const requests = data.requests || [];
+        
+        if (requests.length === 0) {
+            container.innerHTML = '<p style="text-align: center; color: var(--text-light);">Chưa có yêu cầu rời nhóm nào</p>';
+            // Cập nhật badge về 0
+            updatePendingLeaveRequestsBadge(numGroupId);
+            return;
+        }
+        
+        container.innerHTML = `
+            <div class="requests-summary">
+                <span><strong>Tổng yêu cầu:</strong> ${data.total || 0}</span>
+                <span><strong>Đang chờ:</strong> ${data.pending || 0}</span>
+            </div>
+            <div class="leave-requests-list">
+                ${requests.map(req => `
+                    <div class="leave-request-card ${req.status === 'Pending' ? 'pending' : req.status === 'Approved' ? 'approved' : 'rejected'}">
+                        <div class="request-header">
+                            <div>
+                                <strong>User #${req.userId}</strong>
+                                <span class="badge ${req.role === 'Admin' ? 'badge-admin' : 'badge-member'}">
+                                    ${req.role === 'Admin' ? '<i class="fas fa-crown"></i> Admin' : '<i class="fas fa-user"></i> Member'}
+                                </span>
+                                <span class="badge ${req.status === 'Pending' ? 'badge-warning' : req.status === 'Approved' ? 'badge-success' : 'badge-danger'}">
+                                    ${req.status === 'Pending' ? 'Đang chờ' : req.status === 'Approved' ? 'Đã duyệt' : 'Đã từ chối'}
+                                </span>
+                            </div>
+                            <div class="request-meta">
+                                <small>Tỷ lệ sở hữu: ${(req.ownershipPercent || 0).toFixed(2)}%</small>
+                            </div>
+                        </div>
+                        ${req.reason ? `<div class="request-reason"><strong>Lý do:</strong> ${escapeHtml(req.reason)}</div>` : ''}
+                        <div class="request-dates">
+                            <small><i class="fas fa-calendar"></i> Yêu cầu: ${req.requestedAt ? formatDate(req.requestedAt) : 'N/A'}</small>
+                            ${req.processedAt ? `<small><i class="fas fa-check"></i> Xử lý: ${formatDate(req.processedAt)}</small>` : ''}
+                        </div>
+                        ${req.adminNote ? `<div class="admin-note"><strong>Ghi chú Admin:</strong> ${escapeHtml(req.adminNote)}</div>` : ''}
+                        ${req.status === 'Pending' ? `
+                            <div class="request-actions">
+                                <button class="btn btn-success btn-sm" onclick="approveLeaveRequest(${numGroupId}, ${req.requestId})">
+                                    <i class="fas fa-check"></i> Phê duyệt
+                                </button>
+                                <button class="btn btn-danger btn-sm" onclick="rejectLeaveRequest(${numGroupId}, ${req.requestId})">
+                                    <i class="fas fa-times"></i> Từ chối
+                                </button>
+                            </div>
+                        ` : ''}
+                    </div>
+                `).join('')}
+            </div>
+        `;
+        
+        // Cập nhật badge sau khi load
+        updatePendingLeaveRequestsBadge(numGroupId);
+    } catch (error) {
+        console.error('Error loading leave requests:', error);
+        container.innerHTML = `<div class="error-message">❌ ${error.message}</div>`;
+    }
+}
+
+async function approveLeaveRequest(groupId, requestId) {
+    // Validate groupId
+    const numGroupId = Number(groupId);
+    if (isNaN(numGroupId) || numGroupId <= 0) {
+        console.error('Invalid groupId in approveLeaveRequest:', groupId);
+        showToast('❌ Lỗi: ID nhóm không hợp lệ', 'error');
+        return;
+    }
+    
+    // Validate requestId
+    const numRequestId = Number(requestId);
+    if (isNaN(numRequestId) || numRequestId <= 0) {
+        console.error('Invalid requestId in approveLeaveRequest:', requestId);
+        showToast('❌ Lỗi: ID yêu cầu không hợp lệ', 'error');
+        return;
+    }
+    
+    // Validate currentUserId
+    if (!CURRENT_USER_ID || isNaN(CURRENT_USER_ID)) {
+        console.error('Invalid CURRENT_USER_ID:', CURRENT_USER_ID);
+        showToast('❌ Lỗi: Không xác định được người dùng', 'error');
+        return;
+    }
+    
+    const note = prompt('Nhập ghi chú (tùy chọn):');
+    if (note === null) {
+        // User cancelled
+        return;
+    }
+    
+    try {
+        console.log(`🔵 Approving leave request: groupId=${numGroupId}, requestId=${numRequestId}, currentUserId=${CURRENT_USER_ID}`);
+        
+        const response = await fetch(`${API.GROUPS}/${numGroupId}/leave-requests/${numRequestId}/approve`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                currentUserId: CURRENT_USER_ID,
+                adminNote: note || null
+            })
+        });
+        
+        let data;
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+            data = await response.json();
+        } else {
+            const text = await response.text();
+            console.error('Non-JSON response:', text);
+            throw new Error(`Server error: ${response.status} ${response.statusText}`);
+        }
+        
+        if (!response.ok) {
+            const errorMsg = data.message || data.error || `Failed to approve leave request (${response.status})`;
+            console.error('API Error:', data);
+            throw new Error(errorMsg);
+        }
+        
+        showToast('✅ ' + (data.message || 'Phê duyệt thành công'), 'success');
+        
+        // Reload requests
+        await loadLeaveRequests(numGroupId);
+        
+        // Reload members list in manage group modal (if open)
+        if (currentManagingGroupId === numGroupId) {
+            await loadGroupMembers(numGroupId);
+        }
+        
+        // Cập nhật badge sau khi phê duyệt
+        updatePendingLeaveRequestsBadge(numGroupId);
+        
+        // Reload groups list
+        await loadMyGroups();
+        
+        // Check if the removed user is viewing the group modal
+        // If so, close it or refresh to show they're no longer a member
+        if (currentViewingGroupId === numGroupId) {
+            // Check if the removed user is the current user
+            if (data.userId && data.userId === CURRENT_USER_ID) {
+                // Current user was removed, close the modal
+                console.log('Current user was removed from group, closing view group modal');
+                closeViewGroupModal();
+                showToast('⚠️ Bạn đã rời khỏi nhóm này', 'info');
+            } else {
+                // Another user was removed, just refresh the members list
+                try {
+                    await loadViewGroupMembers(numGroupId);
+                    await loadMyMembershipInfo(numGroupId);
+                } catch (error) {
+                    console.error('Error refreshing group info after approval:', error);
+                }
+            }
+        }
+        
+    } catch (error) {
+        console.error('Error approving leave request:', error);
+        showToast('❌ ' + (error.message || 'Có lỗi xảy ra khi phê duyệt'), 'error');
+    }
+}
+
+async function rejectLeaveRequest(groupId, requestId) {
+    // Validate groupId
+    const numGroupId = Number(groupId);
+    if (isNaN(numGroupId) || numGroupId <= 0) {
+        console.error('Invalid groupId in rejectLeaveRequest:', groupId);
+        showToast('❌ Lỗi: ID nhóm không hợp lệ', 'error');
+        return;
+    }
+    
+    // Validate requestId
+    const numRequestId = Number(requestId);
+    if (isNaN(numRequestId) || numRequestId <= 0) {
+        console.error('Invalid requestId in rejectLeaveRequest:', requestId);
+        showToast('❌ Lỗi: ID yêu cầu không hợp lệ', 'error');
+        return;
+    }
+    
+    // Validate currentUserId
+    if (!CURRENT_USER_ID || isNaN(CURRENT_USER_ID)) {
+        console.error('Invalid CURRENT_USER_ID:', CURRENT_USER_ID);
+        showToast('❌ Lỗi: Không xác định được người dùng', 'error');
+        return;
+    }
+    
+    const note = prompt('Nhập lý do từ chối (tùy chọn):');
+    if (note === null) {
+        // User cancelled
+        return;
+    }
+    
+    try {
+        console.log(`🔴 Rejecting leave request: groupId=${numGroupId}, requestId=${numRequestId}, currentUserId=${CURRENT_USER_ID}`);
+        
+        const response = await fetch(`${API.GROUPS}/${numGroupId}/leave-requests/${numRequestId}/reject`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                currentUserId: CURRENT_USER_ID,
+                adminNote: note || null
+            })
+        });
+        
+        let data;
+        const contentType = response.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+            data = await response.json();
+        } else {
+            const text = await response.text();
+            console.error('Non-JSON response:', text);
+            throw new Error(`Server error: ${response.status} ${response.statusText}`);
+        }
+        
+        if (!response.ok) {
+            const errorMsg = data.message || data.error || `Failed to reject leave request (${response.status})`;
+            console.error('API Error:', data);
+            throw new Error(errorMsg);
+        }
+        
+        showToast('✅ ' + (data.message || 'Từ chối thành công'), 'success');
+        
+        // Reload requests
+        await loadLeaveRequests(numGroupId);
+        
+        // Cập nhật badge sau khi từ chối
+        updatePendingLeaveRequestsBadge(numGroupId);
+        
+    } catch (error) {
+        console.error('Error rejecting leave request:', error);
+        showToast('❌ ' + (error.message || 'Có lỗi xảy ra khi từ chối'), 'error');
+    }
 }
 

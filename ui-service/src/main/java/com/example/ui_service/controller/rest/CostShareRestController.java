@@ -2,6 +2,7 @@ package com.example.ui_service.controller.rest;
 
 import com.example.ui_service.dto.CostSplitDto;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
@@ -21,7 +22,8 @@ public class CostShareRestController {
     @Autowired
     private RestTemplate restTemplate;
 
-    private final String costPaymentUrl = "http://localhost:8081";
+    @Value("${microservices.cost-payment.url:http://localhost:8084}")
+    private String costPaymentUrl;
 
     /**
      * Lấy danh sách cost shares pending (chưa thanh toán) của user

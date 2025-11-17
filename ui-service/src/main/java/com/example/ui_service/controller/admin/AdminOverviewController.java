@@ -15,11 +15,8 @@ public class AdminOverviewController {
     @GetMapping({"", "/overview"})
     public String overview(Model model) {
         model.addAttribute("pageTitle", "Tổng quan");
-        model.addAttribute("activePage", "overview");
-        model.addAttribute("contentFragment", "admin/overview :: content");
-        model.addAttribute("pageCss", new String[]{"/css/admin-overview.css"});
-        model.addAttribute("pageJs", new String[]{"/js/admin-overview.js"});
-        return "fragments/admin-layout";
+        model.addAttribute("pageSubtitle", "Quản lý hệ thống chia sẻ chi phí xe điện");
+        return "admin-overview";
     }
 }
 

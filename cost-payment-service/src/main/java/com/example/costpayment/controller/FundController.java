@@ -17,6 +17,7 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 /**
  * REST Controller: Quản lý Quỹ chung
@@ -483,6 +484,106 @@ public class FundController {
             return ResponseEntity.ok(stats);
         } catch (Exception e) {
             logger.error("Error getting statistics: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    /**
+     * Báo cáo tài chính minh bạch cho quỹ chung
+     * GET /api/funds/{fundId}/financial-report?startDate={startDate}&endDate={endDate}
+     */
+    @GetMapping("/{fundId}/financial-report")
+    public ResponseEntity<?> getFinancialReport(
+            @PathVariable Integer fundId,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate) {
+        try {
+            logger.info("Getting financial report for fundId={}, period={} to {}", fundId, startDate, endDate);
+            
+            // Lấy thông tin quỹ
+            Optional<GroupFund> fundOpt = fundService.getFundById(fundId);
+            if (!fundOpt.isPresent()) {
+                return ResponseEntity.notFound().build();
+            }
+            
+            GroupFund fund = fundOpt.get();
+            
+            // Lấy giao dịch trong khoảng thời gian
+            List<FundTransaction> transactions = fundService.getTransactionsByDateRange(fundId, startDate, endDate);
+            
+            // Phân loại giao dịch
+            List<FundTransaction> deposits = transactions.stream()
+                .filter(t -> "Deposit".equals(t.getTransactionType().toString()))
+                .collect(java.util.stream.Collectors.toList());
+            
+            List<FundTransaction> withdraws = transactions.stream()
+                .filter(t -> "Withdraw".equals(t.getTransactionType().toString()))
+                .collect(java.util.stream.Collectors.toList());
+            
+            // Tính tổng
+            double totalDeposit = deposits.stream()
+                .mapToDouble(t -> t.getAmount() != null ? t.getAmount() : 0.0)
+                .sum();
+            
+            double totalWithdraw = withdraws.stream()
+                .mapToDouble(t -> t.getAmount() != null ? t.getAmount() : 0.0)
+                .sum();
+            
+            // Thống kê theo user
+            Map<Integer, Map<String, Object>> userStats = new HashMap<>();
+            for (FundTransaction transaction : transactions) {
+                Integer userId = transaction.getUserId();
+                if (userId != null) {
+                    userStats.putIfAbsent(userId, new HashMap<>());
+                    Map<String, Object> stats = userStats.get(userId);
+                    
+                    if ("Deposit".equals(transaction.getTransactionType().toString())) {
+                        stats.put("totalDeposit", 
+                            ((Double) stats.getOrDefault("totalDeposit", 0.0)) + transaction.getAmount());
+                        stats.put("depositCount", 
+                            ((Integer) stats.getOrDefault("depositCount", 0)) + 1);
+                    } else if ("Withdraw".equals(transaction.getTransactionType().toString())) {
+                        stats.put("totalWithdraw", 
+                            ((Double) stats.getOrDefault("totalWithdraw", 0.0)) + transaction.getAmount());
+                        stats.put("withdrawCount", 
+                            ((Integer) stats.getOrDefault("withdrawCount", 0)) + 1);
+                    }
+                }
+            }
+            
+            Map<String, Object> report = new HashMap<>();
+            report.put("fundId", fundId);
+            report.put("groupId", fund.getGroupId());
+            report.put("currentBalance", fund.getCurrentBalance());
+            report.put("totalContributed", fund.getTotalContributed());
+            report.put("period", Map.of("start", startDate, "end", endDate));
+            report.put("summary", Map.of(
+                "totalDeposit", totalDeposit,
+                "totalWithdraw", totalWithdraw,
+                "netChange", totalDeposit - totalWithdraw,
+                "transactionCount", transactions.size()
+            ));
+            report.put("deposits", deposits.size());
+            report.put("withdraws", withdraws.size());
+            report.put("userStatistics", userStats);
+            report.put("transactions", transactions.stream()
+                .map(t -> {
+                    Map<String, Object> tMap = new HashMap<>();
+                    tMap.put("transactionId", t.getTransactionId());
+                    tMap.put("type", t.getTransactionType().toString());
+                    tMap.put("amount", t.getAmount());
+                    tMap.put("userId", t.getUserId());
+                    tMap.put("purpose", t.getPurpose());
+                    tMap.put("status", t.getStatus().toString());
+                    tMap.put("createdAt", t.getDate());
+                    return tMap;
+                })
+                .collect(java.util.stream.Collectors.toList()));
+            
+            return ResponseEntity.ok(report);
+        } catch (Exception e) {
+            logger.error("Error getting financial report: {}", e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(Map.of("error", e.getMessage()));
         }
