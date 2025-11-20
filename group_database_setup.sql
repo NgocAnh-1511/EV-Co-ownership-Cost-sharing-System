@@ -1,13 +1,32 @@
 -- ===============================
 -- DATABASE: Group_Management_DB + Cost_Management_DB
 -- Version ĐẦY ĐỦ - Bao gồm Quỹ chung
+-- 
+-- LƯU Ý: 
+-- - Cost_Payment_DB được setup riêng trong file cost_database_setup.sql
+-- - Cost_Management_DB (trong file này) dùng cho quỹ chung và có foreign key đến Group_Management_DB
 -- ===============================
 
 -- ==========================================
 -- PART 1: GROUP MANAGEMENT DATABASE
 -- ==========================================
 
+-- Tắt foreign key checks để có thể DROP database khi có cross-database foreign keys
+SET FOREIGN_KEY_CHECKS = 0;
+
+-- Xóa các database có foreign key tham chiếu đến Group_Management_DB trước
+-- (Cost_Management_DB có foreign key tham chiếu đến Voting trong Group_Management_DB)
+DROP DATABASE IF EXISTS Cost_Management_DB;
+-- Cost_Payment_DB không có foreign key đến Group_Management_DB nên không cần xóa ở đây
+-- (Cost_Payment_DB được setup riêng trong cost_database_setup.sql)
+
+-- Sau đó mới xóa Group_Management_DB
 DROP DATABASE IF EXISTS Group_Management_DB;
+
+-- Bật lại foreign key checks
+SET FOREIGN_KEY_CHECKS = 1;
+
+-- Tạo lại Group_Management_DB
 CREATE DATABASE Group_Management_DB;
 USE Group_Management_DB;
 
@@ -46,6 +65,10 @@ CREATE TABLE Voting (
     finalResult VARCHAR(100),
     totalVotes INT DEFAULT 0,
     createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+    deadline DATETIME NULL COMMENT 'Hạn chót bỏ phiếu',
+    status VARCHAR(20) DEFAULT 'OPEN' COMMENT 'Trạng thái bỏ phiếu: OPEN, CLOSED, CANCELLED',
+    closedAt DATETIME NULL COMMENT 'Thời điểm đóng bỏ phiếu',
+    createdBy INT NULL COMMENT 'User ID tạo bỏ phiếu',
     FOREIGN KEY (groupId) REFERENCES `Group`(groupId) ON DELETE CASCADE
 );
 
@@ -57,6 +80,22 @@ CREATE TABLE VotingResult (
     choice ENUM('A','B') NOT NULL,
     votedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (voteId) REFERENCES Voting(voteId) ON DELETE CASCADE,
+    FOREIGN KEY (memberId) REFERENCES GroupMember(memberId) ON DELETE CASCADE
+);
+
+-- 5. Yêu cầu rời nhóm
+CREATE TABLE LeaveRequest (
+    requestId INT AUTO_INCREMENT PRIMARY KEY,
+    groupId INT NOT NULL,
+    memberId INT NOT NULL,
+    userId INT NOT NULL,
+    reason TEXT,
+    status ENUM('Pending', 'Approved', 'Rejected') DEFAULT 'Pending',
+    requestedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+    processedAt DATETIME,
+    processedBy INT,
+    adminNote TEXT,
+    FOREIGN KEY (groupId) REFERENCES `Group`(groupId) ON DELETE CASCADE,
     FOREIGN KEY (memberId) REFERENCES GroupMember(memberId) ON DELETE CASCADE
 );
 
@@ -112,8 +151,10 @@ SELECT '✅ GROUP_MANAGEMENT_DB HOÀN TẤT!' as '';
 -- PART 2: COST MANAGEMENT DATABASE
 -- ==========================================
 
-DROP DATABASE IF EXISTS Cost_Management_DB;
-CREATE DATABASE Cost_Management_DB;
+-- Tắt foreign key checks để có thể tạo cross-database foreign key
+SET FOREIGN_KEY_CHECKS = 0;
+
+CREATE DATABASE IF NOT EXISTS Cost_Management_DB;
 USE Cost_Management_DB;
 
 -- ==========================================
@@ -259,4 +300,7 @@ GROUP BY fundId, transactionType
 ORDER BY fundId, transactionType;
 
 SELECT '✅ COST_MANAGEMENT_DB HOÀN TẤT!' as '';
+
+-- Bật lại foreign key checks sau khi tạo xong tất cả
+SET FOREIGN_KEY_CHECKS = 1;
 

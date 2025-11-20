@@ -21,7 +21,7 @@ import java.util.Map;
 @RequestMapping("/api/payments")
 public class PaymentRestController {
 
-    @Value("${microservices.cost-payment.url:http://localhost:8081}")
+    @Value("${microservices.cost-payment.url:http://localhost:8084}")
     private String costPaymentUrl;
 
     @Autowired

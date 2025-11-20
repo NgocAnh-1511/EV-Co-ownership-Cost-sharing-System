@@ -49,6 +49,8 @@
                     <div th:case="'payments'" th:replace="admin/payments :: content"></div>
                     <div th:case="'groups'" th:replace="admin/groups :: content"></div>
                     <div th:case="'funds'" th:replace="admin/funds :: content"></div>
+                    <div th:case="'vehicle-services'" th:replace="admin/vehicle-services :: content"></div>
+                    <div th:case="'vehicle-management'" th:replace="admin/vehicle-management :: content"></div>
                     <div th:case="*" th:replace="admin/overview :: content"></div>
                 </th:block>
             </div>
@@ -71,7 +73,9 @@
                 'auto-split': 'auto-split-section',
                 'payments': 'payment-tracking-section',
                 'groups': 'group-management-section',
-                'funds': 'fund-management-section'
+                'funds': 'fund-management-section',
+                'vehicle-services': 'vehicle-services-section',
+                'vehicle-management': 'vehicle-management-section'
             };
             const activeSectionId = sectionIdMap[activePage] || 'overview-section';
             

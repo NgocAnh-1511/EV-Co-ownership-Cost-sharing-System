@@ -18,7 +18,7 @@ import java.util.Map;
 @Component
 public class GroupManagementClient {
 
-    @Value("${microservices.group-management.url:http://localhost:8082}")
+    @Value("${microservices.group-management.url:http://localhost:8084}")
     private String groupManagementUrl;
 
     @Autowired
@@ -271,6 +271,150 @@ public class GroupManagementClient {
             System.err.println("Error submitting vote: " + e.getMessage());
             e.printStackTrace();
             return Map.of("error", "Failed to submit vote: " + e.getMessage());
+        }
+    }
+
+    public Map<String, Object> getMyMembershipInfo(Integer groupId, Integer userId) {
+        try {
+            return restTemplate.getForObject(
+                groupManagementUrl + "/api/groups/" + groupId + "/members/me/" + userId,
+                Map.class
+            );
+        } catch (org.springframework.web.client.HttpClientErrorException e) {
+            System.err.println("HTTP Error getting membership info: " + e.getStatusCode() + " - " + e.getResponseBodyAsString());
+            try {
+                return Map.of("error", "Not found", "message", e.getResponseBodyAsString());
+            } catch (Exception ex) {
+                return Map.of("error", "Failed to get membership info: " + e.getMessage());
+            }
+        } catch (Exception e) {
+            System.err.println("Error getting membership info: " + e.getMessage());
+            e.printStackTrace();
+            return Map.of("error", "Failed to get membership info: " + e.getMessage());
+        }
+    }
+
+    public Map<String, Object> viewGroupMembers(Integer groupId) {
+        try {
+            return restTemplate.getForObject(
+                groupManagementUrl + "/api/groups/" + groupId + "/members/view",
+                Map.class
+            );
+        } catch (Exception e) {
+            System.err.println("Error viewing group members: " + e.getMessage());
+            e.printStackTrace();
+            return Map.of("error", "Failed to view members", "message", e.getMessage());
+        }
+    }
+
+    public Map<String, Object> createLeaveRequest(Integer groupId, Map<String, Object> requestData) {
+        try {
+            return restTemplate.postForObject(
+                groupManagementUrl + "/api/groups/" + groupId + "/leave-request",
+                requestData,
+                Map.class
+            );
+        } catch (org.springframework.web.client.HttpClientErrorException e) {
+            System.err.println("HTTP Error creating leave request: " + e.getStatusCode() + " - " + e.getResponseBodyAsString());
+            try {
+                return Map.of("error", "Failed to create leave request", "message", e.getResponseBodyAsString());
+            } catch (Exception ex) {
+                return Map.of("error", "Failed to create leave request: " + e.getMessage());
+            }
+        } catch (Exception e) {
+            System.err.println("Error creating leave request: " + e.getMessage());
+            e.printStackTrace();
+            return Map.of("error", "Failed to create leave request: " + e.getMessage());
+        }
+    }
+
+    public Map<String, Object> getLeaveRequests(Integer groupId, Integer currentUserId) {
+        try {
+            String url = groupManagementUrl + "/api/groups/" + groupId + "/leave-requests";
+            if (currentUserId != null) {
+                url += "?currentUserId=" + currentUserId;
+            }
+            
+            ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
+                url,
+                HttpMethod.GET,
+                null,
+                new ParameterizedTypeReference<Map<String, Object>>() {}
+            );
+            return response.getBody() != null ? response.getBody() : Map.of("requests", List.of(), "total", 0, "pending", 0);
+        } catch (Exception e) {
+            System.err.println("Error getting leave requests: " + e.getMessage());
+            e.printStackTrace();
+            return Map.of("requests", List.of(), "total", 0, "pending", 0);
+        }
+    }
+
+    public Map<String, Object> approveLeaveRequest(Integer groupId, Integer requestId, Map<String, Object> requestData) {
+        try {
+            org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
+            headers.setContentType(org.springframework.http.MediaType.APPLICATION_JSON);
+            org.springframework.http.HttpEntity<Map<String, Object>> requestEntity = 
+                new org.springframework.http.HttpEntity<>(requestData != null ? requestData : Map.of(), headers);
+            
+            ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
+                groupManagementUrl + "/api/groups/" + groupId + "/leave-requests/" + requestId + "/approve",
+                HttpMethod.POST,
+                requestEntity,
+                new ParameterizedTypeReference<Map<String, Object>>() {}
+            );
+            return response.getBody();
+        } catch (org.springframework.web.client.HttpClientErrorException e) {
+            System.err.println("HTTP Error approving leave request: " + e.getStatusCode() + " - " + e.getResponseBodyAsString());
+            try {
+                return Map.of("error", "Failed to approve leave request", "message", e.getResponseBodyAsString());
+            } catch (Exception ex) {
+                return Map.of("error", "Failed to approve leave request: " + e.getMessage());
+            }
+        } catch (Exception e) {
+            System.err.println("Error approving leave request: " + e.getMessage());
+            e.printStackTrace();
+            return Map.of("error", "Failed to approve leave request: " + e.getMessage());
+        }
+    }
+
+    public Map<String, Object> rejectLeaveRequest(Integer groupId, Integer requestId, Map<String, Object> requestData) {
+        try {
+            org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
+            headers.setContentType(org.springframework.http.MediaType.APPLICATION_JSON);
+            org.springframework.http.HttpEntity<Map<String, Object>> requestEntity = 
+                new org.springframework.http.HttpEntity<>(requestData != null ? requestData : Map.of(), headers);
+            
+            ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
+                groupManagementUrl + "/api/groups/" + groupId + "/leave-requests/" + requestId + "/reject",
+                HttpMethod.POST,
+                requestEntity,
+                new ParameterizedTypeReference<Map<String, Object>>() {}
+            );
+            return response.getBody();
+        } catch (org.springframework.web.client.HttpClientErrorException e) {
+            System.err.println("HTTP Error rejecting leave request: " + e.getStatusCode() + " - " + e.getResponseBodyAsString());
+            try {
+                return Map.of("error", "Failed to reject leave request", "message", e.getResponseBodyAsString());
+            } catch (Exception ex) {
+                return Map.of("error", "Failed to reject leave request: " + e.getMessage());
+            }
+        } catch (Exception e) {
+            System.err.println("Error rejecting leave request: " + e.getMessage());
+            e.printStackTrace();
+            return Map.of("error", "Failed to reject leave request: " + e.getMessage());
+        }
+    }
+
+    public Map<String, Object> getMyLeaveRequestStatus(Integer groupId, Integer userId) {
+        try {
+            return restTemplate.getForObject(
+                groupManagementUrl + "/api/groups/" + groupId + "/leave-requests/me/" + userId,
+                Map.class
+            );
+        } catch (Exception e) {
+            System.err.println("Error getting leave request status: " + e.getMessage());
+            e.printStackTrace();
+            return Map.of("error", "Failed to get leave request status", "message", e.getMessage());
         }
     }
 }

@@ -11,6 +11,13 @@
         <option value="$PROJECT_DIR$/ui-service/pom.xml" />
         <option value="$PROJECT_DIR$/group-management-service/pom.xml" />
         <option value="$PROJECT_DIR$/cost-payment-service/pom.xml" />
+        <option value="$PROJECT_DIR$/user-account-service/pom.xml" />
+        <option value="$PROJECT_DIR$/AIService/pom.xml" />
+        <option value="$PROJECT_DIR$/ReservationAdminService/pom.xml" />
+        <option value="$PROJECT_DIR$/ReservationService/pom.xml" />
+        <option value="$PROJECT_DIR$/api-gateway/pom.xml" />
+        <option value="$PROJECT_DIR$/dispute-management-service/pom.xml" />
+        <option value="$PROJECT_DIR$/pom.xml" />
       </list>
     </option>
   </component>

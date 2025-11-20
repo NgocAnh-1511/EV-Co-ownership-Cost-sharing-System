@@ -15,11 +15,8 @@ public class AdminCostsController {
     @GetMapping
     public String costs(Model model) {
         model.addAttribute("pageTitle", "Quản lý chi phí");
-        model.addAttribute("activePage", "costs");
-        model.addAttribute("contentFragment", "admin/costs :: content");
-        model.addAttribute("pageCss", new String[]{"/css/admin-costs.css"});
-        model.addAttribute("pageJs", new String[]{"/js/admin-costs.js"});
-        return "fragments/admin-layout";
+        model.addAttribute("pageSubtitle", "Quản lý và theo dõi các chi phí liên quan đến xe");
+        return "admin-costs";
     }
 }
 

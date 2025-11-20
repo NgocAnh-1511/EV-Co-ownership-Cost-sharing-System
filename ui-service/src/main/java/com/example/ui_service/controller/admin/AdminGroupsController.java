@@ -15,11 +15,8 @@ public class AdminGroupsController {
     @GetMapping
     public String groups(Model model) {
         model.addAttribute("pageTitle", "Quản lý nhóm");
-        model.addAttribute("activePage", "groups");
-        model.addAttribute("contentFragment", "admin/groups :: content");
-        model.addAttribute("pageCss", new String[]{"/css/admin-groups.css"});
-        model.addAttribute("pageJs", new String[]{"/js/admin-groups.js"});
-        return "fragments/admin-layout";
+        model.addAttribute("pageSubtitle", "Quản lý các nhóm đồng sở hữu xe");
+        return "admin-groups";
     }
 }
 

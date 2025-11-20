@@ -117,9 +117,12 @@ public class CostRestController {
             
             // After calculating, we need to actually create them in the backend
             // The calculateCostShares method only calculates, we need to call the create endpoint
-            // For now, we'll use a workaround by calling the backend directly
+            // Use API Gateway instead of direct service call
             org.springframework.web.client.RestTemplate restTemplate = new org.springframework.web.client.RestTemplate();
-            String costPaymentUrl = "http://localhost:8081";
+            String costPaymentUrl = System.getenv("API_GATEWAY_URL");
+            if (costPaymentUrl == null || costPaymentUrl.isEmpty()) {
+                costPaymentUrl = "http://localhost:8084"; // Default to Gateway
+            }
             
             org.springframework.http.HttpHeaders headers = new org.springframework.http.HttpHeaders();
             headers.setContentType(org.springframework.http.MediaType.APPLICATION_JSON);
