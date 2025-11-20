@@ -8,11 +8,11 @@ import org.springframework.web.bind.annotation.GetMapping;
 public class DashboardController {
 
     /**
-     * Redirect root path to admin dashboard
+     * Redirect root path to auth login
      */
     @GetMapping("/")
     public String redirectRoot() {
-        return "redirect:/admin";
+        return "redirect:/auth/login";
     }
     
     /**
@@ -21,5 +21,21 @@ public class DashboardController {
     @GetMapping("/dashboard")
     public String redirectDashboard() {
         return "redirect:/admin";
+    }
+    
+    /**
+     * Redirect từ URL cũ /ext/admin/vehicle-manager đến URL mới /admin/vehicle-services
+     */
+    @GetMapping("/ext/admin/vehicle-manager")
+    public String redirectVehicleManager() {
+        return "redirect:/admin/vehicle-services";
+    }
+    
+    /**
+     * Redirect từ URL cũ /ext/admin/vehicle-services đến URL mới /admin/vehicle-services
+     */
+    @GetMapping("/ext/admin/vehicle-services")
+    public String redirectVehicleServices() {
+        return "redirect:/admin/vehicle-services";
     }
 }

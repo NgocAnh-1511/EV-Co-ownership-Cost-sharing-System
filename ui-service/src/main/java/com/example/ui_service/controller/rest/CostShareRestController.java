@@ -2,6 +2,7 @@ package com.example.ui_service.controller.rest;
 
 import com.example.ui_service.dto.CostSplitDto;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
@@ -21,7 +22,8 @@ public class CostShareRestController {
     @Autowired
     private RestTemplate restTemplate;
 
-    private final String costPaymentUrl = "http://localhost:8081";
+    @Value("${microservices.cost-payment.url:http://localhost:8084}")
+    private String costPaymentUrl;
 
     /**
      * Lấy danh sách cost shares pending (chưa thanh toán) của user
@@ -30,6 +32,14 @@ public class CostShareRestController {
     @GetMapping("/user/{userId}/pending")
     public ResponseEntity<List<CostSplitDto>> getPendingCostSharesByUserId(@PathVariable Integer userId) {
         try {
+            // Debug: Check authentication
+            org.springframework.security.core.Authentication auth = 
+                org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+            System.out.println("=== CostShareRestController.getPendingCostSharesByUserId ===");
+            System.out.println("Authentication: " + (auth != null ? auth.getName() : "null"));
+            System.out.println("Authorities: " + (auth != null ? auth.getAuthorities() : "null"));
+            System.out.println("Is authenticated: " + (auth != null && auth.isAuthenticated()));
+            
             System.out.println("=== Fetching pending cost shares for userId: " + userId + " ===");
             String url = costPaymentUrl + "/api/cost-shares/user/" + userId + "/pending";
             System.out.println("Calling URL: " + url);

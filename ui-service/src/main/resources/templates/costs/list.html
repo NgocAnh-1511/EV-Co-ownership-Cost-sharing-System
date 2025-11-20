@@ -13,7 +13,7 @@
     <!-- Layout Container -->
     <div class="layout-container">
         <!-- Include Sidebar Fragment -->
-        <div th:replace="fragments/sidebar :: sidebar"></div>
+        <div th:replace="~{fragments/sidebar-user :: sidebar-user('costs')}"></div>
         
         <!-- Main Content -->
         <main class="main-content">

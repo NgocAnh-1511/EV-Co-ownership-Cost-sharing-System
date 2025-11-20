@@ -25,13 +25,14 @@ public class FundRestController {
 
     private static final Logger logger = LoggerFactory.getLogger(FundRestController.class);
 
-    @Value("${cost-payment.service.url:http://localhost:8081}")
+    @Value("${cost-payment.service.url:http://localhost:8084}")
     private String costPaymentServiceUrl;
 
     @Autowired
     private GroupManagementClient groupManagementClient;
 
-    private final RestTemplate restTemplate = new RestTemplate();
+    @Autowired
+    private RestTemplate restTemplate;
 
     /**
      * Lấy thống kê quỹ

@@ -31,9 +31,33 @@
                 <i class="fas fa-users"></i>
                 <span>Quản lý nhóm</span>
             </a>
+            <a th:href="@{/admin/profile-approval}" class="nav-link" th:classappend="${activePage == 'profile-approval'} ? 'active'">
+                <i class="fas fa-user-check"></i>
+                <span>Duyệt hồ sơ KYC</span>
+            </a>
             <a th:href="@{/admin/funds}" class="nav-link" th:classappend="${activePage == 'funds'} ? 'active'">
                 <i class="fas fa-wallet"></i>
                 <span>Quản lý quỹ chung</span>
+            </a>
+            <a th:href="@{/admin/vehicle-services}" class="nav-link" th:classappend="${activePage == 'vehicle-services'} ? 'active'">
+                <i class="fas fa-tools"></i>
+                <span>Quản lý dịch vụ xe</span>
+            </a>
+            <a th:href="@{/admin/vehicle-management}" class="nav-link" th:classappend="${activePage == 'vehicle-management'} ? 'active'">
+                <i class="fas fa-car"></i>
+                <span>Quản lý xe</span>
+            </a>
+            <a th:href="@{/admin/reservations}" class="nav-link" th:classappend="${activePage == 'reservations'} ? 'active'">
+                <i class="fas fa-calendar-check"></i>
+                <span>Quản lý đặt lịch</span>
+            </a>
+            <a th:href="@{/admin/legal-contracts}" class="nav-link" th:classappend="${activePage == 'legal-contracts'} ? 'active'">
+                <i class="fas fa-file-contract"></i>
+                <span>Hợp đồng pháp lý</span>
+            </a>
+            <a th:href="@{/admin/disputes}" class="nav-link" th:classappend="${activePage == 'disputes'} ? 'active'">
+                <i class="fas fa-exclamation-triangle"></i>
+                <span>Quản lý tranh chấp</span>
             </a>
         </nav>
         

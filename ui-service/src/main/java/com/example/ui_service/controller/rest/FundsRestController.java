@@ -22,7 +22,7 @@ public class FundsRestController {
 
     private static final Logger logger = LoggerFactory.getLogger(FundsRestController.class);
 
-    @Value("${cost-payment.service.url:http://localhost:8081}")
+    @Value("${cost-payment.service.url:http://localhost:8084}")
     private String costPaymentServiceUrl;
 
     private final RestTemplate restTemplate = new RestTemplate();

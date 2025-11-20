@@ -45,7 +45,7 @@ public class FundServiceImpl implements FundService {
     @Autowired
     private TransactionVoteRepository voteRepository;
 
-    @Value("${group-management.service.url:http://localhost:8082}")
+    @Value("${group-management.service.url:${API_GATEWAY_URL:http://localhost:8084}}")
     private String groupManagementServiceUrl;
 
     private final RestTemplate restTemplate = new RestTemplate();
@@ -53,6 +53,11 @@ public class FundServiceImpl implements FundService {
     // ========================================
     // QUẢN LÝ QUỸ
     // ========================================
+
+    @Override
+    public Optional<GroupFund> getFundById(Integer fundId) {
+        return groupFundRepository.findById(fundId);
+    }
 
     @Override
     public Optional<GroupFund> getFundByGroupId(Integer groupId) {

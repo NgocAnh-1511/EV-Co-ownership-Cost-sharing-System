@@ -18,7 +18,7 @@ import java.util.Map;
 @Component
 public class CostPaymentClient {
 
-    @Value("${microservices.cost-payment.url:http://localhost:8081}")
+    @Value("${microservices.cost-payment.url:http://localhost:8084}")
     private String costPaymentUrl;
 
     @Autowired

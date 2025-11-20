@@ -19,6 +19,11 @@ public interface FundService {
     // ========================================
 
     /**
+     * Lấy thông tin quỹ theo fundId
+     */
+    Optional<GroupFund> getFundById(Integer fundId);
+
+    /**
      * Lấy thông tin quỹ theo groupId
      */
     Optional<GroupFund> getFundByGroupId(Integer groupId);
