@@ -172,13 +172,8 @@
                     </div>
 
                     <div class="form-group">
-                        <label for="group-admin">Admin ID <span style="color: red;">*</span></label>
-                        <input type="number" id="group-admin" class="form-control" required placeholder="Nhập ID người quản lý">
-                    </div>
-
-                    <div class="form-group">
-                        <label for="group-vehicle">Vehicle ID</label>
-                        <input type="number" id="group-vehicle" class="form-control" placeholder="Nhập ID xe (tùy chọn)">
+                        <label for="group-admin">Admin ID</label>
+                        <input type="number" id="group-admin" class="form-control" placeholder="Nhập ID người quản lý (tùy chọn)">
                     </div>
 
                     <div class="form-group">
@@ -187,6 +182,48 @@
                             <option value="Active">Hoạt động</option>
                             <option value="Inactive">Không hoạt động</option>
                         </select>
+                    </div>
+
+                    <!-- Vehicle Information Section -->
+                    <div id="vehicle-section" style="margin-top: 20px; padding-top: 20px; border-top: 2px solid #e2e8f0;">
+                        <h4 style="margin: 0 0 15px 0; color: #1a202c; font-size: 16px;">
+                            <i class="fas fa-car"></i> Thông tin xe
+                        </h4>
+                        
+                        <!-- Vehicle ID -->
+                        <div id="vehicle-id-group" class="form-group">
+                            <label for="vehicle-id-display">Mã xe <span id="vehicle-id-required" style="color: red;">*</span></label>
+                            <input type="text" id="vehicle-id-display" class="form-control" placeholder="">
+                            <small id="vehicle-id-hint" style="color: #64748b; font-size: 12px; display: block; margin-top: 5px;">
+                                Mã xe duy nhất (bắt buộc khi tạo mới)
+                            </small>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="vehicle-number">Biển số xe <span id="vehicle-number-required" style="color: red;">*</span></label>
+                            <input type="text" id="vehicle-number" class="form-control" placeholder="VD: EV-ALPHA-01">
+                            <small id="vehicle-number-hint" style="color: #64748b; font-size: 12px; display: block; margin-top: 5px;">
+                                Biển số xe duy nhất (bắt buộc khi tạo mới)
+                            </small>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="vehicle-type">Loại xe <span id="vehicle-type-required" style="color: red;">*</span></label>
+                            <select id="vehicle-type" class="form-control">
+                                <option value="">-- Chọn loại xe --</option>
+                                <option value="SUV">SUV</option>
+                                <option value="Sedan">Sedan</option>
+                                <option value="Hatchback">Hatchback</option>
+                                <option value="Coupe">Coupe</option>
+                                <option value="Convertible">Convertible</option>
+                                <option value="Wagon">Wagon</option>
+                                <option value="Truck">Truck</option>
+                                <option value="Van">Van</option>
+                            </select>
+                            <small id="vehicle-type-hint" style="color: #64748b; font-size: 12px; display: block; margin-top: 5px;">
+                                Loại xe (bắt buộc khi tạo mới)
+                            </small>
+                        </div>
                     </div>
 
                     <div class="modal-actions">

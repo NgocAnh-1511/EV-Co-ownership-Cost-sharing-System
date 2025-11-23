@@ -25,13 +25,14 @@ public class FundRestController {
 
     private static final Logger logger = LoggerFactory.getLogger(FundRestController.class);
 
-    @Value("${cost-payment.service.url:http://localhost:8081}")
+    @Value("${cost-payment.service.url:http://localhost:8084}")
     private String costPaymentServiceUrl;
 
     @Autowired
     private GroupManagementClient groupManagementClient;
 
-    private final RestTemplate restTemplate = new RestTemplate();
+    @Autowired
+    private RestTemplate restTemplate;
 
     /**
      * Lấy thống kê quỹ
@@ -178,7 +179,10 @@ public class FundRestController {
                             if ("Deposit".equals(transactionType)) {
                                 myDeposits += amount;
                             } else if ("Withdraw".equals(transactionType)) {
-                                myWithdraws += amount;
+                                // Chỉ tính các giao dịch rút tiền có trạng thái Completed
+                                if ("Completed".equals(status)) {
+                                    myWithdraws += amount;
+                                }
                                 if ("Pending".equals(status)) {
                                     myPendingCount++;
                                 }
@@ -308,13 +312,17 @@ public class FundRestController {
      * Body: { fundId, userId, amount, purpose }
      */
     @PostMapping("/deposit")
-    public ResponseEntity<?> deposit(@RequestBody Map<String, Object> request) {
+    public ResponseEntity<?> deposit(@RequestBody Map<String, Object> request,
+                                      @RequestHeader(value = "Authorization", required = false) String authHeader) {
         try {
             String url = costPaymentServiceUrl + "/api/funds/deposit";
             logger.info("Deposit request: {} to URL: {}", request, url);
             
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
+            if (authHeader != null && !authHeader.isEmpty()) {
+                headers.set("Authorization", authHeader);
+            }
             HttpEntity<Map<String, Object>> entity = new HttpEntity<>(request, headers);
             
             ResponseEntity<Map> response = restTemplate.exchange(
@@ -397,16 +405,34 @@ public class FundRestController {
      * GET /api/fund/group/{groupId}
      */
     @GetMapping("/group/{groupId}")
-    public ResponseEntity<?> getFundByGroupId(@PathVariable Integer groupId) {
+    public ResponseEntity<?> getFundByGroupId(@PathVariable Integer groupId,
+                                               @RequestHeader(value = "Authorization", required = false) String authHeader) {
         try {
             String url = costPaymentServiceUrl + "/api/funds/group/" + groupId;
             
-            ResponseEntity<Map> response = restTemplate.getForEntity(url, Map.class);
+            HttpHeaders headers = new HttpHeaders();
+            if (authHeader != null && !authHeader.isEmpty()) {
+                headers.set("Authorization", authHeader);
+            }
+            HttpEntity<?> entity = new HttpEntity<>(headers);
             
-            return ResponseEntity.ok(response.getBody());
+            ResponseEntity<Map> response = restTemplate.exchange(url, HttpMethod.GET, entity, Map.class);
+            
+            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                return ResponseEntity.ok(response.getBody());
+            } else {
+                // Fund không tồn tại, trả về null hoặc empty object thay vì 404
+                logger.info("Fund not found for groupId={}, returning null", groupId);
+                return ResponseEntity.ok(null);
+            }
+        } catch (org.springframework.web.client.HttpClientErrorException.NotFound e) {
+            // Fund không tồn tại, trả về null thay vì 404
+            logger.info("Fund not found for groupId={}, returning null", groupId);
+            return ResponseEntity.ok(null);
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                .body(Map.of("error", "Fund not found for group " + groupId));
+            logger.error("Error getting fund for groupId={}: {}", groupId, e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(Map.of("error", "Error getting fund for group " + groupId + ": " + e.getMessage()));
         }
     }
 

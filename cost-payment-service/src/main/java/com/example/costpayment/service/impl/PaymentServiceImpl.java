@@ -11,7 +11,6 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -90,7 +89,7 @@ public class PaymentServiceImpl implements PaymentService {
                 "SELECT paymentId, userId, costId, amount, transactionCode, method, " +
                 "CASE WHEN status = 'Completed' THEN 'PAID' WHEN status IS NULL THEN 'PENDING' ELSE status END as status, " +
                 "paymentDate " +
-                "FROM Payment WHERE userId = :userId");
+                "FROM payment WHERE userId = :userId");
             query.setParameter("userId", userId);
             
             @SuppressWarnings("unchecked")
@@ -171,8 +170,8 @@ public class PaymentServiceImpl implements PaymentService {
                 "SELECT p.paymentId, p.userId, p.costId, p.amount, p.transactionCode, " +
                 "p.method, CASE WHEN p.status = 'Completed' THEN 'PAID' ELSE p.status END as status, " +
                 "p.paymentDate, c.costType, c.description as costDescription " +
-                "FROM Payment p " +
-                "LEFT JOIN Cost c ON p.costId = c.costId " +
+                "FROM payment p " +
+                "LEFT JOIN cost c ON p.costId = c.costId " +
                 "WHERE 1=1 "
             );
             
@@ -257,8 +256,8 @@ public class PaymentServiceImpl implements PaymentService {
                 "p.method, CASE WHEN p.status = 'Completed' THEN 'PAID' ELSE p.status END as status, " +
                 "p.paymentDate, " +
                 "c.costType, c.description as costDescription, c.amount as costAmount, c.createdAt as costDate " +
-                "FROM Payment p " +
-                "LEFT JOIN Cost c ON p.costId = c.costId " +
+                "FROM payment p " +
+                "LEFT JOIN cost c ON p.costId = c.costId " +
                 "WHERE p.paymentId = :paymentId";
             
             Query query = entityManager.createNativeQuery(sql);

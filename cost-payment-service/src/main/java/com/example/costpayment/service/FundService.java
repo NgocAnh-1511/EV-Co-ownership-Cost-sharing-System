@@ -19,6 +19,11 @@ public interface FundService {
     // ========================================
 
     /**
+     * Lấy thông tin quỹ theo fundId
+     */
+    Optional<GroupFund> getFundById(Integer fundId);
+
+    /**
      * Lấy thông tin quỹ theo groupId
      */
     Optional<GroupFund> getFundByGroupId(Integer groupId);
@@ -166,5 +171,30 @@ public interface FundService {
      * Đếm số yêu cầu chờ duyệt
      */
     Long countPendingRequests(Integer fundId);
+
+    // ========================================
+    // VOTE COUNT
+    // ========================================
+
+    /**
+     * Đếm số phiếu đồng ý cho transaction
+     */
+    long countApprovesByTransactionId(Integer transactionId);
+
+    /**
+     * Đếm số phiếu từ chối cho transaction
+     */
+    long countRejectsByTransactionId(Integer transactionId);
+
+    /**
+     * Đếm tổng số phiếu cho transaction
+     */
+    long countVotesByTransactionId(Integer transactionId);
+
+    /**
+     * Xử lý tất cả pending transactions (kiểm tra vote và tự động hoàn tất hoặc từ chối)
+     * Dùng để xử lý các transactions đã có đủ votes từ trước
+     */
+    int processAllPendingTransactions();
 }
 

@@ -198,6 +198,7 @@ function updateMyPendingDisplay(requests) {
         const purpose = t.purpose || '-';
         const status = t.status || t.transaction_status || 'Pending';
         const voteId = t.voteId || t.vote_id;
+        const groupId = t.groupId || t.group_id;
         
         return `
         <tr>
@@ -212,11 +213,15 @@ function updateMyPendingDisplay(requests) {
                 </span>
             </td>
             <td>
-                ${voteId 
-                    ? `<a href="/groups/voting?voteId=${voteId}" class="btn btn-sm btn-outline">
+                ${(voteId && groupId && typeof window.viewDecisionDetail === 'function')
+                    ? `<button class="btn btn-sm btn-outline" onclick="viewDecisionDetail(${groupId}, ${voteId})">
                          <i class="fas fa-poll"></i> Xem phiếu vote
-                       </a>`
-                    : '<span class="text-muted">Chưa có vote</span>'
+                       </button>`
+                    : (voteId && groupId
+                        ? `<a href="/groups/${groupId}/votes?voteId=${voteId}" class="btn btn-sm btn-outline">
+                             <i class="fas fa-poll"></i> Xem phiếu vote
+                           </a>`
+                        : '<span class="text-muted">Chưa có vote</span>')
                 }
             </td>
             <td>

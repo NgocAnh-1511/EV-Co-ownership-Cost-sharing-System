@@ -6,16 +6,73 @@ if (typeof window.currentPaymentsData === 'undefined') {
 }
 let currentPaymentsData = window.currentPaymentsData;
 
-// Initialize on DOM load
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('Admin Payments page initializing...');
-    loadPayments();
+// Function to initialize payments page
+function initializePaymentsPage() {
+    console.log('🔵 [admin-payments.js] Admin Payments page initializing...');
+    const tbody = document.getElementById('payments-tbody');
+    if (!tbody) {
+        console.warn('⚠️ [admin-payments.js] payments-tbody not found, retrying...');
+        setTimeout(initializePaymentsPage, 200);
+        return;
+    }
+    
+    console.log('✅ [admin-payments.js] Found payments-tbody, loading payments...');
+    // Load payments immediately - call the function directly
+    console.log('✅ [admin-payments.js] Calling loadPaymentsAdmin()...');
+    loadPaymentsAdmin();
     initPaymentFilters();
     initExportButton();
+}
+
+// Try multiple ways to ensure initialization
+(function() {
+    if (document.readyState === 'loading') {
+        // DOM is still loading
+        document.addEventListener('DOMContentLoaded', initializePaymentsPage);
+    } else {
+        // DOM is already loaded
+        console.log('DOM already loaded, initializing immediately...');
+        // Use setTimeout to ensure all scripts are loaded
+        setTimeout(initializePaymentsPage, 100);
+    }
+    
+    // Also try immediately (in case script loads after DOM is ready)
+    setTimeout(function() {
+        const tbody = document.getElementById('payments-tbody');
+        if (tbody && tbody.innerHTML.includes('Đang tải dữ liệu')) {
+            console.log('Found loading state, initializing payments...');
+            initializePaymentsPage();
+        }
+    }, 200);
+})();
+
+// Fallback: also try on window load
+window.addEventListener('load', function() {
+    console.log('Window loaded, checking if payments loaded...');
+    const tbody = document.getElementById('payments-tbody');
+    if (tbody) {
+        const tbodyContent = tbody.innerHTML.trim();
+        // Check if still showing loading or empty
+            if (tbodyContent.includes('Đang tải dữ liệu') || 
+            tbodyContent.includes('Đang tải...') ||
+            tbodyContent === '' ||
+            (tbodyContent.includes('<tr>') && tbodyContent.includes('colspan="9"'))) {
+            console.log('Payments not loaded yet, loading now...');
+            if (typeof window.loadPaymentsAdmin === 'function') {
+                window.loadPaymentsAdmin();
+            } else if (typeof loadPayments === 'function') {
+                loadPayments();
+            }
+        }
+    }
 });
 
-// Load payments
-async function loadPayments(filters = {}) {
+// Load payments - explicit function name to avoid conflicts with admin-common.js
+async function loadPaymentsAdmin(filters = {}) {
+    console.log('🔵 [admin-payments.js] loadPaymentsAdmin() called with filters:', filters);
+    
+    // Expose function globally
+window.loadPaymentsAdmin = loadPaymentsAdmin;
     const tbody = document.getElementById('payments-tbody');
     if (!tbody) {
         console.error('payments-tbody element not found');
@@ -32,14 +89,25 @@ async function loadPayments(filters = {}) {
             </tr>
         `;
         
-        let url = '/api/payments/admin/tracking?';
-        if (filters.status) url += `status=${filters.status}&`;
-        if (filters.startDate) url += `startDate=${filters.startDate}&`;
-        if (filters.endDate) url += `endDate=${filters.endDate}&`;
-        if (filters.search) url += `search=${encodeURIComponent(filters.search)}&`;
+        let url = '/api/payments/admin/tracking';
+        const params = new URLSearchParams();
+        if (filters.status) params.append('status', filters.status);
+        if (filters.startDate) params.append('startDate', filters.startDate);
+        if (filters.endDate) params.append('endDate', filters.endDate);
+        if (filters.search) params.append('search', filters.search);
+        
+        if (params.toString()) {
+            url += '?' + params.toString();
+        }
         
         console.log('Fetching payments from:', url);
-        const response = await fetch(url);
+        const response = await fetch(url, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            }
+        });
         
         if (!response.ok) {
             const errorText = await response.text();
@@ -156,9 +224,9 @@ function renderPaymentsTable(payments) {
                 <td><span class="status-badge ${statusClass}">${statusText}</span></td>
                 <td>
                     <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                        <button class="btn btn-sm" style="background: var(--info); color: white; padding: 0.5rem 0.75rem;" 
-                                onclick="viewPaymentDetail(${payment.paymentId})" title="Xem chi tiết">
-                            <i class="fas fa-eye"></i>
+                        <button class="btn btn-sm" style="background: #10B981; color: white; padding: 0.5rem 0.75rem; border-radius: 6px; border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 0.25rem; font-size: 0.875rem;" 
+                                onclick="window.location.href='/admin/payments/edit/${payment.paymentId}'" title="Chỉnh sửa thanh toán">
+                            <i class="fas fa-edit"></i>
                         </button>
                         ${payment.status === 'PENDING' ? `
                             <button class="btn btn-sm" style="background: #10B981; color: white; padding: 0.5rem 0.75rem;" 
@@ -212,7 +280,11 @@ function initPaymentFilters() {
                 endDate: document.getElementById('payment-date-to')?.value || '',
                 search: document.getElementById('payment-search')?.value || ''
             };
-            loadPayments(filters);
+            if (typeof window.loadPaymentsAdmin === 'function') {
+                window.loadPaymentsAdmin(filters);
+            } else if (typeof loadPayments === 'function') {
+                loadPayments(filters);
+            }
         });
     }
     
@@ -222,7 +294,11 @@ function initPaymentFilters() {
             document.getElementById('payment-date-from').value = '';
             document.getElementById('payment-date-to').value = '';
             document.getElementById('payment-search').value = '';
-            loadPayments();
+            if (typeof window.loadPaymentsAdmin === 'function') {
+                window.loadPaymentsAdmin();
+            } else if (typeof loadPayments === 'function') {
+                loadPayments();
+            }
         });
     }
 }
@@ -240,10 +316,6 @@ function exportPayments() {
     alert('Tính năng xuất Excel đang được phát triển');
 }
 
-// View payment detail
-function viewPaymentDetail(paymentId) {
-    alert(`Xem chi tiết thanh toán #${paymentId}`);
-}
 
 // Confirm payment
 async function confirmPayment(paymentId) {
@@ -258,7 +330,11 @@ async function confirmPayment(paymentId) {
         
         if (response.ok) {
             alert('Xác nhận thanh toán thành công!');
-            loadPayments();
+            if (typeof window.loadPaymentsAdmin === 'function') {
+                window.loadPaymentsAdmin();
+            } else if (typeof loadPayments === 'function') {
+                loadPayments();
+            }
         } else {
             alert('Lỗi khi xác nhận thanh toán');
         }
@@ -281,7 +357,11 @@ async function deletePayment(paymentId) {
         
         if (response.ok) {
             alert('Xóa thanh toán thành công!');
-            loadPayments();
+            if (typeof window.loadPaymentsAdmin === 'function') {
+                window.loadPaymentsAdmin();
+            } else if (typeof loadPayments === 'function') {
+                loadPayments();
+            }
         } else {
             alert('Lỗi khi xóa thanh toán');
         }

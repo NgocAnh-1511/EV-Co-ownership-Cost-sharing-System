@@ -19,6 +19,12 @@ public class GroupResponseDto {
     private String status;
     private Integer memberCount;
     private Integer voteCount;
+
+    // User-specific membership metadata (optional)
+    private Integer memberId;
+    private String memberRole;
+    private Double ownershipPercent;
+    private Boolean hasOwnership;
     
     public static GroupResponseDto fromEntity(Group group, Integer memberCount, Integer voteCount) {
         GroupResponseDto dto = new GroupResponseDto();

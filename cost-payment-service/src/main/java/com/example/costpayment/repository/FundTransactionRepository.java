@@ -42,12 +42,12 @@ public interface FundTransactionRepository extends JpaRepository<FundTransaction
     );
 
     /**
-     * Tìm các yêu cầu rút tiền đang chờ duyệt
+     * Tìm các yêu cầu rút tiền đang chờ duyệt (Pending hoặc Approved - chờ admin duyệt)
      */
     @Query("SELECT ft FROM FundTransaction ft " +
            "WHERE (:fundId IS NULL OR ft.fundId = :fundId) " +
            "AND ft.transactionType = 'Withdraw' " +
-           "AND ft.status = 'Pending' " +
+           "AND (ft.status = 'Pending' OR ft.status = 'Approved') " +
            "ORDER BY ft.date DESC")
     List<FundTransaction> findPendingWithdrawRequests(@Param("fundId") Integer fundId);
 

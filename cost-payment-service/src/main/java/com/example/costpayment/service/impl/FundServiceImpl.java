@@ -15,7 +15,9 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpEntity;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -45,14 +47,22 @@ public class FundServiceImpl implements FundService {
     @Autowired
     private TransactionVoteRepository voteRepository;
 
-    @Value("${group-management.service.url:http://localhost:8082}")
+    @Value("${group-management.service.url:${API_GATEWAY_URL:http://localhost:8084}}")
     private String groupManagementServiceUrl;
+
+    @Value("${internal.service.token:}")
+    private String internalServiceToken;
 
     private final RestTemplate restTemplate = new RestTemplate();
 
     // ========================================
     // QUẢN LÝ QUỸ
     // ========================================
+
+    @Override
+    public Optional<GroupFund> getFundById(Integer fundId) {
+        return groupFundRepository.findById(fundId);
+    }
 
     @Override
     public Optional<GroupFund> getFundByGroupId(Integer groupId) {
@@ -175,12 +185,30 @@ public class FundServiceImpl implements FundService {
         logger.info("Withdraw request created: userId={}, amount={}, transactionId={}", 
             request.getUserId(), request.getAmount(), saved.getTransactionId());
 
+        // Tự động tạo vote đồng ý cho chính người tạo request
+        TransactionVote autoVote = new TransactionVote();
+        autoVote.setTransactionId(saved.getTransactionId());
+        autoVote.setUserId(request.getUserId());
+        autoVote.setApprove(true); // Tự động đồng ý
+        autoVote.setNote("Tự động đồng ý khi tạo yêu cầu");
+        autoVote.setVotedAt(LocalDateTime.now());
+        voteRepository.save(autoVote);
+        logger.info("Auto vote approve created for requester: transactionId={}, userId={}", 
+            saved.getTransactionId(), request.getUserId());
+
         return saved;
     }
 
     @Override
     public List<FundTransaction> getPendingRequests(Integer fundId) {
-        return transactionRepository.findPendingWithdrawRequests(fundId);
+        logger.info("getPendingRequests called with fundId={}", fundId);
+        List<FundTransaction> requests = transactionRepository.findPendingWithdrawRequests(fundId);
+        logger.info("Repository returned {} pending requests for fundId={}", requests != null ? requests.size() : 0, fundId);
+        if (requests != null && !requests.isEmpty()) {
+            requests.forEach(req -> logger.info("Pending request: transactionId={}, fundId={}, userId={}, status={}", 
+                req.getTransactionId(), req.getFundId(), req.getUserId(), req.getStatus()));
+        }
+        return requests;
     }
 
     // ========================================
@@ -352,15 +380,19 @@ public class FundServiceImpl implements FundService {
             throw new IllegalStateException("Chỉ có thể hủy yêu cầu rút tiền");
         }
 
-        // Hủy yêu cầu (reject với lý do "User hủy yêu cầu")
-        transaction.reject(userId);
-        transaction.setPurpose(transaction.getPurpose() + " [Đã hủy bởi người yêu cầu]");
+        // Xóa tất cả votes liên quan
+        List<TransactionVote> votes = voteRepository.findByTransactionId(transactionId);
+        if (!votes.isEmpty()) {
+            voteRepository.deleteAll(votes);
+            logger.info("🗑️ Deleted {} votes for transaction {}", votes.size(), transactionId);
+        }
 
-        FundTransaction saved = transactionRepository.save(transaction);
-        logger.info("Transaction cancelled by user: transactionId={}, userId={}", 
-            transactionId, userId);
+        // Xóa transaction khỏi database
+        transactionRepository.delete(transaction);
+        logger.info("✅ Transaction {} deleted by user: userId={}", transactionId, userId);
 
-        return saved;
+        // Trả về null vì transaction đã bị xóa
+        return null;
     }
 
     // ========================================
@@ -403,79 +435,144 @@ public class FundServiceImpl implements FundService {
             request.getApprove() ? "approve" : "reject",
             request.getTransactionId(), request.getUserId());
 
-        // Nếu vote reject, kiểm tra xem có cần từ chối không
-        if (!request.getApprove()) {
-            // Đếm số phiếu từ chối
-            long rejectCount = voteRepository.countRejectsByTransactionId(request.getTransactionId());
-            
-            // Lấy số thành viên nhóm
-            GroupFund fund = groupFundRepository.findById(transaction.getFundId())
-                .orElseThrow(() -> new RuntimeException("Không tìm thấy quỹ"));
-            
-            int totalMembers = getGroupMemberCount(fund.getGroupId());
-            if (totalMembers <= 0) {
-                totalMembers = 1;
-            }
-            
-            int eligibleVoters = totalMembers - 1; // Trừ người tạo request
-            if (eligibleVoters <= 0) {
-                eligibleVoters = 1;
-            }
-            
-            // Nếu > 50% từ chối, từ chối ngay
-            double rejectRate = (double) rejectCount / eligibleVoters;
-            if (rejectRate > 0.5) {
-                transaction.setStatus(TransactionStatus.Rejected);
-                if (request.getNote() != null) {
-                    transaction.setPurpose(transaction.getPurpose() + " [Từ chối bởi User #" + request.getUserId() + ": " + request.getNote() + "]");
-                }
-                transactionRepository.save(transaction);
-                logger.info("Transaction {} rejected due to >50% reject votes", request.getTransactionId());
-            }
-            return transaction;
+        // Sau khi vote (cả approve và reject), kiểm tra và xử lý transaction
+        processPendingTransaction(transaction);
+        
+        // Nếu transaction đã bị xóa (do >50% reject), return null
+        // Cần reload từ database để kiểm tra
+        Optional<FundTransaction> reloaded = transactionRepository.findById(transaction.getTransactionId());
+        if (reloaded.isEmpty()) {
+            logger.info("Transaction {} has been deleted, returning null", transaction.getTransactionId());
+            return null;
         }
+        
+        return reloaded.get();
+    }
 
-        // Nếu vote approve, chỉ tính số phiếu và log thống kê
-        // KHÔNG thay đổi status - status chỉ thay đổi khi admin approve/reject
+    /**
+     * Xử lý pending transaction: kiểm tra vote và tự động hoàn tất hoặc từ chối
+     */
+    @Transactional
+    private void processPendingTransaction(FundTransaction transaction) {
         try {
+            // Chỉ xử lý các transaction đang pending hoặc approved
+            if (transaction.getStatus() != TransactionStatus.Pending && 
+                transaction.getStatus() != TransactionStatus.Approved) {
+                return;
+            }
+            
+            // Chỉ xử lý withdrawal requests
+            if (transaction.getTransactionType() != TransactionType.Withdraw) {
+                return;
+            }
+            
             // Lấy số thành viên nhóm để tính tỷ lệ
             GroupFund fund = groupFundRepository.findById(transaction.getFundId())
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy quỹ"));
             
             int totalMembers = getGroupMemberCount(fund.getGroupId());
-            if (totalMembers > 0) {
-                // Đếm số phiếu đồng ý (sau khi đã lưu vote mới)
-                long approveCount = voteRepository.countApprovesByTransactionId(request.getTransactionId());
+            logger.info("Processing pending transaction: transactionId={}, totalMembers={}, currentStatus={}", 
+                transaction.getTransactionId(), totalMembers, transaction.getStatus());
+            
+            if (totalMembers <= 0) {
+                logger.warn("Invalid totalMembers for transaction {}: {}", transaction.getTransactionId(), totalMembers);
+                return;
+            }
+            
+            // Đếm số phiếu đồng ý và từ chối
+            long approveCount = voteRepository.countApprovesByTransactionId(transaction.getTransactionId());
+            long rejectCount = voteRepository.countRejectsByTransactionId(transaction.getTransactionId());
+            
+            // Tính tỷ lệ
+            double approvalRate = (double) approveCount / totalMembers;
+            double rejectionRate = (double) rejectCount / totalMembers;
+            
+            logger.info("Vote check: transactionId={}, approveCount={}, rejectCount={}, totalMembers={}, " +
+                "approvalRate={}%, rejectionRate={}%", 
+                transaction.getTransactionId(), approveCount, rejectCount, totalMembers, 
+                String.format("%.2f", approvalRate * 100), String.format("%.2f", rejectionRate * 100));
+            
+            // Nếu > 50% từ chối, xóa transaction và votes
+            if (rejectionRate > 0.5) {
+                Integer transactionId = transaction.getTransactionId();
                 
-                // Tính tỷ lệ: approveCount / (totalMembers - 1) vì trừ người tạo request
-                int eligibleVoters = totalMembers - 1; // Trừ người tạo request
-                if (eligibleVoters > 0) {
-                    double approvalRate = (double) approveCount / eligibleVoters;
-                    logger.info("Vote recorded: approveCount={}, eligibleVoters={}, approvalRate={}% (Status remains Pending until admin approval)", 
-                        approveCount, eligibleVoters, String.format("%.2f", approvalRate * 100));
+                // Xóa tất cả votes liên quan
+                List<TransactionVote> votes = voteRepository.findByTransactionId(transactionId);
+                if (!votes.isEmpty()) {
+                    voteRepository.deleteAll(votes);
+                    logger.info("🗑️ Deleted {} votes for transaction {}", votes.size(), transactionId);
                 }
+                
+                // Xóa transaction
+                transactionRepository.delete(transaction);
+                
+                logger.info("✅ Transaction {} deleted due to >50% reject votes ({}%)", 
+                    transactionId, String.format("%.2f", rejectionRate * 100));
+                return;
+            }
+            
+            // Nếu > 50% đồng ý, tự động trừ tiền và hoàn tất
+            if (approvalRate > 0.5) {
+                // Kiểm tra số dư trước khi trừ
+                if (fund.hasSufficientBalance(transaction.getAmount())) {
+                    // Trừ tiền quỹ
+                    fund.withdraw(transaction.getAmount());
+                    groupFundRepository.save(fund);
+                    
+                    // Chuyển status sang Completed
+                    transaction.setStatus(TransactionStatus.Completed);
+                    transaction.setApprovedAt(LocalDateTime.now());
+                    transactionRepository.save(transaction);
+                    
+                    logger.info("✅ Rút tiền thành công và yêu cầu đã được đóng! Transaction {} đã được hoàn tất. " +
+                        "Số tiền: {} VND, ApprovalRate: {}% (>50%), Số dư còn lại: {} VND", 
+                        transaction.getTransactionId(), 
+                        transaction.getAmount(),
+                        String.format("%.2f", approvalRate * 100),
+                        fund.getCurrentBalance());
+                } else {
+                    // Số dư không đủ, từ chối
+                    transaction.setStatus(TransactionStatus.Rejected);
+                    transaction.setPurpose(transaction.getPurpose() + 
+                        " [Từ chối: Số dư quỹ không đủ. Hiện có: " + fund.getCurrentBalance() + 
+                        " VND, yêu cầu: " + transaction.getAmount() + " VND]");
+                    transactionRepository.save(transaction);
+                    logger.warn("⚠️ Rút tiền bị từ chối do số dư không đủ. TransactionId: {}, " +
+                        "Số dư: {} VND, Yêu cầu: {} VND", 
+                        transaction.getTransactionId(), 
+                        fund.getCurrentBalance(), 
+                        transaction.getAmount());
+                }
+            } else {
+                logger.info("Approval rate not met: approvalRate={}%, required=>50% (strictly greater than half)", 
+                    String.format("%.2f", approvalRate * 100));
             }
         } catch (Exception e) {
-            logger.error("Error calculating vote stats for transaction {}: {}", 
-                request.getTransactionId(), e.getMessage(), e);
-            // Không ảnh hưởng đến vote - chỉ là thống kê
+            logger.error("Error processing pending transaction {}: {}", 
+                transaction.getTransactionId(), e.getMessage(), e);
         }
-
-        // QUAN TRỌNG: Giữ nguyên status Pending - không tự động chuyển sang Approved
-        // Admin sẽ quyết định approve/reject dựa trên số phiếu khi xem request
-        return transaction;
     }
 
     /**
-     * Lấy số thành viên trong nhóm từ group-management-service
+     * Lấy số thành viên trong nhóm từ group-management-service qua API Gateway
      */
     private int getGroupMemberCount(Integer groupId) {
         try {
             String url = groupManagementServiceUrl + "/api/groups/" + groupId + "/members";
+            
+            // Tạo headers với X-Internal-Service để bypass authentication trong API Gateway
+            HttpHeaders headers = new HttpHeaders();
+            headers.set("X-Internal-Service", "cost-payment-service");
+            // Nếu có token, vẫn thêm vào để đảm bảo tương thích
+            if (internalServiceToken != null && !internalServiceToken.isEmpty()) {
+                headers.set("Authorization", "Bearer " + internalServiceToken);
+            }
+            HttpEntity<?> entity = new HttpEntity<>(headers);
+            
             ResponseEntity<List<Map<String, Object>>> response = restTemplate.exchange(
                 url,
                 HttpMethod.GET,
-                null,
+                entity,
                 new ParameterizedTypeReference<List<Map<String, Object>>>() {}
             );
             
@@ -553,6 +650,61 @@ public class FundServiceImpl implements FundService {
     @Override
     public Long countPendingRequests(Integer fundId) {
         return transactionRepository.countPendingTransactions(fundId);
+    }
+
+    // ========================================
+    // VOTE COUNT
+    // ========================================
+
+    @Override
+    public long countApprovesByTransactionId(Integer transactionId) {
+        return voteRepository.countApprovesByTransactionId(transactionId);
+    }
+
+    @Override
+    public long countRejectsByTransactionId(Integer transactionId) {
+        return voteRepository.countRejectsByTransactionId(transactionId);
+    }
+
+    @Override
+    public long countVotesByTransactionId(Integer transactionId) {
+        return voteRepository.countByTransactionId(transactionId);
+    }
+
+    @Override
+    @Transactional
+    public int processAllPendingTransactions() {
+        try {
+            // Lấy tất cả pending withdrawal requests
+            List<FundTransaction> pendingTransactions = transactionRepository.findPendingWithdrawRequests(null);
+            logger.info("Processing {} pending withdrawal transactions", pendingTransactions.size());
+            
+            int processedCount = 0;
+            for (FundTransaction transaction : pendingTransactions) {
+                try {
+                    // Reload transaction để đảm bảo có dữ liệu mới nhất
+                    Optional<FundTransaction> reloaded = transactionRepository.findById(transaction.getTransactionId());
+                    if (reloaded.isPresent()) {
+                        FundTransaction currentTransaction = reloaded.get();
+                        // Chỉ xử lý nếu vẫn còn pending hoặc approved
+                        if (currentTransaction.getStatus() == TransactionStatus.Pending || 
+                            currentTransaction.getStatus() == TransactionStatus.Approved) {
+                            processPendingTransaction(currentTransaction);
+                            processedCount++;
+                        }
+                    }
+                } catch (Exception e) {
+                    logger.error("Error processing transaction {}: {}", 
+                        transaction.getTransactionId(), e.getMessage(), e);
+                }
+            }
+            
+            logger.info("Processed {} pending transactions", processedCount);
+            return processedCount;
+        } catch (Exception e) {
+            logger.error("Error processing all pending transactions: {}", e.getMessage(), e);
+            return 0;
+        }
     }
 }
 

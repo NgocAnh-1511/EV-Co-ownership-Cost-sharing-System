@@ -10,6 +10,11 @@ import com.example.costpayment.repository.UsageTrackingRepository;
 import com.example.costpayment.service.AutoCostSplitService;
 import com.example.costpayment.service.CostShareService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
@@ -38,6 +43,9 @@ public class AutoCostSplitServiceImpl implements AutoCostSplitService {
 
     @Autowired(required = false)
     private RestTemplate restTemplate;
+    
+    @org.springframework.beans.factory.annotation.Value("${group-management.service.url:http://api-gateway:8084}")
+    private String groupManagementServiceUrl;
 
     /**
      * Tự động chia chi phí dựa trên split method
@@ -80,6 +88,15 @@ public class AutoCostSplitServiceImpl implements AutoCostSplitService {
     @Override
     @Transactional
     public List<CostShare> autoSplitCostWithMethod(Integer costId, Integer groupId, String splitMethodStr, Integer month, Integer year) {
+        return autoSplitCostWithMethod(costId, groupId, splitMethodStr, month, year, null);
+    }
+    
+    /**
+     * Tự động chia chi phí với splitMethod được chỉ định (từ form) - có token
+     */
+    @Override
+    @Transactional
+    public List<CostShare> autoSplitCostWithMethod(Integer costId, Integer groupId, String splitMethodStr, Integer month, Integer year, String token) {
         System.out.println("=== AUTO SPLIT WITH METHOD ===");
         System.out.println("Cost ID: " + costId);
         System.out.println("Group ID: " + groupId);
@@ -102,7 +119,7 @@ public class AutoCostSplitServiceImpl implements AutoCostSplitService {
         switch (splitMethod) {
             case BY_OWNERSHIP:
                 System.out.println("Splitting by OWNERSHIP...");
-                Map<Integer, Double> ownershipMap = getGroupOwnership(groupId);
+                Map<Integer, Double> ownershipMap = getGroupOwnership(groupId, token);
                 System.out.println("Ownership map: " + ownershipMap);
                 return splitByOwnership(costId, ownershipMap);
 
@@ -114,7 +131,7 @@ public class AutoCostSplitServiceImpl implements AutoCostSplitService {
 
             case EQUAL:
                 System.out.println("Splitting EQUALLY...");
-                List<Integer> userIds = getUserIdsByGroup(groupId);
+                List<Integer> userIds = getUserIdsByGroup(groupId, token);
                 System.out.println("User IDs: " + userIds);
                 return splitEqually(costId, userIds);
 
@@ -135,10 +152,27 @@ public class AutoCostSplitServiceImpl implements AutoCostSplitService {
         Cost cost = costRepository.findById(costId)
                 .orElseThrow(() -> new RuntimeException("Không tìm thấy chi phí ID: " + costId));
 
-        // Validate tổng ownership = 100%
+        // Validate và normalize tổng ownership
         double totalOwnership = ownershipMap.values().stream().mapToDouble(Double::doubleValue).sum();
+        
+        // Nếu tổng ownership = 0 hoặc quá nhỏ, báo lỗi
+        if (totalOwnership <= 0) {
+            throw new RuntimeException("Tổng ownership phải lớn hơn 0%, hiện tại: " + totalOwnership + "%");
+        }
+        
+        // Nếu tổng ownership không bằng 100%, tự động normalize (trong phạm vi hợp lý: 50-150%)
         if (Math.abs(totalOwnership - 100.0) > 0.01) {
-            throw new RuntimeException("Tổng ownership phải bằng 100%, hiện tại: " + totalOwnership + "%");
+            if (totalOwnership < 50.0 || totalOwnership > 150.0) {
+                throw new RuntimeException("Tổng ownership không hợp lệ: " + totalOwnership + "%. Vui lòng kiểm tra dữ liệu nhóm.");
+            }
+            // Normalize: chia tất cả giá trị cho totalOwnership và nhân với 100
+            System.out.println("Warning: Tổng ownership = " + totalOwnership + "%, đang normalize về 100%");
+            Map<Integer, Double> normalizedMap = new HashMap<>();
+            for (Map.Entry<Integer, Double> entry : ownershipMap.entrySet()) {
+                normalizedMap.put(entry.getKey(), (entry.getValue() / totalOwnership) * 100.0);
+            }
+            ownershipMap = normalizedMap;
+            totalOwnership = 100.0; // Sau khi normalize, tổng sẽ là 100%
         }
 
         // Xóa các chia sẻ cũ
@@ -213,24 +247,67 @@ public class AutoCostSplitServiceImpl implements AutoCostSplitService {
     }
 
     /**
-     * Lấy ownership % của nhóm
-     * TODO: Call Group Management Service để lấy ownership thực tế
+     * Lấy ownership % của nhóm từ Group Management Service
      */
     @Override
     public Map<Integer, Double> getGroupOwnership(Integer groupId) {
-        // Mock data - Trong thực tế sẽ call Group Management Service
-        Map<Integer, Double> ownershipMap = new HashMap<>();
-
-        if (groupId == 1) {
-            ownershipMap.put(1, 50.0);
-            ownershipMap.put(2, 30.0);
-            ownershipMap.put(3, 20.0);
-        } else if (groupId == 2) {
-            ownershipMap.put(2, 60.0);
-            ownershipMap.put(4, 40.0);
+        return getGroupOwnership(groupId, null);
+    }
+    
+    /**
+     * Lấy ownership % của nhóm từ Group Management Service (có token)
+     */
+    @Override
+    public Map<Integer, Double> getGroupOwnership(Integer groupId, String token) {
+        try {
+            if (restTemplate == null) {
+                restTemplate = new RestTemplate();
+            }
+            
+            String url = groupManagementServiceUrl + "/api/groups/" + groupId + "/members/view";
+            System.out.println("Calling Group Management Service: " + url);
+            
+            HttpHeaders headers = new HttpHeaders();
+            if (token != null && !token.isEmpty()) {
+                headers.set("Authorization", token.startsWith("Bearer ") ? token : "Bearer " + token);
+            }
+            HttpEntity<?> entity = new HttpEntity<>(headers);
+            
+            ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
+                url,
+                HttpMethod.GET,
+                entity,
+                new ParameterizedTypeReference<Map<String, Object>>() {}
+            );
+            
+            Map<String, Object> responseBody = response.getBody();
+            if (responseBody == null || !responseBody.containsKey("members")) {
+                throw new RuntimeException("Không lấy được thông tin thành viên từ Group Management Service");
+            }
+            
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> members = (List<Map<String, Object>>) responseBody.get("members");
+            
+            Map<Integer, Double> ownershipMap = new HashMap<>();
+            for (Map<String, Object> member : members) {
+                Integer userId = (Integer) member.get("userId");
+                Object ownershipPercentObj = member.get("ownershipPercent");
+                Double ownershipPercent = ownershipPercentObj != null ? 
+                    (ownershipPercentObj instanceof Number ? 
+                        ((Number) ownershipPercentObj).doubleValue() : 
+                        Double.parseDouble(ownershipPercentObj.toString())) : 
+                    0.0;
+                ownershipMap.put(userId, ownershipPercent);
+            }
+            
+            System.out.println("Ownership map: " + ownershipMap);
+            return ownershipMap;
+            
+        } catch (Exception e) {
+            System.err.println("Lỗi khi gọi Group Management Service: " + e.getMessage());
+            e.printStackTrace();
+            throw new RuntimeException("Không thể lấy thông tin ownership từ Group Management Service: " + e.getMessage());
         }
-
-        return ownershipMap;
     }
 
     // ==================== HELPER METHODS ====================
@@ -279,19 +356,61 @@ public class AutoCostSplitServiceImpl implements AutoCostSplitService {
     }
 
     /**
-     * Lấy danh sách userId của nhóm
+     * Lấy danh sách userId của nhóm từ Group Management Service
      */
     private List<Integer> getUserIdsByGroup(Integer groupId) {
-        // Mock data - Trong thực tế call Group Management Service
-        List<Integer> userIds = new ArrayList<>();
-
-        if (groupId == 1) {
-            userIds.addAll(Arrays.asList(1, 2, 3));
-        } else if (groupId == 2) {
-            userIds.addAll(Arrays.asList(2, 4));
+        return getUserIdsByGroup(groupId, null);
+    }
+    
+    /**
+     * Lấy danh sách userId của nhóm từ Group Management Service (có token)
+     */
+    private List<Integer> getUserIdsByGroup(Integer groupId, String token) {
+        try {
+            if (restTemplate == null) {
+                restTemplate = new RestTemplate();
+            }
+            
+            String url = groupManagementServiceUrl + "/api/groups/" + groupId + "/members/view";
+            System.out.println("Calling Group Management Service: " + url);
+            
+            HttpHeaders headers = new HttpHeaders();
+            if (token != null && !token.isEmpty()) {
+                headers.set("Authorization", token.startsWith("Bearer ") ? token : "Bearer " + token);
+            }
+            HttpEntity<?> entity = new HttpEntity<>(headers);
+            
+            ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
+                url,
+                HttpMethod.GET,
+                entity,
+                new ParameterizedTypeReference<Map<String, Object>>() {}
+            );
+            
+            Map<String, Object> responseBody = response.getBody();
+            if (responseBody == null || !responseBody.containsKey("members")) {
+                throw new RuntimeException("Không lấy được thông tin thành viên từ Group Management Service");
+            }
+            
+            @SuppressWarnings("unchecked")
+            List<Map<String, Object>> members = (List<Map<String, Object>>) responseBody.get("members");
+            
+            List<Integer> userIds = new ArrayList<>();
+            for (Map<String, Object> member : members) {
+                Integer userId = (Integer) member.get("userId");
+                if (userId != null) {
+                    userIds.add(userId);
+                }
+            }
+            
+            System.out.println("User IDs: " + userIds);
+            return userIds;
+            
+        } catch (Exception e) {
+            System.err.println("Lỗi khi gọi Group Management Service: " + e.getMessage());
+            e.printStackTrace();
+            throw new RuntimeException("Không thể lấy danh sách thành viên từ Group Management Service: " + e.getMessage());
         }
-
-        return userIds;
     }
 
     /**

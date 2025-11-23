@@ -73,7 +73,8 @@ public class AutoSplitController {
      */
     @PostMapping("/create-and-split")
     public ResponseEntity<Map<String, Object>> createAndAutoSplit(
-            @RequestBody Map<String, Object> request) {
+            @RequestBody Map<String, Object> request,
+            @RequestHeader(value = "Authorization", required = false) String token) {
         
         try {
             Integer costId = request.get("costId") != null ? 
@@ -123,7 +124,8 @@ public class AutoSplitController {
                     groupId, 
                     splitMethod, 
                     month, 
-                    year
+                    year,
+                    token
                 );
                 
                 System.out.println("Created " + shares.size() + " cost shares for existing cost");
@@ -180,7 +182,8 @@ public class AutoSplitController {
                     groupId, 
                     splitMethod, 
                     month, 
-                    year
+                    year,
+                    token
                 );
 
                 System.out.println("Created " + shares.size() + " cost shares for new cost");
@@ -211,9 +214,10 @@ public class AutoSplitController {
     @PostMapping("/by-ownership")
     public ResponseEntity<List<CostShare>> splitByOwnership(
             @RequestParam Integer costId,
-            @RequestParam Integer groupId) {
+            @RequestParam Integer groupId,
+            @RequestHeader(value = "Authorization", required = false) String token) {
         
-        Map<Integer, Double> ownershipMap = autoSplitService.getGroupOwnership(groupId);
+        Map<Integer, Double> ownershipMap = autoSplitService.getGroupOwnership(groupId, token);
         List<CostShare> shares = autoSplitService.splitByOwnership(costId, ownershipMap);
         
         return ResponseEntity.ok(shares);
@@ -273,8 +277,9 @@ public class AutoSplitController {
      * GET /api/auto-split/ownership/{groupId}
      */
     @GetMapping("/ownership/{groupId}")
-    public ResponseEntity<Map<Integer, Double>> getGroupOwnership(@PathVariable Integer groupId) {
-        Map<Integer, Double> ownership = autoSplitService.getGroupOwnership(groupId);
+    public ResponseEntity<Map<Integer, Double>> getGroupOwnership(@PathVariable Integer groupId,
+                                                                  @RequestHeader(value = "Authorization", required = false) String token) {
+        Map<Integer, Double> ownership = autoSplitService.getGroupOwnership(groupId, token);
         return ResponseEntity.ok(ownership);
     }
 
@@ -287,7 +292,8 @@ public class AutoSplitController {
      * - amount: Nếu có -> dùng amount trực tiếp
      */
     @PostMapping("/preview")
-    public ResponseEntity<Map<String, Object>> previewSplit(@RequestBody Map<String, Object> request) {
+    public ResponseEntity<Map<String, Object>> previewSplit(@RequestBody Map<String, Object> request,
+                                                             @RequestHeader(value = "Authorization", required = false) String token) {
         try {
             Integer costId = request.get("costId") != null ? 
                 (Integer) request.get("costId") : null;
@@ -337,7 +343,7 @@ public class AutoSplitController {
 
             // Calculate preview based on method
             if ("BY_OWNERSHIP".equals(splitMethod)) {
-                Map<Integer, Double> ownership = autoSplitService.getGroupOwnership(groupId);
+                Map<Integer, Double> ownership = autoSplitService.getGroupOwnership(groupId, token);
                 for (Map.Entry<Integer, Double> entry : ownership.entrySet()) {
                     Map<String, Object> share = new HashMap<>();
                     share.put("userId", entry.getKey());
@@ -393,7 +399,7 @@ public class AutoSplitController {
                 }
             } else if ("EQUAL".equals(splitMethod)) {
                 // Chia đều
-                Map<Integer, Double> ownership = autoSplitService.getGroupOwnership(groupId);
+                Map<Integer, Double> ownership = autoSplitService.getGroupOwnership(groupId, token);
                 int memberCount = ownership.size();
                 double equalPercent = 100.0 / memberCount;
                 double equalAmount = amount / memberCount;

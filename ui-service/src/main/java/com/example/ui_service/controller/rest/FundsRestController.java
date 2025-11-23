@@ -22,8 +22,11 @@ public class FundsRestController {
 
     private static final Logger logger = LoggerFactory.getLogger(FundsRestController.class);
 
-    @Value("${cost-payment.service.url:http://localhost:8081}")
+    @Value("${cost-payment.service.url:http://localhost:8084}")
     private String costPaymentServiceUrl;
+    
+    // In Docker, this should be http://cost-payment-service:8081 (from application-docker.properties)
+    // In local, this should be http://localhost:8084 (API Gateway)
 
     private final RestTemplate restTemplate = new RestTemplate();
 
@@ -32,15 +35,22 @@ public class FundsRestController {
      * GET /api/funds/{fundId}/pending-requests
      */
     @GetMapping("/{fundId}/pending-requests")
-    public ResponseEntity<?> getPendingRequests(@PathVariable Integer fundId) {
+    public ResponseEntity<?> getPendingRequests(@PathVariable Integer fundId,
+                                                 @RequestHeader(value = "Authorization", required = false) String authHeader) {
         try {
             String url = costPaymentServiceUrl + "/api/funds/" + fundId + "/pending-requests";
             logger.info("Proxying pending requests request for fundId={} to {}", fundId, url);
             
+            HttpHeaders headers = new HttpHeaders();
+            if (authHeader != null && !authHeader.isEmpty()) {
+                headers.set("Authorization", authHeader);
+            }
+            HttpEntity<?> entity = new HttpEntity<>(headers);
+            
             ResponseEntity<List> response = restTemplate.exchange(
                 url,
                 HttpMethod.GET,
-                null,
+                entity,
                 new ParameterizedTypeReference<List>() {}
             );
             
@@ -48,10 +58,14 @@ public class FundsRestController {
                 response.getBody() != null ? ((List<?>) response.getBody()).size() : 0, fundId);
             
             return ResponseEntity.ok(response.getBody());
+        } catch (org.springframework.web.client.HttpClientErrorException.NotFound e) {
+            // Fund không tồn tại hoặc không có pending requests
+            logger.info("No pending requests found for fundId={}", fundId);
+            return ResponseEntity.ok(java.util.Collections.emptyList());
         } catch (Exception e) {
             logger.error("Error getting pending requests for fundId={}: {}", fundId, e.getMessage(), e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(Map.of("error", e.getMessage()));
+                .body(Map.of("error", "Error getting pending requests: " + e.getMessage()));
         }
     }
 

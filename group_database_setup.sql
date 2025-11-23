@@ -1,13 +1,32 @@
 -- ===============================
 -- DATABASE: Group_Management_DB + Cost_Management_DB
 -- Version ĐẦY ĐỦ - Bao gồm Quỹ chung
+-- 
+-- LƯU Ý: 
+-- - Cost_Payment_DB được setup riêng trong file cost_database_setup.sql
+-- - Cost_Management_DB (trong file này) dùng cho quỹ chung và có foreign key đến Group_Management_DB
 -- ===============================
 
 -- ==========================================
 -- PART 1: GROUP MANAGEMENT DATABASE
 -- ==========================================
 
+-- Tắt foreign key checks để có thể DROP database khi có cross-database foreign keys
+SET FOREIGN_KEY_CHECKS = 0;
+
+-- Xóa các database có foreign key tham chiếu đến Group_Management_DB trước
+-- (Cost_Management_DB có foreign key tham chiếu đến Voting trong Group_Management_DB)
+DROP DATABASE IF EXISTS Cost_Management_DB;
+-- Cost_Payment_DB không có foreign key đến Group_Management_DB nên không cần xóa ở đây
+-- (Cost_Payment_DB được setup riêng trong cost_database_setup.sql)
+
+-- Sau đó mới xóa Group_Management_DB
 DROP DATABASE IF EXISTS Group_Management_DB;
+
+-- Bật lại foreign key checks
+SET FOREIGN_KEY_CHECKS = 1;
+
+-- Tạo lại Group_Management_DB
 CREATE DATABASE Group_Management_DB;
 USE Group_Management_DB;
 
@@ -19,7 +38,7 @@ USE Group_Management_DB;
 CREATE TABLE `Group` (
     groupId INT AUTO_INCREMENT PRIMARY KEY,
     groupName VARCHAR(100) NOT NULL,
-    adminId INT NOT NULL,
+    adminId INT NULL,
     vehicleId INT,
     createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
     status ENUM('Active', 'Inactive') DEFAULT 'Active'
@@ -46,6 +65,10 @@ CREATE TABLE Voting (
     finalResult VARCHAR(100),
     totalVotes INT DEFAULT 0,
     createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+    deadline DATETIME NULL COMMENT 'Hạn chót bỏ phiếu',
+    status VARCHAR(20) DEFAULT 'OPEN' COMMENT 'Trạng thái bỏ phiếu: OPEN, CLOSED, CANCELLED',
+    closedAt DATETIME NULL COMMENT 'Thời điểm đóng bỏ phiếu',
+    createdBy INT NULL COMMENT 'User ID tạo bỏ phiếu',
     FOREIGN KEY (groupId) REFERENCES `Group`(groupId) ON DELETE CASCADE
 );
 
@@ -60,6 +83,22 @@ CREATE TABLE VotingResult (
     FOREIGN KEY (memberId) REFERENCES GroupMember(memberId) ON DELETE CASCADE
 );
 
+-- 5. Yêu cầu rời nhóm
+CREATE TABLE LeaveRequest (
+    requestId INT AUTO_INCREMENT PRIMARY KEY,
+    groupId INT NOT NULL,
+    memberId INT NOT NULL,
+    userId INT NOT NULL,
+    reason TEXT,
+    status ENUM('Pending', 'Approved', 'Rejected') DEFAULT 'Pending',
+    requestedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+    processedAt DATETIME,
+    processedBy INT,
+    adminNote TEXT,
+    FOREIGN KEY (groupId) REFERENCES `Group`(groupId) ON DELETE CASCADE,
+    FOREIGN KEY (memberId) REFERENCES GroupMember(memberId) ON DELETE CASCADE
+);
+
 -- ==========================================
 -- DỮ LIỆU MẪU ĐƠN GIẢN
 -- ==========================================
@@ -67,7 +106,10 @@ CREATE TABLE VotingResult (
 -- Nhóm
 INSERT INTO `Group` (groupName, adminId, vehicleId, status) VALUES 
 ('EV Group Tesla Model 3', 1, 1, 'Active'),
-('EV Group BMW i3', 2, 2, 'Active');
+('EV Group BMW i3', 2, 2, 'Active'),
+('CarShare Saigon Rivian R1T', 5, 3, 'Active'),
+('Đồng Sở Hữu VinFast VF8', 6, 4, 'Active'),
+('EV Adventure Đà Lạt', 7, 5, 'Active');
 
 -- Thành viên với % sở hữu
 INSERT INTO GroupMember (groupId, userId, role, ownershipPercent) VALUES 
@@ -76,14 +118,25 @@ INSERT INTO GroupMember (groupId, userId, role, ownershipPercent) VALUES
 (1, 2, 'Member', 30.0),  -- User 2: 30%
 (1, 3, 'Member', 20.0),  -- User 3: 20%
 
--- Group 2: Tổng 100%
-(2, 2, 'Admin', 60.0),   -- User 2: 60%
-(2, 4, 'Member', 40.0);  -- User 4: 40%
+-- Group 2: Để trống 20% cho người mới
+(2, 2, 'Admin', 40.0),   -- User 2: 40%
+(2, 4, 'Member', 40.0),  -- User 4: 40%
+
+-- Group 3: Còn 30%
+(3, 5, 'Admin', 35.0),
+(3, 6, 'Member', 35.0),
+
+-- Group 4: Chỉ có admin, còn 80%
+(4, 6, 'Admin', 20.0),
+
+-- Group 5: Để trống 100%
+(5, 7, 'Admin', 0.0);
 
 -- Bỏ phiếu
 INSERT INTO Voting (groupId, topic, optionA, optionB, totalVotes) VALUES 
 (1, 'Có nên mua phụ kiện?', 'Có', 'Không', 0),
-(2, 'Có nên đổi màu xe?', 'Đổi', 'Giữ', 0);
+(2, 'Có nên đổi màu xe?', 'Đổi', 'Giữ', 0),
+(3, 'Chọn lịch bảo dưỡng tháng 12?', 'Tuần 1', 'Tuần 2', 0);
 
 -- ==========================================
 -- XEM DỮ LIỆU
@@ -112,8 +165,10 @@ SELECT '✅ GROUP_MANAGEMENT_DB HOÀN TẤT!' as '';
 -- PART 2: COST MANAGEMENT DATABASE
 -- ==========================================
 
-DROP DATABASE IF EXISTS Cost_Management_DB;
-CREATE DATABASE Cost_Management_DB;
+-- Tắt foreign key checks để có thể tạo cross-database foreign key
+SET FOREIGN_KEY_CHECKS = 0;
+
+CREATE DATABASE IF NOT EXISTS Cost_Management_DB;
 USE Cost_Management_DB;
 
 -- ==========================================
@@ -190,7 +245,10 @@ LEFT JOIN Group_Management_DB.Voting v ON ft.voteId = v.voteId;
 -- Tạo quỹ cho các nhóm
 INSERT INTO GroupFund (groupId, totalContributed, currentBalance, note) VALUES 
 (1, 5000000, 3500000, 'Quỹ chung EV Group Tesla Model 3'),
-(2, 3000000, 2800000, 'Quỹ chung EV Group BMW i3');
+(2, 3000000, 2800000, 'Quỹ chung EV Group BMW i3'),
+(3, 1500000, 1200000, 'Quỹ chung CarShare Saigon Rivian'),
+(4, 0, 0, 'Quỹ chung VinFast VF8 - chờ đóng góp'),
+(5, 0, 0, 'Quỹ EV Adventure Đà Lạt - nhóm mới');
 
 -- Giao dịch mẫu
 INSERT INTO FundTransaction (fundId, userId, transactionType, amount, purpose, status, approvedAt) VALUES 
@@ -204,7 +262,11 @@ INSERT INTO FundTransaction (fundId, userId, transactionType, amount, purpose, s
 -- Group 2
 (2, 2, 'Deposit', 1800000, 'Nạp quỹ ban đầu', 'Completed', '2025-10-01 11:00:00'),
 (2, 4, 'Deposit', 1200000, 'Đóng góp tháng 10', 'Completed', '2025-10-05 16:00:00'),
-(2, 2, 'Withdraw', 200000, 'Đổ xăng', 'Completed', '2025-10-10 08:00:00');
+(2, 2, 'Withdraw', 200000, 'Đổ xăng', 'Completed', '2025-10-10 08:00:00'),
+
+-- Group 3
+(3, 5, 'Deposit', 1000000, 'Góp vốn mở rộng', 'Completed', '2025-10-02 09:00:00'),
+(3, 6, 'Deposit', 500000, 'Đóng góp tháng 10', 'Completed', '2025-10-06 12:00:00');
 
 -- Yêu cầu rút tiền đang chờ duyệt (Pending)
 INSERT INTO FundTransaction (fundId, userId, transactionType, amount, purpose, status, receiptUrl) VALUES 
@@ -259,4 +321,63 @@ GROUP BY fundId, transactionType
 ORDER BY fundId, transactionType;
 
 SELECT '✅ COST_MANAGEMENT_DB HOÀN TẤT!' as '';
+
+-- Bật lại foreign key checks sau khi tạo xong tất cả
+SET FOREIGN_KEY_CHECKS = 1;
+
+-- ==========================================
+-- GROUP_Management_DB - Contract Extensions
+-- ==========================================
+-- Run this script after the base group_database_setup.sql
+-- to add contract management tables that enforce the
+-- “sign before join” rule for vehicle co-ownership groups.
+
+USE Group_Management_DB;
+
+-- 1. Nhóm hợp đồng
+CREATE TABLE IF NOT EXISTS GroupContract (
+    contract_id INT AUTO_INCREMENT PRIMARY KEY,
+    group_id INT NOT NULL,
+    contract_code VARCHAR(100) NOT NULL UNIQUE,
+    contract_content TEXT,
+    contract_status ENUM('pending', 'signed', 'archived') DEFAULT 'pending',
+    creation_date DATETIME DEFAULT CURRENT_TIMESTAMP,
+    signed_date DATETIME NULL,
+    created_by INT,
+    CONSTRAINT fk_group_contract_group
+        FOREIGN KEY (group_id) REFERENCES `Group`(groupId)
+        ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE INDEX idx_group_contract_group_id ON GroupContract(group_id);
+
+-- 2. Chữ ký hợp đồng
+CREATE TABLE IF NOT EXISTS ContractSignature (
+    signature_id INT AUTO_INCREMENT PRIMARY KEY,
+    contract_id INT NOT NULL,
+    user_id INT NOT NULL,
+    signed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    signature_method VARCHAR(50),
+    ip_address VARCHAR(45),
+    CONSTRAINT fk_contract_signature_contract
+        FOREIGN KEY (contract_id) REFERENCES GroupContract(contract_id)
+        ON DELETE CASCADE,
+    CONSTRAINT uq_contract_signature UNIQUE (contract_id, user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE INDEX idx_contract_signature_user ON ContractSignature(user_id);
+
+-- Sample contract for demo groups
+INSERT INTO GroupContract (group_id, contract_code, contract_content, contract_status, created_by)
+SELECT g.groupId,
+       CONCAT('LC-', UPPER(REPLACE(g.groupName, ' ', '')), '-', YEAR(NOW())),
+       CONCAT('Hợp đồng sở hữu chung cho nhóm ', g.groupName),
+       'pending',
+       g.adminId
+FROM `Group` g
+LEFT JOIN GroupContract c ON c.group_id = g.groupId
+WHERE c.contract_id IS NULL;
+
+SELECT '✅ Contract tables created/updated successfully.' AS '';
+
 

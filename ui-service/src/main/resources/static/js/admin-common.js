@@ -1578,9 +1578,6 @@ function renderPaymentsTable(payments) {
                             <i class="fas fa-edit"></i>
                             <span>Sửa</span>
                         </button>
-                        <button class="btn btn-sm" style="background: var(--info); color: white; padding: 0.5rem 0.75rem; border-radius: 6px; border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 0.25rem; font-size: 0.875rem;" onclick="printPaymentInvoice(${payment.paymentId})" title="In hóa đơn">
-                            <i class="fas fa-print"></i>
-                        </button>
                         <button class="btn btn-sm" style="background: var(--danger); color: white; padding: 0.5rem 0.75rem; border-radius: 6px; border: none; cursor: pointer; display: inline-flex; align-items: center; gap: 0.25rem; font-size: 0.875rem;" onclick="deletePayment(${payment.paymentId})" title="Xóa thanh toán">
                             <i class="fas fa-trash"></i>
                         </button>
@@ -1916,6 +1913,9 @@ function exportPaymentsToExcel() {
 
 // ============ GROUP MANAGEMENT ============
 function initGroupManagement() {
+    if (window.IS_CUSTOM_ADMIN_GROUPS_PAGE) {
+        return;
+    }
     // Create Group button
     const btnCreateGroup = document.getElementById('btn-create-group');
     if (btnCreateGroup) {

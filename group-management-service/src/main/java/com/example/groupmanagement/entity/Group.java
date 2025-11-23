@@ -25,7 +25,7 @@ public class Group {
     @Column(name = "groupName", nullable = false, length = 100)
     private String groupName;
     
-    @Column(name = "adminId", nullable = false)
+    @Column(name = "adminId")
     private Integer adminId;
     
     @Column(name = "vehicleId")
@@ -33,10 +33,15 @@ public class Group {
     
     @Column(name = "createdAt")
     private LocalDateTime createdAt;
-    
+
     @Enumerated(EnumType.STRING)
     @Column(name = "status")
     private GroupStatus status;
+
+    @PrePersist
+    protected void onCreate() {
+        createdAt = LocalDateTime.now();
+    }
     
     @OneToMany(mappedBy = "group", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @lombok.ToString.Exclude

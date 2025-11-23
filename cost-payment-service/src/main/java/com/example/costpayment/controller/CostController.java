@@ -49,7 +49,7 @@ public class CostController {
         try {
             Connection connection = dataSource.getConnection();
             Statement statement = connection.createStatement();
-            ResultSet resultSet = statement.executeQuery("SELECT * FROM Cost ORDER BY createdAt DESC");
+            ResultSet resultSet = statement.executeQuery("SELECT * FROM cost ORDER BY createdAt DESC");
             
             int count = 0;
             while (resultSet.next()) {
@@ -188,7 +188,7 @@ public class CostController {
         try {
             Connection connection = dataSource.getConnection();
             Statement statement = connection.createStatement();
-            ResultSet resultSet = statement.executeQuery("SELECT COUNT(*) as count FROM Cost");
+            ResultSet resultSet = statement.executeQuery("SELECT COUNT(*) as count FROM cost");
             
             int count = 0;
             if (resultSet.next()) {
@@ -428,7 +428,7 @@ public class CostController {
             CostDto cost = new CostDto();
             Connection connection = dataSource.getConnection();
             Statement statement = connection.createStatement();
-            ResultSet resultSet = statement.executeQuery("SELECT * FROM Cost WHERE costId = " + id);
+            ResultSet resultSet = statement.executeQuery("SELECT * FROM cost WHERE costId = " + id);
             
             if (resultSet.next()) {
                 cost.setCostId(resultSet.getInt("costId"));
